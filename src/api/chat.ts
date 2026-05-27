@@ -14,6 +14,15 @@ export interface ChatConversation {
   unread: number;
 }
 
+/** One per-device encrypted copy of a direct message (multi-device fan-out). */
+export interface ChatRecipientEnvelope {
+  userId: string;
+  deviceId: string;
+  keyVersion?: number;
+  encryptedPayload: string;
+  nonce: string;
+}
+
 /** Raw message as delivered by REST history or the socket. */
 export interface RawChatMessage {
   _id?: string;
@@ -24,6 +33,8 @@ export interface RawChatMessage {
   encryptedPayload?: string;
   nonce?: string;
   authTag?: string;
+  senderPublicKey?: string;
+  recipientEnvelopes?: ChatRecipientEnvelope[];
   plaintextPayload?: string;
   messageType?: 'text' | 'image' | 'gif' | 'images';
   status?: 'sent' | 'delivered' | 'read';
@@ -95,5 +106,22 @@ export const chatApi = {
     const data = res?.data;
     if (data?.publicKey) return { publicKey: data.publicKey, keyVersion: data.keyVersion ?? 1 };
     return null;
+  },
+
+  // All active device keys for a user (multi-device fan-out targets).
+  async deviceKeys(
+    userId: string,
+  ): Promise<Array<{ deviceId: string; publicKey: string; keyVersion: number }>> {
+    const res = await api.get<{
+      data?: Array<{ deviceId?: string; publicKey?: string; keyVersion?: number }>;
+    }>(`chat/keys/${userId}/devices`);
+    const list = Array.isArray(res?.data) ? res.data : [];
+    return list
+      .filter((k): k is { deviceId?: string; publicKey: string; keyVersion?: number } => typeof k.publicKey === 'string' && k.publicKey.length > 0)
+      .map((k) => ({
+        deviceId: String(k.deviceId ?? 'primary'),
+        publicKey: k.publicKey,
+        keyVersion: k.keyVersion ?? 1,
+      }));
   },
 };

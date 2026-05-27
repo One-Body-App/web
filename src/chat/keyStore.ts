@@ -5,15 +5,22 @@ import { chatApi } from '@/api/chat';
  * Manages this browser's E2EE device keypair.
  *
  * NOTE: the private key lives in localStorage — adequate for a web client but
- * weaker than the mobile keychain. It registers under deviceId 'web' (its own
- * record), but the peer-key fetch returns a single active key, so a user with
- * BOTH a phone and web key shares the single-active-key limitation that already
- * exists on mobile (multi-device key fan-out is a separate server enhancement).
+ * weaker than the mobile keychain. It registers under deviceId 'web' as its own
+ * per-device record. Direct messages are encrypted to EVERY active device key
+ * of both parties (see getDeviceKeys + the recipientEnvelopes fan-out in
+ * Conversation), so a user with both a phone and web stays in sync — each
+ * sender includes a per-device envelope for every device.
  */
 const STORAGE_KEY = 'ob_chat_keypair_v1';
-const DEVICE_ID = 'web';
-const KEY_VERSION = 1;
+export const MY_DEVICE_ID = 'web';
+export const MY_KEY_VERSION = 1;
 const PEER_TTL_MS = 5 * 60 * 1000;
+
+export interface PeerDeviceKey {
+  deviceId: string;
+  publicKey: string;
+  keyVersion: number;
+}
 
 let cached: ChatKeyPair | null = null;
 let registered = false;
@@ -46,8 +53,8 @@ export async function ensureKeyRegistered(): Promise<void> {
   await chatApi.registerKey({
     publicKey: kp.publicKey,
     algorithm: 'x25519',
-    keyVersion: KEY_VERSION,
-    deviceId: DEVICE_ID,
+    keyVersion: MY_KEY_VERSION,
+    deviceId: MY_DEVICE_ID,
   });
   registered = true;
 }
@@ -61,4 +68,23 @@ export async function getPeerPublicKey(userId: string): Promise<string | null> {
     return key.publicKey;
   }
   return null;
+}
+
+const deviceKeysCache = new Map<string, { keys: PeerDeviceKey[]; ts: number }>();
+
+/**
+ * All active device keys for a user (the recipient or myself), used to build
+ * per-device recipientEnvelopes. Best-effort: returns [] on failure so the
+ * caller can still fall back to the single-key legacy path.
+ */
+export async function getDeviceKeys(userId: string): Promise<PeerDeviceKey[]> {
+  const hit = deviceKeysCache.get(userId);
+  if (hit && Date.now() - hit.ts < PEER_TTL_MS) return hit.keys;
+  try {
+    const keys = await chatApi.deviceKeys(userId);
+    deviceKeysCache.set(userId, { keys, ts: Date.now() });
+    return keys;
+  } catch {
+    return [];
+  }
 }

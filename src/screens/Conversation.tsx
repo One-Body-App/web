@@ -5,7 +5,13 @@ import { Avatar } from '@/components/Avatar';
 import { chatApi, type ChatConversation, type RawChatMessage } from '@/api/chat';
 import { endpoints } from '@/api/endpoints';
 import { decrypt, encrypt, parsePlaintext } from '@/chat/crypto';
-import { getMyKeypair, getPeerPublicKey } from '@/chat/keyStore';
+import {
+  getDeviceKeys,
+  getMyKeypair,
+  getPeerPublicKey,
+  MY_DEVICE_ID,
+  MY_KEY_VERSION,
+} from '@/chat/keyStore';
 import { emitWithAck } from '@/chat/socket';
 import { useChatConnection } from '@/chat/useChat';
 import './Messages.css';
@@ -86,7 +92,14 @@ export function Conversation() {
             getPeerPublicKey(peerUserId),
             chatApi.directMessages(peerUserId),
           ]);
-          mapped = await Promise.all(raw.map((m) => directToMsg(m, peerUserId, peerPub, kp.privateKey)));
+          const ctx: DecryptCtx = {
+            myUserId: myIdRef.current,
+            myDeviceId: MY_DEVICE_ID,
+            myPriv: kp.privateKey,
+            peerPub,
+            peerUserId,
+          };
+          mapped = raw.map((m) => directToMsg(m, ctx));
           if (!peerPub && raw.length) {
             setNotice('This person hasn’t set up secure messaging yet.');
           }
@@ -112,9 +125,14 @@ export function Conversation() {
 
     const onDirect = async (payload: RawChatMessage) => {
       if (isGroup || payload.senderId !== peerUserId) return; // only incoming for this DM
-      const peerPub = await getPeerPublicKey(peerUserId);
-      const kp = await getMyKeypair();
-      const msg = await directToMsg(payload, peerUserId, peerPub, kp.privateKey);
+      const [peerPub, kp] = await Promise.all([getPeerPublicKey(peerUserId), getMyKeypair()]);
+      const msg = directToMsg(payload, {
+        myUserId: myIdRef.current,
+        myDeviceId: MY_DEVICE_ID,
+        myPriv: kp.privateKey,
+        peerPub,
+        peerUserId,
+      });
       setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
       if (payload._id) socket.emit('chat:message_read', { messageId: payload._id });
     };
@@ -166,16 +184,56 @@ export function Conversation() {
           clientMessageId,
         });
       } else {
-        const [kp, peerPub] = await Promise.all([getMyKeypair(), getPeerPublicKey(peerUserId)]);
-        if (!peerPub) throw new Error('This person hasn’t set up secure messaging yet.');
-        const env = await encrypt(text, kp.privateKey, peerPub);
+        const myUserId = myIdRef.current;
+        const [kp, peerPub, peerDevices, myDevices] = await Promise.all([
+          getMyKeypair(),
+          getPeerPublicKey(peerUserId),
+          getDeviceKeys(peerUserId),
+          myUserId ? getDeviceKeys(myUserId) : Promise.resolve([]),
+        ]);
+        const legacyPub = peerPub ?? peerDevices[0]?.publicKey ?? null;
+        if (!legacyPub) throw new Error('This person hasn’t set up secure messaging yet.');
+
+        // Fan out: one envelope per active device key of the recipient AND of
+        // myself, so every device of both parties can decrypt. Always include
+        // this web device's own key (in case registration hasn't synced yet).
+        const targets: Array<{ userId: string; deviceId: string; keyVersion: number; publicKey: string }> = [];
+        const seen = new Set<string>();
+        const addTarget = (userId: string, deviceId: string, keyVersion: number, publicKey: string) => {
+          const dedupe = `${userId}:${publicKey}`;
+          if (!publicKey || seen.has(dedupe)) return;
+          seen.add(dedupe);
+          targets.push({ userId, deviceId, keyVersion, publicKey });
+        };
+        peerDevices.forEach((d) => addTarget(peerUserId, d.deviceId, d.keyVersion, d.publicKey));
+        if (myUserId) {
+          myDevices.forEach((d) => addTarget(myUserId, d.deviceId, d.keyVersion, d.publicKey));
+          addTarget(myUserId, MY_DEVICE_ID, MY_KEY_VERSION, kp.publicKey);
+        }
+
+        const recipientEnvelopes = targets.map((t) => {
+          const e = encrypt(text, kp.privateKey, t.publicKey);
+          return {
+            userId: t.userId,
+            deviceId: t.deviceId,
+            keyVersion: t.keyVersion,
+            encryptedPayload: e.encryptedPayload,
+            nonce: e.nonce,
+          };
+        });
+
+        // Legacy single-ciphertext copy (recipient's primary key) keeps older
+        // clients that don't understand recipientEnvelopes working.
+        const legacy = encrypt(text, kp.privateKey, legacyPub);
         ack = await emitWithAck<SendAck>('chat:send_e2ee_message', {
           receiverId: peerUserId,
-          encryptedPayload: env.encryptedPayload,
-          nonce: env.nonce,
-          authTag: env.authTag,
+          encryptedPayload: legacy.encryptedPayload,
+          nonce: legacy.nonce,
+          authTag: legacy.authTag,
           messageType: 'text',
-          senderPublicKeyVersion: 1,
+          senderPublicKeyVersion: MY_KEY_VERSION,
+          senderPublicKey: kp.publicKey,
+          recipientEnvelopes,
           clientMessageId,
         });
       }
@@ -262,27 +320,46 @@ export function Conversation() {
 }
 
 /* ---------------- mappers ---------------- */
-async function directToMsg(
-  m: RawChatMessage,
-  peerUserId: string,
-  peerPub: string | null,
-  myPriv: string,
-): Promise<ChatMsg> {
+interface DecryptCtx {
+  myUserId: string;
+  myDeviceId: string;
+  myPriv: string;
+  peerPub: string | null;
+  peerUserId: string;
+}
+
+function directToMsg(m: RawChatMessage, ctx: DecryptCtx): ChatMsg {
   let text = '🔒 Encrypted message';
   let mediaUrl: string | undefined;
-  if (peerPub && m.encryptedPayload && m.nonce) {
-    const plain = await decrypt(m.encryptedPayload, m.nonce, peerPub, myPriv);
-    if (plain != null) {
-      const parsed = parsePlaintext(plain);
-      text = parsed.text;
-      mediaUrl = parsed.mediaUrl;
-    } else {
-      text = '🔒 Unable to decrypt';
-    }
+
+  // Prefer this device's per-device envelope, decrypted with the message's
+  // sender public key — robust across multi-device. Fall back to the legacy
+  // single ciphertext (decrypted with the peer's current key) for older
+  // messages / clients that didn't send envelopes.
+  const myEnvelope = ctx.myUserId
+    ? m.recipientEnvelopes?.find(
+        (e) => e.userId === ctx.myUserId && e.deviceId === ctx.myDeviceId,
+      )
+    : undefined;
+
+  let plain: string | null = null;
+  if (myEnvelope && m.senderPublicKey) {
+    plain = decrypt(myEnvelope.encryptedPayload, myEnvelope.nonce, m.senderPublicKey, ctx.myPriv);
+  } else if (ctx.peerPub && m.encryptedPayload && m.nonce) {
+    plain = decrypt(m.encryptedPayload, m.nonce, ctx.peerPub, ctx.myPriv);
   }
+
+  if (plain != null) {
+    const parsed = parsePlaintext(plain);
+    text = parsed.text;
+    mediaUrl = parsed.mediaUrl;
+  } else if (myEnvelope || (m.encryptedPayload && m.nonce)) {
+    text = '🔒 Unable to decrypt';
+  }
+
   return {
     id: String(m._id ?? newClientId()),
-    fromMe: m.senderId !== peerUserId,
+    fromMe: ctx.myUserId ? m.senderId === ctx.myUserId : m.senderId !== ctx.peerUserId,
     text,
     mediaUrl,
     time: fmtTime(m.createdAt),
