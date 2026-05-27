@@ -194,48 +194,52 @@ export function Conversation() {
         const legacyPub = peerPub ?? peerDevices[0]?.publicKey ?? null;
         if (!legacyPub) throw new Error('This person hasn’t set up secure messaging yet.');
 
-        // Fan out: one envelope per active device key of the recipient AND of
-        // myself, so every device of both parties can decrypt. Always include
-        // this web device's own key (in case registration hasn't synced yet).
-        const targets: Array<{ userId: string; deviceId: string; keyVersion: number; publicKey: string }> = [];
-        const seen = new Set<string>();
-        const addTarget = (userId: string, deviceId: string, keyVersion: number, publicKey: string) => {
-          const dedupe = `${userId}:${publicKey}`;
-          if (!publicKey || seen.has(dedupe)) return;
-          seen.add(dedupe);
-          targets.push({ userId, deviceId, keyVersion, publicKey });
-        };
-        peerDevices.forEach((d) => addTarget(peerUserId, d.deviceId, d.keyVersion, d.publicKey));
-        if (myUserId) {
-          myDevices.forEach((d) => addTarget(myUserId, d.deviceId, d.keyVersion, d.publicKey));
-          addTarget(myUserId, MY_DEVICE_ID, MY_KEY_VERSION, kp.publicKey);
-        }
-
-        const recipientEnvelopes = targets.map((t) => {
-          const e = encrypt(text, kp.privateKey, t.publicKey);
-          return {
-            userId: t.userId,
-            deviceId: t.deviceId,
-            keyVersion: t.keyVersion,
-            encryptedPayload: e.encryptedPayload,
-            nonce: e.nonce,
-          };
-        });
-
-        // Legacy single-ciphertext copy (recipient's primary key) keeps older
-        // clients that don't understand recipientEnvelopes working.
+        // Legacy single-ciphertext copy to the recipient's primary key. Always
+        // sent so older clients keep working.
         const legacy = encrypt(text, kp.privateKey, legacyPub);
-        ack = await emitWithAck<SendAck>('chat:send_e2ee_message', {
+        const payload: Record<string, unknown> = {
           receiverId: peerUserId,
           encryptedPayload: legacy.encryptedPayload,
           nonce: legacy.nonce,
           authTag: legacy.authTag,
           messageType: 'text',
           senderPublicKeyVersion: MY_KEY_VERSION,
-          senderPublicKey: kp.publicKey,
-          recipientEnvelopes,
           clientMessageId,
-        });
+        };
+
+        // Multi-device fan-out: one envelope per active device key of the
+        // recipient AND myself, so every device of both parties can decrypt.
+        // Only attached when the server returned device keys — against an older
+        // API without the /devices endpoint we degrade to the legacy-only
+        // payload above rather than send fields it would reject.
+        if (peerDevices.length > 0) {
+          const targets: Array<{ userId: string; deviceId: string; keyVersion: number; publicKey: string }> = [];
+          const seen = new Set<string>();
+          const addTarget = (userId: string, deviceId: string, keyVersion: number, publicKey: string) => {
+            const dedupe = `${userId}:${publicKey}`;
+            if (!publicKey || seen.has(dedupe)) return;
+            seen.add(dedupe);
+            targets.push({ userId, deviceId, keyVersion, publicKey });
+          };
+          peerDevices.forEach((d) => addTarget(peerUserId, d.deviceId, d.keyVersion, d.publicKey));
+          if (myUserId) {
+            myDevices.forEach((d) => addTarget(myUserId, d.deviceId, d.keyVersion, d.publicKey));
+            addTarget(myUserId, MY_DEVICE_ID, MY_KEY_VERSION, kp.publicKey);
+          }
+          payload.senderPublicKey = kp.publicKey;
+          payload.recipientEnvelopes = targets.map((t) => {
+            const e = encrypt(text, kp.privateKey, t.publicKey);
+            return {
+              userId: t.userId,
+              deviceId: t.deviceId,
+              keyVersion: t.keyVersion,
+              encryptedPayload: e.encryptedPayload,
+              nonce: e.nonce,
+            };
+          });
+        }
+
+        ack = await emitWithAck<SendAck>('chat:send_e2ee_message', payload);
       }
 
       if (ack?.ok) {
