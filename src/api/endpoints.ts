@@ -108,6 +108,56 @@ function mapPost(p: ApiSocialPost, myUserId?: string): OBPost {
   };
 }
 
+/* ----------------------------- RSS / articles ----------------------------- */
+// The "Read" feed (NEWS_INDEX) returns RSS/news items, not social posts.
+export interface OBArticle {
+  id: string;
+  title: string;
+  summary?: string;
+  image?: string;
+  link: string;
+  sourceName: string;
+  sourceAvatar: string;
+  time: string;
+}
+
+interface ApiRssItem {
+  _id?: string;
+  id?: string;
+  // Some feeds nest the title as an HTML-ish object ({ a: { $text } }).
+  title?: string | { a?: { $text?: string } };
+  description?: string;
+  link?: string;
+  image?: { url?: string } | string;
+  date?: string;
+  created?: string;
+  author?: string;
+  userData?: { name?: string; profileImage?: string };
+}
+
+function articleTitle(t: ApiRssItem['title']): string {
+  if (typeof t === 'string') return t;
+  if (t && typeof t === 'object') return t.a?.$text ?? '';
+  return '';
+}
+
+function mapArticle(item: ApiRssItem): OBArticle | null {
+  const link = item.link;
+  const title = articleTitle(item.title).trim();
+  if (!link || !title) return null;
+  const image = typeof item.image === 'string' ? item.image : item.image?.url;
+  return {
+    id: item.id ?? item._id ?? link,
+    title,
+    summary: item.description?.replace(/<[^>]*>/g, '').trim() || undefined,
+    image: image || undefined,
+    link,
+    sourceName: item.userData?.name ?? item.author ?? 'One Body',
+    sourceAvatar: item.userData?.profileImage || FALLBACK_AVATAR,
+    time: timeAgo(item.date ?? item.created),
+  };
+}
+
 /** The feed endpoint returns heterogeneous entries; pull out social posts. */
 function coerceSocialPost(entry: unknown): ApiSocialPost | null {
   if (!entry || typeof entry !== 'object') return null;
@@ -159,6 +209,14 @@ export const endpoints = {
       .map(coerceSocialPost)
       .filter((p): p is ApiSocialPost => p !== null)
       .map((p) => mapPost(p, myUserId));
+  },
+
+  /** "Read" tab — RSS/news articles (NEWS_INDEX). */
+  async getReadFeed(page = 1): Promise<OBArticle[]> {
+    const payload = await api.get(`user/get-following-feed/read/${page}`);
+    return unwrapList(payload)
+      .map((x) => mapArticle(x as ApiRssItem))
+      .filter((a): a is OBArticle => a !== null);
   },
 
   async getFollowingSocial(page = 1, myUserId?: string): Promise<OBPost[]> {
