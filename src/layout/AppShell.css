@@ -1,0 +1,326 @@
+.shell {
+  display: grid;
+  /* minmax(0, …) lets the content column shrink below its content's intrinsic
+     width — without it, grid items default to min-width:auto and overflow. */
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 100dvh;
+}
+
+/* ============================ Mobile top bar ============================ */
+.shell__topbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--topbar-h);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-12);
+  padding: 0 var(--sp-16);
+  padding-top: env(safe-area-inset-top);
+  z-index: 40;
+  border-bottom: 1px solid var(--line);
+}
+.shell__topbar-title {
+  display: none;
+}
+.shell__topbar-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+}
+.shell__topbar-me {
+  display: inline-flex;
+  margin-left: var(--sp-4);
+  border-radius: 50%;
+  transition: box-shadow 0.16s ease;
+}
+.shell__topbar-me:hover {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.iconbtn {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  color: var(--brand);
+  transition: background 0.18s ease;
+}
+.iconbtn:hover {
+  background: var(--surface-3);
+}
+.iconbtn__dot {
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 1.5px solid #fff;
+}
+
+/* ============================ Content ============================ */
+.shell__content {
+  width: 100%;
+  min-width: 0;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: calc(var(--topbar-h) + var(--sp-8)) var(--sp-12)
+    calc(var(--tabbar-h) + env(safe-area-inset-bottom) + var(--sp-24));
+  min-height: 100dvh;
+}
+
+/* ============================ Bottom tab bar ============================ */
+.shell__tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  border-top: 1px solid var(--line);
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  z-index: 40;
+}
+.shell__tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  flex: 1;
+  color: var(--brand);
+  opacity: 0.55;
+  font-size: 10px;
+  font-weight: 600;
+  font-family: var(--font-display);
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s var(--ease-spring);
+}
+.shell__tab span {
+  letter-spacing: 0.01em;
+}
+.shell__tab.is-active {
+  opacity: 1;
+  color: var(--sapphire);
+}
+.shell__tab.is-active svg {
+  transform: translateY(-1px) scale(1.05);
+}
+.shell__tab-fab {
+  display: grid;
+  place-items: center;
+  width: 54px;
+  height: 54px;
+  margin-top: -22px;
+  border-radius: 50%;
+  background: var(--grad-sapphire);
+  color: #fff;
+  box-shadow: var(--shadow-brand);
+  flex-shrink: 0;
+  transition: transform 0.2s var(--ease-spring);
+}
+.shell__tab-fab:active {
+  transform: scale(0.9);
+}
+
+/* ============================ Sidebar (desktop) ============================ */
+.shell__sidebar,
+.shell__rail {
+  display: none;
+}
+
+@media (min-width: 900px) {
+  .shell {
+    grid-template-columns: var(--sidebar-w) minmax(0, var(--content-max));
+    justify-content: center;
+    column-gap: 28px;
+  }
+  .shell__topbar,
+  .shell__tabbar {
+    display: none;
+  }
+  .shell__content {
+    max-width: var(--content-max);
+    padding: var(--sp-24) 0 var(--sp-64);
+  }
+
+  .shell__sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-6);
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    padding: var(--sp-24) var(--sp-12) var(--sp-20);
+    border-right: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .shell__brand {
+    padding: var(--sp-8) var(--sp-12) var(--sp-20);
+  }
+  .shell__nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .shell__navlink {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-16);
+    padding: 12px 14px;
+    border-radius: var(--r-base);
+    font-family: var(--font-display);
+    font-weight: 500;
+    font-size: var(--fs-4);
+    color: var(--ink-2);
+    transition:
+      background 0.16s ease,
+      color 0.16s ease;
+  }
+  .shell__navlink:hover {
+    background: var(--surface-3);
+    color: var(--brand);
+  }
+  .shell__navlink.is-active {
+    background: var(--sapphire-900);
+    color: var(--sapphire);
+    font-weight: 600;
+  }
+  .shell__navlink.is-active svg {
+    stroke-width: 2.5;
+  }
+  .shell__post {
+    margin: var(--sp-16) var(--sp-4) 0;
+  }
+  .shell__me {
+    margin-top: auto;
+    display: flex;
+    align-items: center;
+    gap: var(--sp-12);
+    padding: var(--sp-10);
+    border-radius: var(--r-pill);
+    transition: background 0.16s ease;
+  }
+  .shell__me:hover {
+    background: var(--surface-3);
+  }
+  .shell__me-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+    overflow: hidden;
+  }
+  .shell__me-text strong {
+    font-family: var(--font-display);
+    font-size: var(--fs-2);
+    color: var(--brand);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+  }
+  .shell__me-text small {
+    color: var(--muted);
+    font-size: var(--fs-1);
+  }
+}
+
+/* ============================ Discover rail ============================ */
+@media (min-width: 1200px) {
+  .shell {
+    grid-template-columns: var(--sidebar-w) minmax(0, var(--content-max)) var(--rail-w);
+  }
+  .shell__rail {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-16);
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    overflow-y: auto;
+    padding: var(--sp-24) var(--sp-8) var(--sp-24) 0;
+  }
+  .rail-card {
+    padding: var(--sp-16);
+  }
+  .rail-card__title {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-8);
+    font-size: var(--fs-4);
+    margin-bottom: var(--sp-12);
+    color: var(--brand);
+  }
+  .rail-card__title svg {
+    color: var(--sapphire);
+  }
+  .rail-trend {
+    display: flex;
+    flex-direction: column;
+  }
+  .rail-trend__item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    width: 100%;
+    padding: var(--sp-8) var(--sp-10);
+    border-radius: var(--r-sm);
+    text-align: left;
+    transition: background 0.15s ease;
+  }
+  .rail-trend__item:hover {
+    background: var(--surface-3);
+  }
+  .rail-trend__tag {
+    font-family: var(--font-display);
+    font-weight: 600;
+    color: var(--brand);
+  }
+  .rail-trend__count {
+    font-size: var(--fs-1);
+    color: var(--muted);
+  }
+  .rail-people {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-12);
+  }
+  .rail-people__item {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-12);
+  }
+  .rail-people__meta {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.25;
+    margin-right: auto;
+    overflow: hidden;
+  }
+  .rail-people__meta strong {
+    font-size: var(--fs-2);
+    color: var(--brand);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+  }
+  .rail-people__meta small {
+    color: var(--muted);
+    font-size: var(--fs-1);
+  }
+  .rail-foot {
+    font-size: var(--fs-1);
+    color: var(--ink-4);
+    line-height: 1.6;
+    padding: 0 var(--sp-10);
+  }
+}

@@ -1,0 +1,93 @@
+.auth {
+  position: relative;
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--sp-24) var(--sp-16);
+  background: var(--grad-hero);
+  overflow: hidden;
+}
+
+/* Soft floating atmosphere behind the card */
+.auth__orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(70px);
+  opacity: 0.55;
+  z-index: 0;
+  animation: auth-float 14s ease-in-out infinite;
+}
+.auth__orb--1 {
+  width: 460px;
+  height: 460px;
+  background: radial-gradient(circle, rgba(18, 210, 217, 0.55), transparent 68%);
+  top: -140px;
+  right: -100px;
+}
+.auth__orb--2 {
+  width: 520px;
+  height: 520px;
+  background: radial-gradient(circle, rgba(18, 107, 135, 0.45), transparent 68%);
+  bottom: -180px;
+  left: -120px;
+  animation-delay: -7s;
+}
+@keyframes auth-float {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(0, -28px) scale(1.06);
+  }
+}
+
+/* Centered floating card */
+.auth__card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 440px;
+  background: var(--surface);
+  border-radius: var(--r-card-lg);
+  padding: var(--sp-32);
+  box-shadow: var(--shadow-lg);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+}
+.auth__logo {
+  display: inline-flex;
+  margin-bottom: var(--sp-24);
+}
+.auth__title {
+  font-size: var(--fs-6);
+  font-weight: 700;
+}
+.auth__subtitle {
+  color: var(--ink-3);
+  margin: var(--sp-6) 0 var(--sp-24);
+}
+.auth__footer {
+  margin-top: var(--sp-20);
+  text-align: center;
+  font-size: var(--fs-2);
+  color: var(--ink-3);
+}
+.auth__footer a {
+  color: var(--sapphire);
+  font-weight: 600;
+}
+.auth__footer a:hover {
+  text-decoration: underline;
+}
+
+@media (min-width: 480px) {
+  .auth__card {
+    padding: var(--sp-32) var(--sp-48);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .auth__orb {
+    animation: none;
+  }
+}

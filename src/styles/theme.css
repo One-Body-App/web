@@ -1,0 +1,117 @@
+/* =====================================================================
+   One Body — Design Tokens
+   Ported from the mobile app's style system (app/src/styles):
+   colors.ts, typography.ts, spacing.ts, outlines.ts
+   ===================================================================== */
+
+:root {
+  /* --- Brand --- */
+  --brand: #032f3c; /* primary.brand (deep petrol teal) */
+  --brand-ink: #032f3c;
+  --sapphire: #126b87; /* primarySapphire.brand */
+  --sapphire-200: #41899f;
+  --sapphire-300: #5997ab;
+  --sapphire-700: #b8d3db;
+  --sapphire-800: #d0e1e7;
+  --sapphire-900: #e7f0f3;
+  --accent: #12d2d9; /* secondary.brand (vibrant cyan) */
+  --accent-200: #41dbe1;
+  --accent-700: #b8f2f4;
+  --accent-900: #e7fbfb;
+
+  /* Signature gradients */
+  --grad-brand: linear-gradient(135deg, #0e5469 0%, #032f3c 100%);
+  --grad-sapphire: linear-gradient(135deg, #41899f 0%, #126b87 100%);
+  --grad-aqua: linear-gradient(135deg, #12d2d9 0%, #126b87 100%);
+  --grad-hero: radial-gradient(
+      120% 120% at 0% 0%,
+      rgba(18, 210, 217, 0.18) 0%,
+      rgba(18, 210, 217, 0) 45%
+    ),
+    radial-gradient(120% 120% at 100% 0%, rgba(18, 107, 135, 0.22) 0%, rgba(18, 107, 135, 0) 50%),
+    linear-gradient(180deg, #f8fbfc 0%, #eef5f7 100%);
+
+  /* --- Neutrals (light theme) --- */
+  --ink: #212121; /* neutral.brand */
+  --ink-2: #313332;
+  --ink-3: #5a5c5b;
+  --ink-4: #838584;
+  --muted: #999da1;
+  --line: #e6eaec;
+  --line-strong: #cdd5d8;
+  --surface: #ffffff;
+  --surface-2: #f7f7f7;
+  --surface-3: #f2f3f3;
+  --bg: #f4f7f8;
+  --bg-tint: #eef5f7;
+
+  /* --- Feedback --- */
+  --error: #dc2c10;
+  --error-soft: #f8d5cf;
+  --success: #12ac7b;
+  --success-soft: #edfff9;
+  --warning: #d96a00;
+  --warning-soft: #ffc894;
+  --info: #0066d8;
+  --info-soft: #e7f2ff;
+
+  /* Reaction colors */
+  --react-love: #e2425b;
+  --react-pray: #7a5cff;
+  --react-rejoice: #f5a623;
+
+  /* --- Typography --- */
+  --font-display: 'Rubik', system-ui, sans-serif;
+  --font-body: 'Open Sans', system-ui, sans-serif;
+
+  --fs-92: 0.6875rem; /* 11 */
+  --fs-1: 0.75rem; /* 12 */
+  --fs-2: 0.8125rem; /* 13 */
+  --fs-3: 0.9375rem; /* 15 — base body */
+  --fs-4: 1rem; /* 16 */
+  --fs-5: 1.125rem; /* 18 */
+  --fs-6: 1.3125rem; /* 21 */
+  --fs-7: 1.625rem; /* 26 */
+  --fs-8: 2rem; /* 32 */
+
+  /* --- Spacing (matches spacing.ts) --- */
+  --sp-2: 2px;
+  --sp-4: 4px;
+  --sp-6: 6px;
+  --sp-8: 8px;
+  --sp-10: 10px;
+  --sp-12: 12px;
+  --sp-16: 16px;
+  --sp-20: 20px;
+  --sp-24: 24px;
+  --sp-32: 32px;
+  --sp-48: 48px;
+  --sp-64: 64px;
+
+  /* --- Radii (outlines.ts) --- */
+  --r-xs: 5px;
+  --r-sm: 8px;
+  --r-base: 13px;
+  --r-lg: 18px;
+  --r-card: 18px;
+  --r-card-lg: 24px;
+  --r-pill: 999px;
+
+  /* --- Shadows --- */
+  --shadow-xs: 0 1px 2px rgba(3, 47, 60, 0.06);
+  --shadow-sm: 0 2px 8px rgba(3, 47, 60, 0.06), 0 1px 2px rgba(3, 47, 60, 0.04);
+  --shadow-md: 0 8px 24px rgba(3, 47, 60, 0.08), 0 2px 6px rgba(3, 47, 60, 0.05);
+  --shadow-lg: 0 18px 48px rgba(3, 47, 60, 0.14), 0 6px 16px rgba(3, 47, 60, 0.08);
+  --shadow-brand: 0 12px 30px rgba(18, 107, 135, 0.28);
+  --shadow-accent: 0 10px 26px rgba(18, 210, 217, 0.32);
+
+  /* Layout */
+  --tabbar-h: 62px;
+  --topbar-h: 54px;
+  --sidebar-w: 250px;
+  --rail-w: 312px;
+  --content-max: 580px;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
