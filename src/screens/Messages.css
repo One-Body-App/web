@@ -95,6 +95,37 @@
   display: flex;
   gap: 2px;
 }
+.thread__lock {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.thread__empty {
+  margin: auto;
+  text-align: center;
+  color: var(--muted);
+  font-size: var(--fs-2);
+  max-width: 240px;
+}
+.thread__notice {
+  margin: 0 auto var(--sp-8);
+  padding: 7px 14px;
+  border-radius: var(--r-pill);
+  background: var(--warning-soft);
+  color: #8a4b00;
+  font-size: var(--fs-1);
+  text-align: center;
+}
+.bubble__media {
+  max-width: 220px;
+  border-radius: 12px;
+  margin-bottom: 6px;
+}
+.bubble--failed {
+  border-color: var(--error) !important;
+}
+.bubble--failed .bubble__time {
+  color: var(--error);
+}
 .thread__scroll {
   flex: 1;
   display: flex;
