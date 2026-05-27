@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Flame, Search } from 'lucide-react';
 import { Avatar } from '@/components/Avatar';
 import { PageHeader, SectionHeader } from '@/components/ui';
@@ -48,7 +49,8 @@ function UserRow({ user }: { user: OBUser }) {
 }
 
 export function Explore() {
-  const [q, setQ] = useState('');
+  const [params] = useSearchParams();
+  const [q, setQ] = useState(() => params.get('q') ?? '');
   const [debouncedQ, setDebouncedQ] = useState('');
 
   useEffect(() => {
@@ -66,9 +68,11 @@ export function Explore() {
     fallback: [],
     deps: [debouncedQ],
   });
+  const trending = useApiQuery(() => endpoints.getTrendingTags(), { fallback: trendingTopics });
 
   const suggestedList = suggested.data ?? suggestedAccounts;
   const resultList = results.data ?? [];
+  const trendingList = trending.data ?? trendingTopics;
 
   return (
     <div>
@@ -101,7 +105,7 @@ export function Explore() {
         <>
           <SectionHeader title="Trending in the Body" />
           <div className="topic-bubbles">
-            {trendingTopics.map((t, i) => (
+            {trendingList.map((t, i) => (
               <button
                 key={t.tag}
                 className={`topic-bubble topic-bubble--${(i % 4) + 1}`}

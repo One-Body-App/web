@@ -1,19 +1,32 @@
-import { useMemo, useState } from 'react';
-import { Inbox } from 'lucide-react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ChevronDown, Inbox, Search } from 'lucide-react';
 import { PostCard } from '@/components/PostCard';
 import { ArticleCard } from '@/components/ArticleCard';
-import { ComposerPrompt, EmptyState, PageHeader, Segmented } from '@/components/ui';
-import { FEED_TABS, posts as mockPosts, type FeedType, type OBPost } from '@/data/mock';
-import { endpoints, type ApiFeedType, type OBArticle } from '@/api/endpoints';
-import { useApiQuery } from '@/api/useApi';
+import { PrayerCard } from '@/screens/PrayerWall';
+import { ComposerPrompt, EmptyState } from '@/components/ui';
+import { posts as mockPosts, type FeedType } from '@/data/mock';
+import { endpoints, type ApiFeedType, type OBArticle, type OBFeedItem } from '@/api/endpoints';
+import { MOCK_PRAYERS, prayerApi, type Prayer } from '@/api/prayer';
+import {
+  FeedItemTelemetryContext,
+  trackFeedEvent,
+  type TelemetryFeedType,
+} from '@/telemetry/feedTelemetry';
+import './home.css';
 
-const FEED_TYPE_MAP: Record<FeedType, ApiFeedType> = {
-  forYou: 'foryou',
-  connected: 'connected',
+type TopTab = 'feed' | 'read' | 'pray' | 'watch';
+type SubType = 'forYou' | 'connected';
+
+const SUB_API: Record<SubType, ApiFeedType> = { forYou: 'foryou', connected: 'connected' };
+const OTHER_API: Record<Exclude<TopTab, 'feed'>, ApiFeedType> = {
   read: 'read',
   pray: 'pray',
   watch: 'watch',
 };
+
+/** A Home feed entry — a social post, a blog/news article, or a prayer. */
+type FeedEntry = OBFeedItem | { kind: 'prayer'; prayer: Prayer };
 
 /** Shown on the Read tab when the live RSS feed is unavailable (offline/CORS). */
 const MOCK_ARTICLES: OBArticle[] = [
@@ -39,7 +52,165 @@ const MOCK_ARTICLES: OBArticle[] = [
   },
 ];
 
-type FeedItem = { kind: 'post'; post: OBPost } | { kind: 'article'; article: OBArticle };
+function feedItemKey(item: FeedEntry): string {
+  if (item.kind === 'article') return `a-${item.article.id}`;
+  if (item.kind === 'prayer') return `pr-${item.prayer.id}`;
+  return `p-${item.post.id}`;
+}
+
+function itemPostId(item: FeedEntry): string {
+  if (item.kind === 'article') return item.article.id;
+  if (item.kind === 'prayer') return item.prayer.id;
+  return item.post.id;
+}
+
+function itemPostType(item: FeedEntry): string {
+  if (item.kind === 'article') return 'rss';
+  if (item.kind === 'prayer') return 'prayer';
+  return 'social';
+}
+
+/** Fetch one page for the active tab, normalized to the heterogeneous feed-entry shape. */
+function fetchFeedPage(top: TopTab, sub: SubType, page: number, myId: string): Promise<FeedEntry[]> {
+  if (top === 'read') {
+    return endpoints
+      .getReadFeed(page)
+      .then((articles) => articles.map((article) => ({ kind: 'article' as const, article })));
+  }
+  // The Pray tab is the Prayer Wall feed — same `prayer` endpoint mobile uses.
+  if (top === 'pray') {
+    return prayerApi
+      .list(page, myId)
+      .then((prayers) => prayers.map((prayer) => ({ kind: 'prayer' as const, prayer })));
+  }
+  const type = top === 'feed' ? SUB_API[sub] : OTHER_API[top];
+  return endpoints.getFeedItems(type, page, myId);
+}
+
+function mockForTab(top: TopTab, sub: SubType): FeedEntry[] {
+  if (top === 'read') return MOCK_ARTICLES.map((article) => ({ kind: 'article', article }));
+  if (top === 'pray') return MOCK_PRAYERS.map((prayer) => ({ kind: 'prayer', prayer }));
+  const feedKey: FeedType = top === 'feed' ? sub : top;
+  return mockPosts
+    .filter((p) => p.feeds.includes(feedKey))
+    .map((post) => ({ kind: 'post', post }));
+}
+
+/** Search bar that replaces the "Home" title (desktop/tablet). Submits to Explore. */
+function HomeSearch() {
+  const [q, setQ] = useState('');
+  const navigate = useNavigate();
+  return (
+    <form
+      className="home-search"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const v = q.trim();
+        navigate(v ? `/explore?q=${encodeURIComponent(v)}` : '/explore');
+      }}
+    >
+      <Search size={20} className="home-search__icon" />
+      <input
+        className="home-search__input"
+        placeholder="Search One Body"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        aria-label="Search One Body"
+      />
+    </form>
+  );
+}
+
+/**
+ * Wraps a feed item and reports view telemetry: impression (>=50% visible),
+ * qualified view (visible >=2.5s), and dwell (time visible on exit).
+ */
+function TrackedFeedItem({
+  feedType,
+  postId,
+  postType,
+  rank,
+  children,
+}: {
+  feedType: TelemetryFeedType;
+  postId: string;
+  postType: string;
+  rank: number;
+  children: ReactNode;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !postId) return;
+
+    let seen = false;
+    let qualified = false;
+    let visibleSince: number | null = null;
+    let qualifyTimer: ReturnType<typeof setTimeout> | null = null;
+    const base = {
+      feedType,
+      postId,
+      postType,
+      contentType: postType,
+      rankPosition: rank,
+      surfaceTab: feedType,
+    };
+
+    const fireDwell = () => {
+      if (visibleSince != null) {
+        const durationMs = Date.now() - visibleSince;
+        visibleSince = null;
+        if (durationMs > 300) {
+          trackFeedEvent({ ...base, eventType: 'dwell', canonicalEventName: 'post_dwell', durationMs });
+        }
+      }
+    };
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+          if (!seen) {
+            seen = true;
+            trackFeedEvent({ ...base, eventType: 'impression', canonicalEventName: 'post_impression' });
+          }
+          if (visibleSince == null) visibleSince = Date.now();
+          if (!qualified && qualifyTimer == null) {
+            qualifyTimer = setTimeout(() => {
+              qualified = true;
+              trackFeedEvent({
+                ...base,
+                eventType: 'qualified_view',
+                canonicalEventName: 'post_view_qualified',
+              });
+            }, 2500);
+          }
+        } else {
+          if (qualifyTimer != null) {
+            clearTimeout(qualifyTimer);
+            qualifyTimer = null;
+          }
+          fireDwell();
+        }
+      },
+      { threshold: [0, 0.5, 1] },
+    );
+    observer.observe(el);
+
+    return () => {
+      observer.disconnect();
+      if (qualifyTimer != null) clearTimeout(qualifyTimer);
+      fireDwell();
+    };
+  }, [feedType, postId, postType, rank]);
+
+  return (
+    <FeedItemTelemetryContext.Provider value={{ feedType, postId, postType, rankPosition: rank }}>
+      <div ref={ref}>{children}</div>
+    </FeedItemTelemetryContext.Provider>
+  );
+}
 
 function FeedSkeleton() {
   return (
@@ -63,55 +234,181 @@ function FeedSkeleton() {
 }
 
 export function Home() {
-  const [feed, setFeed] = useState<FeedType>('forYou');
-  const isRead = feed === 'read';
+  const [top, setTop] = useState<TopTab>('feed');
+  const [sub, setSub] = useState<SubType>('forYou');
+  const [meId, setMeId] = useState<string | null>(null);
 
-  const mockForFeed = useMemo<FeedItem[]>(
-    () =>
-      isRead
-        ? MOCK_ARTICLES.map((article) => ({ kind: 'article', article }))
-        : mockPosts.filter((p) => p.feeds.includes(feed)).map((post) => ({ kind: 'post', post })),
-    [feed, isRead],
-  );
+  const [items, setItems] = useState<FeedEntry[]>([]);
+  const [page, setPage] = useState(1);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [end, setEnd] = useState(false);
+  const [fallback, setFallback] = useState(false);
 
-  const { data, loading } = useApiQuery<FeedItem[]>(
-    () =>
-      isRead
-        ? endpoints
-            .getReadFeed(1)
-            .then((items) => items.map((article) => ({ kind: 'article' as const, article })))
-        : endpoints
-            .getFeed(FEED_TYPE_MAP[feed], 1)
-            .then((items) => items.map((post) => ({ kind: 'post' as const, post }))),
-    { fallback: mockForFeed, deps: [feed] },
-  );
+  const telemetryFeed: TelemetryFeedType =
+    top === 'feed' ? (sub === 'connected' ? 'connected' : 'foryou') : top;
+  const reloadFeed = () => setReloadKey((k) => k + 1);
 
-  const list = data ?? mockForFeed;
+  // Resolve the signed-in user's id once (used to highlight my own reactions).
+  useEffect(() => {
+    let active = true;
+    endpoints
+      .getMyProfileMapped()
+      .then((me) => active && setMeId(me?.id ?? ''))
+      .catch(() => active && setMeId(''));
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Reset the list when the active feed changes (or a reload is requested).
+  useEffect(() => {
+    setItems([]);
+    setPage(1);
+    setEnd(false);
+    setLoading(true);
+  }, [top, sub, reloadKey]);
+
+  // Fetch the current page (waits until the profile lookup settles).
+  useEffect(() => {
+    if (meId === null) return;
+    let active = true;
+    const isFirstPage = page === 1;
+    if (isFirstPage) setLoading(true);
+    else setLoadingMore(true);
+
+    fetchFeedPage(top, sub, page, meId)
+      .then((batch) => {
+        if (!active) return;
+        setFallback(false);
+        setEnd(batch.length === 0);
+        setItems((prev) => {
+          if (isFirstPage) return batch;
+          const seen = new Set(prev.map(feedItemKey));
+          return [...prev, ...batch.filter((b) => !seen.has(feedItemKey(b)))];
+        });
+      })
+      .catch(() => {
+        if (!active) return;
+        if (isFirstPage) {
+          setItems(mockForTab(top, sub));
+          setFallback(true);
+        }
+        setEnd(true);
+      })
+      .finally(() => {
+        if (!active) return;
+        setLoading(false);
+        setLoadingMore(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [top, sub, page, meId, reloadKey]);
+
+  // Infinite scroll: load the next page as the sentinel nears the viewport.
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el || end || fallback) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !loading && !loadingMore) {
+          setPage((p) => p + 1);
+        }
+      },
+      { rootMargin: '600px' },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [end, fallback, loading, loadingMore]);
 
   return (
     <div>
-      <PageHeader title="Home" />
+      <HomeSearch />
+
       <div style={{ marginBottom: 'var(--sp-16)' }}>
-        <Segmented value={feed} onChange={setFeed} options={FEED_TABS} />
+        <div className="segmented" role="tablist">
+          <button
+            role="tab"
+            aria-selected={top === 'feed'}
+            className={`segmented__item${top === 'feed' ? ' is-active' : ''}`}
+            onClick={() =>
+              top === 'feed'
+                ? setSub((s) => (s === 'forYou' ? 'connected' : 'forYou'))
+                : setTop('feed')
+            }
+            title={top === 'feed' ? 'Tap to switch For You / Connected' : undefined}
+          >
+            {top === 'feed' ? (sub === 'connected' ? 'Connected' : 'For You') : 'Feed'}
+            {top === 'feed' ? (
+              <ChevronDown size={13} style={{ marginLeft: 3, marginBottom: -2 }} aria-hidden />
+            ) : null}
+          </button>
+          {(['read', 'pray', 'watch'] as const).map((t) => (
+            <button
+              key={t}
+              role="tab"
+              aria-selected={top === t}
+              className={`segmented__item${top === t ? ' is-active' : ''}`}
+              onClick={() => setTop(t)}
+            >
+              {t === 'read' ? 'Read' : t === 'pray' ? 'Pray' : 'Watch'}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {!isRead ? <ComposerPrompt /> : null}
+      {top === 'feed' ? <ComposerPrompt /> : null}
 
-      {loading && !data ? (
+      {loading && items.length === 0 ? (
         <FeedSkeleton />
-      ) : list.length ? (
-        list.map((item) =>
-          item.kind === 'article' ? (
-            <ArticleCard key={item.article.id} article={item.article} />
-          ) : (
-            <PostCard key={item.post.id} post={item.post} />
-          ),
-        )
+      ) : items.length ? (
+        <>
+          {items.map((item, i) => (
+            <TrackedFeedItem
+              key={feedItemKey(item)}
+              feedType={telemetryFeed}
+              postId={itemPostId(item)}
+              postType={itemPostType(item)}
+              rank={i}
+            >
+              {item.kind === 'article' ? (
+                <ArticleCard article={item.article} />
+              ) : item.kind === 'prayer' ? (
+                <PrayerCard prayer={item.prayer} meId={meId ?? ''} onChanged={reloadFeed} />
+              ) : (
+                <PostCard post={item.post} />
+              )}
+            </TrackedFeedItem>
+          ))}
+          {!end && !fallback ? <div ref={sentinelRef} aria-hidden style={{ height: 1 }} /> : null}
+          {loadingMore ? (
+            <div
+              style={{
+                textAlign: 'center',
+                padding: 'var(--sp-16)',
+                color: 'var(--muted)',
+                fontSize: 'var(--fs-2)',
+              }}
+            >
+              Loading more…
+            </div>
+          ) : null}
+        </>
       ) : (
         <EmptyState
           icon={<Inbox size={30} />}
           title="Nothing here yet"
-          body="Follow creators and churches, or switch tabs to discover more of the Body."
+          body={
+            top === 'pray'
+              ? 'No prayer requests yet — be the first to share one on the Prayer Wall.'
+              : top === 'feed' && sub === 'connected'
+                ? 'Follow creators and churches to fill your Connected feed.'
+                : 'Switch tabs or follow more of the Body to discover posts.'
+          }
         />
       )}
     </div>

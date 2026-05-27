@@ -1,0 +1,138 @@
+/* Masonry-style columns so portrait + landscape videos sit together cleanly. */
+.watch-grid {
+  columns: 1;
+  column-gap: var(--sp-16);
+}
+@media (min-width: 640px) {
+  .watch-grid {
+    columns: 2;
+  }
+}
+@media (min-width: 1180px) {
+  .watch-grid {
+    columns: 3;
+  }
+}
+
+.watch-card {
+  break-inside: avoid;
+  display: inline-block;
+  width: 100%;
+  margin: 0 0 var(--sp-16);
+  padding: 0;
+  overflow: hidden;
+}
+
+.watch-card__frame {
+  position: relative;
+  width: 100%;
+  background: #000;
+  max-height: 70vh;
+}
+.watch-card__video,
+.watch-card__poster img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+.watch-card__poster {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: #000;
+  cursor: pointer;
+}
+.watch-card__play {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--brand);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+  transition: transform 0.16s var(--ease-spring);
+}
+.watch-card__poster:hover .watch-card__play {
+  transform: scale(1.08);
+}
+.watch-card__dur {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+  font-size: var(--fs-1);
+  padding: 2px 7px;
+  border-radius: var(--r-pill);
+}
+
+.watch-card__meta {
+  display: flex;
+  gap: var(--sp-8);
+  padding: var(--sp-12);
+}
+.watch-card__info {
+  flex: 1;
+  min-width: 0;
+}
+.watch-card__info strong {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-family: var(--font-display);
+  color: var(--brand);
+  font-size: var(--fs-3);
+  line-height: 1.3;
+}
+.watch-card__info p {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-top: 2px;
+  font-size: var(--fs-2);
+  color: var(--ink-3);
+  line-height: 1.45;
+}
+.watch-card__by {
+  display: block;
+  margin-top: 4px;
+  font-size: var(--fs-1);
+  color: var(--muted);
+}
+
+.watch-card__actions {
+  display: flex;
+  gap: var(--sp-16);
+  padding: 0 var(--sp-12) var(--sp-12);
+}
+.watch-card__like,
+.watch-card__stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--fs-2);
+  font-weight: 600;
+  color: var(--ink-3);
+}
+.watch-card__like.is-active {
+  color: var(--react-love);
+}
+
+.spin {
+  animation: watch-spin 1s linear infinite;
+}
+@keyframes watch-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

@@ -1,0 +1,214 @@
+.prayer {
+  padding: var(--sp-16);
+  margin-bottom: var(--sp-12);
+}
+.prayer__head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-12);
+  margin-bottom: var(--sp-12);
+}
+.prayer__id {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+.prayer__id strong {
+  font-family: var(--font-display);
+  color: var(--brand);
+  font-size: var(--fs-3);
+}
+.prayer__id span {
+  font-size: var(--fs-1);
+  color: var(--muted);
+}
+.prayer__cat {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  font-size: var(--fs-1);
+  font-weight: 700;
+  background: var(--surface-3);
+  color: var(--ink-3);
+}
+.prayer__cat--request {
+  background: rgba(18, 107, 135, 0.12);
+  color: var(--sapphire);
+}
+.prayer__cat--exhortation {
+  background: rgba(214, 158, 46, 0.16);
+  color: #9a6b00;
+}
+.prayer__cat--testimony {
+  background: rgba(124, 58, 237, 0.14);
+  color: #6d28d9;
+}
+.prayer__cat--answer {
+  background: rgba(22, 163, 74, 0.15);
+  color: #15803d;
+}
+.prayer__content {
+  font-size: var(--fs-3);
+  line-height: 1.55;
+  color: var(--ink);
+  white-space: pre-wrap;
+}
+.prayer__answered {
+  margin-top: var(--sp-12);
+  padding: var(--sp-12) var(--sp-14);
+  border-radius: var(--r-base);
+  background: rgba(22, 163, 74, 0.08);
+  border: 1px solid rgba(22, 163, 74, 0.2);
+}
+.prayer__answered strong {
+  display: block;
+  color: #15803d;
+  font-size: var(--fs-2);
+  margin-bottom: 4px;
+}
+.prayer__answered p {
+  font-size: var(--fs-3);
+  color: var(--ink-3);
+  line-height: 1.5;
+}
+.prayer__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  margin-top: var(--sp-14);
+  flex-wrap: wrap;
+}
+.prayer__react {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  font-size: var(--fs-2);
+  font-weight: 600;
+  color: var(--ink-3);
+  transition: transform 0.14s var(--ease-spring), background 0.14s ease;
+}
+.prayer__react:hover {
+  background: var(--surface-3);
+}
+.prayer__react:active {
+  transform: scale(0.92);
+}
+.prayer__react.is-active {
+  border-color: currentColor;
+  background: var(--surface-3);
+}
+.prayer__total {
+  font-size: var(--fs-1);
+  color: var(--muted);
+  margin-left: auto;
+}
+.prayer__answer-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: var(--r-pill);
+  background: rgba(22, 163, 74, 0.12);
+  color: #15803d;
+  font-size: var(--fs-2);
+  font-weight: 600;
+}
+.prayer__answer-form {
+  margin-top: var(--sp-12);
+}
+.prayer__answer-form textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--r-base);
+  border: 1.5px solid var(--line);
+  font-size: var(--fs-3);
+  font-family: inherit;
+  resize: vertical;
+}
+.prayer__answer-form textarea:focus {
+  outline: none;
+  border-color: var(--sapphire);
+}
+.prayer__answer-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-8);
+  margin-top: var(--sp-8);
+}
+
+/* ------------------------------ Composer modal ------------------------------ */
+.prayer-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  padding: var(--sp-16);
+}
+.prayer-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(3, 47, 60, 0.45);
+  backdrop-filter: blur(2px);
+}
+.prayer-modal__panel {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 520px;
+  padding: var(--sp-20);
+}
+.prayer-modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--sp-12);
+}
+.prayer-modal__head h2 {
+  font-family: var(--font-display);
+  color: var(--brand);
+  font-size: var(--fs-5);
+}
+.prayer-modal__panel textarea {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: var(--r-base);
+  border: 1.5px solid var(--line);
+  font-size: var(--fs-3);
+  font-family: inherit;
+  resize: vertical;
+}
+.prayer-modal__panel textarea:focus {
+  outline: none;
+  border-color: var(--sapphire);
+}
+.prayer-modal__cats {
+  display: flex;
+  gap: var(--sp-8);
+  margin-top: var(--sp-12);
+  flex-wrap: wrap;
+}
+.prayer-modal__cats .chip.is-active {
+  background: var(--brand);
+  color: #fff;
+}
+.prayer-modal__private {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  margin-top: var(--sp-12);
+  font-size: var(--fs-2);
+  color: var(--ink-3);
+}
+.prayer-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-8);
+  margin-top: var(--sp-16);
+}

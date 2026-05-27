@@ -1,16 +1,18 @@
-import { ExternalLink } from 'lucide-react';
-import { Avatar } from './Avatar';
+import { ExternalLink, Newspaper } from 'lucide-react';
 import type { OBArticle } from '@/api/endpoints';
+import { useFeedTelemetry } from '@/telemetry/feedTelemetry';
 import './ArticleCard.css';
 
-/** RSS / news article card for the Home "Read" feed. Opens the source link. */
+/** RSS / news article rendered as an X-style link card. Opens the source link. */
 export function ArticleCard({ article }: { article: OBArticle }) {
+  const track = useFeedTelemetry();
   return (
     <a
       className="article card"
       href={article.link}
       target="_blank"
       rel="noopener noreferrer"
+      onClick={() => track('open_article', 'post_open')}
     >
       {article.image ? (
         <div className="article__media">
@@ -18,11 +20,11 @@ export function ArticleCard({ article }: { article: OBArticle }) {
         </div>
       ) : null}
       <div className="article__body">
-        <div className="article__source">
-          <Avatar src={article.sourceAvatar} alt={article.sourceName} size={26} />
-          <span className="article__source-name">{article.sourceName}</span>
-          {article.time ? <span className="article__time">· {article.time}</span> : null}
-        </div>
+        <span className="article__source">
+          <Newspaper size={13} />
+          {article.sourceName}
+          {article.time ? ` · ${article.time}` : ''}
+        </span>
         <h3 className="article__title">{article.title}</h3>
         {article.summary ? <p className="article__summary">{article.summary}</p> : null}
         <span className="article__cta">

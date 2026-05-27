@@ -4,6 +4,7 @@ import { Bookmark, MessageCircle, MoreHorizontal, Repeat2, Share } from 'lucide-
 import { Avatar } from './Avatar';
 import { REACTIONS, type OBPost, type ReactionKind } from '@/data/mock';
 import { endpoints } from '@/api/endpoints';
+import { useFeedTelemetry } from '@/telemetry/feedTelemetry';
 import './PostCard.css';
 
 function formatCount(n: number) {
@@ -16,6 +17,7 @@ export function PostCard({ post }: { post: OBPost }) {
   const [counts, setCounts] = useState(post.reactions);
   const [saved, setSaved] = useState(Boolean(post.saved));
   const [pickerOpen, setPickerOpen] = useState(false);
+  const track = useFeedTelemetry();
 
   const totalReactions = counts.love + counts.pray + counts.rejoice;
 
@@ -32,6 +34,17 @@ export function PostCard({ post }: { post: OBPost }) {
     // Persist (optimistic): best-effort, ignore failures (e.g. offline/CORS).
     const request = wasActive ? endpoints.removeReaction(post.id) : endpoints.reactToPost(post.id, kind);
     request.catch(() => {});
+    track(
+      wasActive ? 'reaction_removed' : 'reaction',
+      wasActive ? 'post_reaction_remove' : 'post_reaction_add',
+      { reactionType: kind },
+    );
+  }
+
+  function toggleSave() {
+    const next = !saved;
+    setSaved(next);
+    track(next ? 'save' : 'unsave', next ? 'post_save_add' : 'post_save_remove');
   }
 
   const active = REACTIONS.find((r) => r.kind === myReaction);
@@ -123,7 +136,10 @@ export function PostCard({ post }: { post: OBPost }) {
           </AnimatePresence>
         </div>
 
-        <button className="post__action">
+        <button
+          className="post__action"
+          onClick={() => track('open_comments', 'post_comment_open')}
+        >
           <MessageCircle size={20} />
           {formatCount(post.comments)}
         </button>
@@ -133,12 +149,16 @@ export function PostCard({ post }: { post: OBPost }) {
         </button>
         <button
           className={`post__action post__action--save${saved ? ' is-active' : ''}`}
-          onClick={() => setSaved((s) => !s)}
+          onClick={toggleSave}
           aria-label="Save"
         >
           <Bookmark size={19} fill={saved ? 'currentColor' : 'none'} />
         </button>
-        <button className="post__action post__action--share" aria-label="Share">
+        <button
+          className="post__action post__action--share"
+          aria-label="Share"
+          onClick={() => track('share_initiated', 'post_share_initiated')}
+        >
           <Share size={19} />
         </button>
       </footer>

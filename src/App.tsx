@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { clerkEnabled, useAuth } from './auth/context';
 import { RequireAuth } from './auth/RequireAuth';
@@ -25,6 +26,10 @@ import { Saved } from './screens/Saved';
 import { Profile } from './screens/Profile';
 import { CreatePost } from './screens/CreatePost';
 import { Settings } from './screens/Settings';
+import { PrayerWall } from './screens/PrayerWall';
+
+// Watch pulls in hls.js (~400KB) — load it only when its route is visited.
+const Watch = lazy(() => import('./screens/Watch').then((m) => ({ default: m.Watch })));
 
 /** Public landing — sends signed-in users straight to the feed. */
 function Root() {
@@ -52,6 +57,15 @@ export function App() {
       >
         <Route path="/home" element={<Home />} />
         <Route path="/explore" element={<Explore />} />
+        <Route path="/prayer" element={<PrayerWall />} />
+        <Route
+          path="/watch"
+          element={
+            <Suspense fallback={<Splash label="Watch" />}>
+              <Watch />
+            </Suspense>
+          }
+        />
         <Route path="/connect" element={<Connect />} />
         <Route path="/connect/manage" element={<ConnectManage />} />
         <Route path="/connect/manage/events/new" element={<CreateEvent />} />

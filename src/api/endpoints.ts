@@ -24,15 +24,24 @@ interface ApiReaction {
 interface ApiSocialPost {
   _id?: string;
   id?: string;
+  postId?: string;
   content?: string;
   images?: string[];
   videos?: string[];
   reactions?: ApiReaction[];
+  reactionsCount?: number;
   comments?: unknown[];
   commentCount?: number;
+  commentsCount?: number;
+  commentNumber?: number;
   repostCount?: number;
+  // The curated feed (OpenSearch) returns the author under `userData`; raw
+  // social endpoints use `user`. Support both.
   user?: ApiUser;
+  userData?: ApiUser;
   createdAt?: string;
+  created?: string;
+  date?: string;
   saved?: boolean;
 }
 
@@ -71,12 +80,20 @@ function timeAgo(iso?: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
+// The API serves a placeholder avatar at cdn.../user/no-image.png; treat that
+// (and blank values) as "no avatar" so we show our own fallback instead.
+function resolveAvatar(profileImage?: string): string {
+  const v = profileImage?.trim();
+  if (v && !/no-image/i.test(v)) return v;
+  return FALLBACK_AVATAR;
+}
+
 export function mapUser(u?: ApiUser | null): OBUser {
   return {
     id: u?._id ?? u?.id ?? 'unknown',
     name: u?.name ?? u?.username ?? 'One Body member',
     username: u?.username ?? 'member',
-    avatar: u?.profileImage || FALLBACK_AVATAR,
+    avatar: resolveAvatar(u?.profileImage),
     verified: Boolean(u?.isVerified),
     kind: u?.accountType === 'organization' ? 'church' : 'member',
     bio: u?.bio,
@@ -93,15 +110,20 @@ function mapPost(p: ApiSocialPost, myUserId?: string): OBPost {
       if (myUserId && r.userId === myUserId) myReaction = kind;
     }
   }
+  const image = (p.images ?? []).find(
+    (u): u is string => typeof u === 'string' && u.trim().length > 0 && !/no-image/i.test(u),
+  );
   return {
-    id: p._id ?? p.id ?? Math.random().toString(36).slice(2),
-    author: mapUser(p.user),
-    createdAt: timeAgo(p.createdAt),
+    // Use the raw post id (postId) so reaction/comment writes target the post,
+    // not the OpenSearch doc id ("onebody_...").
+    id: p.postId ?? p._id ?? p.id ?? Math.random().toString(36).slice(2),
+    author: mapUser(p.userData ?? p.user),
+    createdAt: timeAgo(p.created ?? p.createdAt ?? p.date),
     body: p.content ?? '',
-    image: p.images?.[0],
+    image,
     reactions,
     myReaction,
-    comments: p.commentCount ?? p.comments?.length ?? 0,
+    comments: p.commentsCount ?? p.commentNumber ?? p.commentCount ?? p.comments?.length ?? 0,
     reposts: p.repostCount ?? 0,
     saved: Boolean(p.saved),
     feeds: [],
@@ -120,6 +142,11 @@ export interface OBArticle {
   sourceAvatar: string;
   time: string;
 }
+
+/** A heterogeneous feed entry — a social post or a blog/news article. */
+export type OBFeedItem =
+  | { kind: 'post'; post: OBPost }
+  | { kind: 'article'; article: OBArticle };
 
 interface ApiRssItem {
   _id?: string;
@@ -219,6 +246,29 @@ export const endpoints = {
       .filter((a): a is OBArticle => a !== null);
   },
 
+  /**
+   * Feed (For You / Connected / Pray) — heterogeneous: the curated feed mixes
+   * social posts with blog/news articles. Maps each entry by contentType.
+   */
+  async getFeedItems(type: ApiFeedType, page = 1, myUserId?: string): Promise<OBFeedItem[]> {
+    const payload = await api.get(`user/get-following-feed/${type}/${page}`);
+    const items: OBFeedItem[] = [];
+    for (const entry of unwrapList(payload)) {
+      const e = (entry && typeof entry === 'object' ? entry : {}) as Record<string, unknown>;
+      const contentType = String(e.contentType ?? e.type ?? '');
+      if (contentType === 'blog' || contentType === 'news' || contentType === 'article') {
+        const article = mapArticle(e as ApiRssItem);
+        if (article) {
+          items.push({ kind: 'article', article });
+          continue;
+        }
+      }
+      const social = coerceSocialPost(entry);
+      if (social) items.push({ kind: 'post', post: mapPost(social, myUserId) });
+    }
+    return items;
+  },
+
   async getFollowingSocial(page = 1, myUserId?: string): Promise<OBPost[]> {
     const payload = await api.get(`user/get-following-social/${page}`, { itemsPerPage: 10 });
     return unwrapList(payload).map((p) => mapPost(p as ApiSocialPost, myUserId));
@@ -261,6 +311,20 @@ export const endpoints = {
   async getSuggestedUsers(): Promise<OBUser[]> {
     const payload = await api.get('user/get-users-to-subscribe/1', { itemsPerPage: 10 });
     return unwrapList(payload).map((u) => mapUser(u as ApiUser));
+  },
+
+  /** Trending interest tags — scored from feed telemetry (tags/interest?sort=trending). */
+  async getTrendingTags(): Promise<{ tag: string; posts: string; hot?: boolean }[]> {
+    const payload = await api.get('tags/interest', { sort: 'trending', limit: 24 });
+    const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : `${n}`);
+    return unwrapList(payload)
+      .map((raw, i) => {
+        const r = raw as Record<string, unknown>;
+        const name = String(r.name ?? r.title ?? '').trim();
+        const popularity = typeof r.popularity === 'number' ? r.popularity : 0;
+        return { tag: name.replace(/\s+/g, ''), posts: popularity > 0 ? fmt(popularity) : '', hot: i < 3 };
+      })
+      .filter((t) => t.tag.length > 0);
   },
 
   followUser: (id: string) => api.patch(`user/subscribe/${id}`),

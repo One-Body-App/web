@@ -23,6 +23,13 @@
   margin-left: auto;
 }
 
+/* Hidden on mobile/tablet (e.g. Home — the app's top bar already gives context). */
+@media (max-width: 899.98px) {
+  .page-header.page-header--mobile-hidden {
+    display: none;
+  }
+}
+
 @media (min-width: 900px) {
   .page-header {
     border-radius: var(--r-base);

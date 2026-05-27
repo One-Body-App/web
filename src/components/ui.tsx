@@ -9,13 +9,16 @@ export function PageHeader({
   title,
   subtitle,
   action,
+  hideOnMobile,
 }: {
   title: string;
   subtitle?: string;
   action?: ReactNode;
+  /** Hide the header on mobile/tablet (<900px) — e.g. Home, where the top bar already gives context. */
+  hideOnMobile?: boolean;
 }) {
   return (
-    <header className="page-header glass">
+    <header className={`page-header glass${hideOnMobile ? ' page-header--mobile-hidden' : ''}`}>
       <div>
         <h1 className="page-header__title">{title}</h1>
         {subtitle ? <p className="page-header__sub">{subtitle}</p> : null}
