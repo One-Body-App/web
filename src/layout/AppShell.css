@@ -143,9 +143,12 @@
 }
 
 @media (min-width: 900px) {
+  /* Laptop+ : left sidebar · flexible feed · right rail. Fills the viewport
+     (capped on ultrawide), rather than a narrow centered column. */
   .shell {
-    grid-template-columns: var(--sidebar-w) minmax(0, var(--content-max));
-    justify-content: center;
+    grid-template-columns: var(--sidebar-w) minmax(0, 1fr) var(--rail-w);
+    max-width: 1600px;
+    margin: 0 auto;
     column-gap: 28px;
   }
   .shell__topbar,
@@ -153,7 +156,8 @@
     display: none;
   }
   .shell__content {
-    max-width: var(--content-max);
+    max-width: 720px;
+    margin: 0 auto;
     padding: var(--sp-24) 0 var(--sp-64);
   }
 
@@ -165,8 +169,10 @@
     top: 0;
     height: 100dvh;
     padding: var(--sp-24) var(--sp-12) var(--sp-20);
-    border-right: 1px solid var(--line);
-    background: var(--surface);
+    border-right: 1px solid var(--glass-border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
   }
   .shell__brand {
     padding: var(--sp-8) var(--sp-12) var(--sp-20);
@@ -237,11 +243,56 @@
   }
 }
 
-/* ============================ Discover rail ============================ */
-@media (min-width: 1200px) {
+/* ===== Small laptop (900–1023px): collapse the left sidebar to icons ===== */
+@media (min-width: 900px) and (max-width: 1023.98px) {
   .shell {
-    grid-template-columns: var(--sidebar-w) minmax(0, var(--content-max)) var(--rail-w);
+    grid-template-columns: var(--sidebar-icon-w) minmax(0, 1fr) var(--rail-w);
+    column-gap: 20px;
   }
+  .shell__sidebar {
+    align-items: center;
+    padding: var(--sp-24) var(--sp-8) var(--sp-20);
+  }
+  .shell__brand {
+    display: flex;
+    justify-content: center;
+    padding: var(--sp-8) 0 var(--sp-20);
+  }
+  /* Keep the mark, drop the "One Body" wordmark. */
+  .shell__brand-logo > span {
+    display: none;
+  }
+  .shell__navlink {
+    justify-content: center;
+    gap: 0;
+    padding: 12px 0;
+  }
+  .shell__navlink > span {
+    display: none;
+  }
+  .shell__post {
+    width: 48px;
+    min-width: 0;
+    height: 48px;
+    margin: var(--sp-16) auto 0;
+    padding: 0;
+    border-radius: 50%;
+  }
+  .shell__post-label {
+    display: none;
+  }
+  .shell__me {
+    justify-content: center;
+    padding: var(--sp-8);
+  }
+  .shell__me-text {
+    display: none;
+  }
+}
+
+/* ============================ Discover rail ============================ */
+/* Visible from laptop up (>=900px); hidden in tablet/mobile via the base rule. */
+@media (min-width: 900px) {
   .shell__rail {
     display: flex;
     flex-direction: column;
@@ -436,8 +487,10 @@
   gap: 2px;
   padding: calc(var(--sp-12) + env(safe-area-inset-top)) var(--sp-12)
     calc(var(--sp-20) + env(safe-area-inset-bottom));
-  background: var(--surface);
-  border-right: 1px solid var(--line);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  border-right: 1px solid var(--glass-border);
   box-shadow: 0 12px 48px rgba(3, 47, 60, 0.28);
   transform: translateX(-100%);
   transition: transform 0.26s var(--ease-spring);

@@ -94,41 +94,23 @@
   object-fit: cover;
 }
 
-.post__react-summary {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-6);
-  padding: var(--sp-12) 0 var(--sp-8);
-  font-size: var(--fs-2);
-  color: var(--ink-3);
-}
-.post__react-emojis {
-  display: inline-flex;
-}
-.post__react-emojis span {
-  margin-left: -4px;
-  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.12));
-}
-.post__react-emojis span:first-child {
-  margin-left: 0;
-}
-
+/* Icon-based action bar, evenly distributed — mirrors the mobile post card. */
 .post__actions {
   display: flex;
   align-items: center;
-  gap: var(--sp-4);
+  justify-content: space-around;
+  margin-top: var(--sp-8);
   padding-top: var(--sp-8);
   border-top: 1px solid var(--line);
 }
 .post__action {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
+  gap: var(--sp-6);
+  padding: 8px 10px;
   border-radius: var(--r-pill);
   color: var(--ink-3);
-  font-size: var(--fs-2);
-  font-weight: 500;
   transition:
     background 0.15s ease,
     color 0.15s ease,
@@ -139,26 +121,90 @@
   color: var(--brand);
 }
 .post__action:active {
-  transform: scale(0.94);
+  transform: scale(0.92);
 }
-.post__action.is-active {
+.post__action-count {
+  font-size: var(--fs-2);
   font-weight: 600;
+  color: inherit;
 }
 .post__action-emoji {
-  font-size: 16px;
+  font-size: 20px;
   line-height: 1;
 }
-.post__action--save,
-.post__action--share {
-  margin-left: 0;
-  padding: 8px;
-  width: 38px;
-  justify-content: center;
-}
-.post__action--share {
-  margin-left: auto;
-}
 .post__action--save.is-active {
+  color: var(--sapphire);
+}
+.post__action.is-reposted {
+  color: var(--success);
+}
+
+/* Share — "Link copied" confirmation pill. */
+.post__copied {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 5px 10px;
+  border-radius: var(--r-pill);
+  background: var(--brand);
+  color: #fff;
+  font-size: var(--fs-1);
+  font-weight: 600;
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
+  z-index: 6;
+}
+
+/* Repost — Repost / Quote popover menu. */
+.post__repost-wrap {
+  position: relative;
+}
+.post__repost-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  min-width: 156px;
+  padding: 6px;
+  border-radius: var(--r-base);
+  box-shadow: var(--shadow-lg);
+  z-index: 6;
+}
+/* Invisible bridge across the 8px gap so moving button -> menu keeps it open. */
+.post__repost-menu::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 10px;
+}
+.post__repost-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+  padding: 9px 12px;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-2);
+  font-weight: 600;
+  color: var(--ink-2);
+  text-align: left;
+  transition:
+    background 0.14s ease,
+    color 0.14s ease;
+}
+.post__repost-item svg {
+  color: var(--muted);
+}
+.post__repost-item:hover {
+  background: var(--surface-3);
+  color: var(--sapphire);
+}
+.post__repost-item:hover svg {
   color: var(--sapphire);
 }
 
@@ -175,6 +221,15 @@
   border-radius: var(--r-pill);
   box-shadow: var(--shadow-lg);
   z-index: 5;
+}
+/* Invisible bridge across the 8px gap so moving button -> picker keeps it open. */
+.post__picker::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 10px;
 }
 .post__picker-btn {
   display: flex;

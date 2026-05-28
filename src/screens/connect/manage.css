@@ -168,7 +168,7 @@
   color: var(--ink-3);
 }
 .seg-field button.is-active {
-  background: #fff;
+  background: var(--surface);
   color: var(--sapphire);
   box-shadow: var(--shadow-xs);
 }
@@ -187,7 +187,7 @@
 .apply-field select:focus {
   outline: none;
   border-color: var(--sapphire);
-  background: #fff;
+  background: var(--surface);
 }
 
 /* Checkboxes */

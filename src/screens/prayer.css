@@ -212,3 +212,18 @@
   gap: var(--sp-8);
   margin-top: var(--sp-16);
 }
+
+/* Dark mode: lift the semantic category/answered colors for contrast. */
+@media (prefers-color-scheme: dark) {
+  .prayer__cat--exhortation {
+    color: #e3b15a;
+  }
+  .prayer__cat--testimony {
+    color: #b79bff;
+  }
+  .prayer__cat--answer,
+  .prayer__answered strong,
+  .prayer__answer-btn {
+    color: #4ade80;
+  }
+}

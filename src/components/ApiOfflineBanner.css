@@ -6,7 +6,7 @@
   margin-bottom: var(--sp-12);
   border-radius: var(--r-pill);
   background: var(--warning-soft);
-  color: #8a4b00;
+  color: var(--warning);
   font-size: var(--fs-2);
   font-weight: 500;
 }

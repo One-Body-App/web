@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDown, Inbox, Search } from 'lucide-react';
 import { PostCard } from '@/components/PostCard';
+import { FeedVideoCard } from '@/components/FeedVideoCard';
 import { ArticleCard } from '@/components/ArticleCard';
 import { PrayerCard } from '@/screens/PrayerWall';
 import { ComposerPrompt, EmptyState } from '@/components/ui';
@@ -55,18 +56,21 @@ const MOCK_ARTICLES: OBArticle[] = [
 function feedItemKey(item: FeedEntry): string {
   if (item.kind === 'article') return `a-${item.article.id}`;
   if (item.kind === 'prayer') return `pr-${item.prayer.id}`;
+  if (item.kind === 'video') return `v-${item.video.id}`;
   return `p-${item.post.id}`;
 }
 
 function itemPostId(item: FeedEntry): string {
   if (item.kind === 'article') return item.article.id;
   if (item.kind === 'prayer') return item.prayer.id;
+  if (item.kind === 'video') return item.video.id;
   return item.post.id;
 }
 
 function itemPostType(item: FeedEntry): string {
   if (item.kind === 'article') return 'rss';
   if (item.kind === 'prayer') return 'prayer';
+  if (item.kind === 'video') return 'watch';
   return 'social';
 }
 
@@ -379,6 +383,8 @@ export function Home() {
                 <ArticleCard article={item.article} />
               ) : item.kind === 'prayer' ? (
                 <PrayerCard prayer={item.prayer} meId={meId ?? ''} onChanged={reloadFeed} />
+              ) : item.kind === 'video' ? (
+                <FeedVideoCard video={item.video} />
               ) : (
                 <PostCard post={item.post} />
               )}

@@ -42,12 +42,12 @@
 .field__box input:focus {
   outline: none;
   border-color: var(--sapphire);
-  background: #fff;
+  background: var(--surface);
   box-shadow: 0 0 0 4px rgba(18, 107, 135, 0.1);
 }
 .field--invalid .field__box input {
   border-color: var(--error);
-  background: #fff;
+  background: var(--surface);
 }
 .field__toggle {
   position: absolute;
@@ -203,7 +203,7 @@
 }
 .auth-alert--error {
   background: var(--error-soft);
-  color: #a11c08;
+  color: var(--error);
 }
 .auth-alert--success {
   background: var(--success-soft);
@@ -277,7 +277,7 @@
 .code-input input:focus {
   outline: none;
   border-color: var(--sapphire);
-  background: #fff;
+  background: var(--surface);
   box-shadow: 0 0 0 4px rgba(18, 107, 135, 0.1);
 }
 

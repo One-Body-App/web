@@ -1,4 +1,5 @@
 import { api } from './client';
+import { mapVideo, type WatchVideo } from './watch';
 import type { ChatMessage, Conversation, OBNotification, OBPost, OBUser, ReactionKind } from '@/data/mock';
 
 /* ----------------------------- Raw API shapes ----------------------------- */
@@ -19,6 +20,27 @@ interface ApiUser {
 interface ApiReaction {
   type?: string;
   userId?: string;
+}
+
+interface ApiComment {
+  _id?: string;
+  id?: string;
+  commentId?: string;
+  content?: string;
+  user?: ApiUser;
+  userData?: ApiUser;
+  created?: string;
+  createdAt?: string;
+  date?: string;
+  reactions?: ApiReaction[];
+  reactionsCount?: number;
+  repostCount?: number;
+  bookmarkCount?: number;
+  bookmarkedByMe?: boolean;
+  // Nested replies (the API nests children under `response`).
+  response?: unknown[];
+  replyCount?: number;
+  repliesCount?: number;
 }
 
 interface ApiSocialPost {
@@ -130,6 +152,34 @@ function mapPost(p: ApiSocialPost, myUserId?: string): OBPost {
   };
 }
 
+/* ----------------------------- Comments ----------------------------- */
+export interface OBComment {
+  id: string;
+  author: OBUser;
+  body: string;
+  createdAt: string; // relative label
+  reactions: number;
+  reposts: number;
+  replies: number;
+  liked: boolean;
+  bookmarked: boolean;
+}
+
+function mapComment(c: ApiComment, myUserId?: string): OBComment {
+  const liked = (c.reactions ?? []).some((r) => myUserId != null && r.userId === myUserId);
+  return {
+    id: c.commentId ?? c._id ?? c.id ?? Math.random().toString(36).slice(2),
+    author: mapUser(c.userData ?? c.user),
+    body: c.content ?? '',
+    createdAt: timeAgo(c.created ?? c.createdAt ?? c.date),
+    reactions: c.reactionsCount ?? c.reactions?.length ?? 0,
+    reposts: c.repostCount ?? 0,
+    replies: c.repliesCount ?? c.replyCount ?? c.response?.length ?? 0,
+    liked,
+    bookmarked: Boolean(c.bookmarkedByMe),
+  };
+}
+
 /* ----------------------------- RSS / articles ----------------------------- */
 // The "Read" feed (NEWS_INDEX) returns RSS/news items, not social posts.
 export interface OBArticle {
@@ -143,10 +193,11 @@ export interface OBArticle {
   time: string;
 }
 
-/** A heterogeneous feed entry — a social post or a blog/news article. */
+/** A heterogeneous feed entry — a social post, a blog/news article, or a video. */
 export type OBFeedItem =
   | { kind: 'post'; post: OBPost }
-  | { kind: 'article'; article: OBArticle };
+  | { kind: 'article'; article: OBArticle }
+  | { kind: 'video'; video: WatchVideo };
 
 interface ApiRssItem {
   _id?: string;
@@ -212,6 +263,9 @@ function unwrapList(payload: unknown): unknown[] {
 /* ----------------------------- Endpoints ----------------------------- */
 export type ApiFeedType = 'connected' | 'foryou' | 'pray' | 'read' | 'watch';
 
+/** Content type for comments/reposts/saves (matches the API's object types). */
+export type SocialContentType = 'social' | 'prayer' | 'rss';
+
 export interface MyProfile {
   id: string;
   name: string;
@@ -263,6 +317,14 @@ export const endpoints = {
           continue;
         }
       }
+      // Watch videos are mixed into the feed by the algorithm — render them inline.
+      if (contentType === 'watch' || e.playBackId || e.playbackId) {
+        const video = mapVideo(e);
+        if (video) {
+          items.push({ kind: 'video', video });
+          continue;
+        }
+      }
       const social = coerceSocialPost(entry);
       if (social) items.push({ kind: 'post', post: mapPost(social, myUserId) });
     }
@@ -274,6 +336,12 @@ export const endpoints = {
     return unwrapList(payload).map((p) => mapPost(p as ApiSocialPost, myUserId));
   },
 
+  /** Single post by id (powers the deep-linkable Post detail page). */
+  async getPost(id: string, myUserId?: string): Promise<OBPost> {
+    const payload = await api.get<ApiSocialPost>(`social/post/${id}`);
+    return mapPost(payload, myUserId);
+  },
+
   reactToPost: (postId: string, kind: ReactionKind) =>
     api.patch('social/react', { postId, type: KIND_TO_API[kind] }),
 
@@ -281,6 +349,81 @@ export const endpoints = {
 
   createPost: (content: string, extra?: { gif?: unknown; location?: unknown }) =>
     api.post('social/post', { content, ...extra }),
+
+  /* --- Comments (GET list / POST add / reply) --- */
+  async getComments(
+    postId: string,
+    type: SocialContentType = 'social',
+    page = 1,
+    myUserId?: string,
+  ): Promise<OBComment[]> {
+    const payload = await api.get(`comments/${type}/${postId}`, { page });
+    return unwrapList(payload).map((c) => mapComment(c as ApiComment, myUserId));
+  },
+  /**
+   * Drill into a single comment: returns the comment itself plus its direct
+   * replies (the API nests them under `response`). Powers X-style threads.
+   */
+  async getCommentThread(
+    postId: string,
+    commentId: string,
+    type: SocialContentType = 'social',
+    myUserId?: string,
+  ): Promise<{ root: OBComment; replies: OBComment[] }> {
+    const payload = await api.get<ApiComment>(`comments/${type}/${postId}/${commentId}`);
+    const rawReplies = Array.isArray(payload.response) ? (payload.response as ApiComment[]) : [];
+    return {
+      root: mapComment(payload, myUserId),
+      replies: rawReplies.map((c) => mapComment(c, myUserId)),
+    };
+  },
+  addComment: (
+    postId: string,
+    content: string,
+    type: SocialContentType = 'social',
+    parentCommentId?: string,
+  ) =>
+    api
+      .post<ApiComment>(
+        `comments/${type}/${postId}`,
+        parentCommentId ? { content, parentCommentId, replyToCommentId: parentCommentId } : { content },
+      )
+      .then((c) => mapComment(c)),
+
+  /* --- Per-comment interactions (like / bookmark) --- */
+  reactToComment: (postId: string, commentId: string, type: SocialContentType = 'social') =>
+    api.patch(`comments/${type}/${postId}/${commentId}/reaction`, { type: 'love' }),
+  removeCommentReaction: (postId: string, commentId: string, type: SocialContentType = 'social') =>
+    api.del(`comments/${type}/${postId}/${commentId}/reaction`),
+  bookmarkComment: (postId: string, commentId: string, type: SocialContentType = 'social') =>
+    api.patch(`comments/${type}/${postId}/${commentId}/bookmark`),
+  unbookmarkComment: (postId: string, commentId: string, type: SocialContentType = 'social') =>
+    api.del(`comments/${type}/${postId}/${commentId}/bookmark`),
+
+  /* --- Repost (no un-repost). `quoteContent` turns it into a quote repost. --- */
+  repost: (
+    sourceId: string,
+    sourceType: SocialContentType | 'comment' = 'social',
+    quoteContent?: string,
+  ) =>
+    api.post('social/repost', {
+      sourceType,
+      sourceId,
+      ...(quoteContent ? { quoteContent } : {}),
+    }),
+
+  /* --- Save / bookmark --- */
+  savePost: (body: {
+    postId: string;
+    type?: SocialContentType;
+    title?: string;
+    image?: string;
+    createdAt?: string;
+    userId?: string;
+    link?: string;
+  }) => api.post('user/save-post', { type: 'social', ...body }),
+  unsavePost: (postId: string, type: SocialContentType = 'social') =>
+    api.del('user/remove-saved-post', { id: postId, type }),
 
   getMyProfile: () => api.get<ApiUser>('user/my-profile', { pullSavedData: false }),
 

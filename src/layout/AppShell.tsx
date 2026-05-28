@@ -31,7 +31,7 @@ export function AppShell() {
       {/* ---------------- Desktop sidebar ---------------- */}
       <aside className="shell__sidebar">
         <NavLink to="/home" className="shell__brand" aria-label="One Body home">
-          <Logo size={30} withWordmark />
+          <Logo size={30} withWordmark className="shell__brand-logo" />
         </NavLink>
 
         <nav className="shell__nav">
@@ -49,7 +49,7 @@ export function AppShell() {
 
         <button className="btn btn--brand btn--block shell__post" onClick={() => navigate('/post/new')}>
           <Plus size={20} strokeWidth={2.5} />
-          Post
+          <span className="shell__post-label">Post</span>
         </button>
 
         {user ? (

@@ -6,11 +6,11 @@ import { suggestedAccounts, trendingTopics, type OBUser } from '@/data/mock';
 import { endpoints } from '@/api/endpoints';
 import { useApiQuery } from '@/api/useApi';
 import { MOCK_PRAYERS, prayerApi } from '@/api/prayer';
-import { MOCK_VIDEOS, watchApi } from '@/api/watch';
+import { watchApi } from '@/api/watch';
 
-/** True at >=1200px, where the rail is visible — gates its data fetches. */
+/** True at >=900px, where the rail is visible — gates its data fetches. */
 function useWideScreen(): boolean {
-  const query = '(min-width: 1200px)';
+  const query = '(min-width: 900px)';
   const [wide, setWide] = useState(
     () => typeof window !== 'undefined' && window.matchMedia(query).matches,
   );
@@ -28,7 +28,7 @@ export function DiscoverRail() {
   const wide = useWideScreen();
 
   const { data: prayers } = useApiQuery(() => prayerApi.list(1), { fallback: MOCK_PRAYERS, enabled: wide });
-  const { data: videos } = useApiQuery(() => watchApi.feed(1), { fallback: MOCK_VIDEOS, enabled: wide });
+  const { data: videos } = useApiQuery(() => watchApi.feed(1), { enabled: wide });
   const { data: people } = useApiQuery(() => endpoints.getSuggestedUsers(), {
     fallback: suggestedAccounts,
     enabled: wide,
@@ -42,7 +42,7 @@ export function DiscoverRail() {
 
   // Fall back to sample content when a live list is empty so widgets stay populated.
   const prayerList = (prayers && prayers.length ? prayers : MOCK_PRAYERS).slice(0, 3);
-  const videoList = (videos && videos.length ? videos : MOCK_VIDEOS).slice(0, 3);
+  const videoList = (videos ?? []).slice(0, 3);
   const suggested = (people ?? []).filter((u) => u.id && u.id !== 'unknown');
   const peopleList = (suggested.length ? suggested : suggestedAccounts).slice(0, 3);
   const trendList = (trends && trends.length ? trends : trendingTopics).slice(0, 5);
@@ -76,7 +76,8 @@ export function DiscoverRail() {
         </Link>
       </div>
 
-      {/* Watch */}
+      {/* Watch — only when there's live video content (no sample fallback). */}
+      {videoList.length ? (
       <div className="rail-card card">
         <h3 className="rail-card__title">
           <PlayCircle size={18} /> Watch
@@ -101,6 +102,7 @@ export function DiscoverRail() {
           See all videos
         </Link>
       </div>
+      ) : null}
 
       {/* Explore */}
       <div className="rail-card card">

@@ -48,7 +48,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--brand);
+  color: #032f3c;
   background: rgba(255, 255, 255, 0.92);
   backdrop-filter: blur(8px);
 }
@@ -330,7 +330,7 @@
 .apply-field textarea:focus {
   outline: none;
   border-color: var(--sapphire);
-  background: #fff;
+  background: var(--surface);
 }
 .apply__upload {
   display: flex;

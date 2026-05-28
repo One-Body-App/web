@@ -105,3 +105,50 @@
 .compose__tool:hover {
   background: var(--sapphire-900);
 }
+
+/* Quoted post preview (repost-with-quote). */
+.compose__quote {
+  margin-top: var(--sp-12);
+  border: 1px solid var(--line);
+  border-radius: var(--r-base);
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.compose__quote-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  padding: var(--sp-10) var(--sp-12) 0;
+}
+.compose__quote-name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--fs-2);
+  color: var(--brand);
+}
+.compose__quote-user {
+  font-size: var(--fs-1);
+  color: var(--muted);
+  margin-right: auto;
+}
+.compose__quote-icon {
+  color: var(--muted);
+}
+.compose__quote-body {
+  padding: var(--sp-6) var(--sp-12) var(--sp-12);
+  font-size: var(--fs-2);
+  line-height: 1.45;
+  color: var(--ink-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.compose__quote-media {
+  max-height: 220px;
+  overflow: hidden;
+}
+.compose__quote-media img {
+  width: 100%;
+  object-fit: cover;
+}

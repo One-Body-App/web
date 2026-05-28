@@ -25,6 +25,7 @@ import { Notifications } from './screens/Notifications';
 import { Saved } from './screens/Saved';
 import { Profile } from './screens/Profile';
 import { CreatePost } from './screens/CreatePost';
+import { PostDetail } from './screens/PostDetail';
 import { Settings } from './screens/Settings';
 import { PrayerWall } from './screens/PrayerWall';
 
@@ -80,6 +81,9 @@ export function App() {
         <Route path="/saved" element={<Saved />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/settings" element={<Settings />} />
+        {/* X-style post / comment detail (focused item + flat replies). */}
+        <Route path="/post/:type/:id" element={<PostDetail />} />
+        <Route path="/post/:type/:id/c/:commentId" element={<PostDetail />} />
       </Route>
 
       {/* Full-screen composer (still gated) */}

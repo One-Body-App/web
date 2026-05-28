@@ -23,6 +23,10 @@
   --grad-brand: linear-gradient(135deg, #0e5469 0%, #032f3c 100%);
   --grad-sapphire: linear-gradient(135deg, #41899f 0%, #126b87 100%);
   --grad-aqua: linear-gradient(135deg, #12d2d9 0%, #126b87 100%);
+
+  /* Logo mark gradient (theme-aware; lightened in dark mode) */
+  --logo-grad-1: #0e5469;
+  --logo-grad-2: #032f3c;
   --grad-hero: radial-gradient(
       120% 120% at 0% 0%,
       rgba(18, 210, 217, 0.18) 0%,
@@ -44,6 +48,16 @@
   --surface-3: #f2f3f3;
   --bg: #f4f7f8;
   --bg-tint: #eef5f7;
+
+  /* Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.6);
+  --glass-border: rgba(255, 255, 255, 0.72);
+  --glass-blur: 14px;
+  --glass-shadow: 0 8px 30px rgba(3, 47, 60, 0.09), 0 2px 8px rgba(3, 47, 60, 0.05);
+  /* Soft background mesh behind glass panels */
+  --app-mesh: radial-gradient(60% 55% at 8% 0%, rgba(18, 210, 217, 0.1), transparent 60%),
+    radial-gradient(55% 50% at 100% 6%, rgba(18, 107, 135, 0.1), transparent 55%),
+    radial-gradient(50% 60% at 50% 100%, rgba(18, 107, 135, 0.06), transparent 60%);
 
   /* --- Feedback --- */
   --error: #dc2c10;
@@ -81,6 +95,7 @@
   --sp-8: 8px;
   --sp-10: 10px;
   --sp-12: 12px;
+  --sp-14: 14px;
   --sp-16: 16px;
   --sp-20: 20px;
   --sp-24: 24px;
@@ -109,9 +124,68 @@
   --tabbar-h: 62px;
   --topbar-h: 54px;
   --sidebar-w: 250px;
+  --sidebar-icon-w: 78px;
   --rail-w: 312px;
   --content-max: 580px;
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ============================ Dark mode ============================
+   Token overrides only — every surface/text color flows from these, so
+   the whole app (feed, cards, rail) adapts when the OS prefers dark. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+
+    /* Brand text reads light on dark; logo mark lightens. */
+    --brand: #e9f1f2;
+    --brand-ink: #e9f1f2;
+    --sapphire: #57bcd6;
+    --sapphire-700: #16414f;
+    --sapphire-800: #123440;
+    --sapphire-900: #0f2932;
+    --logo-grad-1: #3fc8de;
+    --logo-grad-2: #15a6c8;
+
+    /* Neutrals */
+    --ink: #e8edee;
+    --ink-2: #ced4d5;
+    --ink-3: #a6adaf;
+    --ink-4: #828a8c;
+    --muted: #7c8486;
+    --line: #25323a;
+    --line-strong: #34454d;
+    --surface: #141d21;
+    --surface-2: #182227;
+    --surface-3: #1f2b30;
+    --bg: #0b1316;
+    --bg-tint: #0e171b;
+
+    /* Glass + mesh */
+    --glass-bg: rgba(21, 30, 34, 0.55);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --glass-shadow: 0 8px 30px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(0, 0, 0, 0.34);
+    --app-mesh: radial-gradient(60% 55% at 8% 0%, rgba(18, 210, 217, 0.13), transparent 60%),
+      radial-gradient(55% 50% at 100% 6%, rgba(18, 107, 135, 0.18), transparent 55%),
+      radial-gradient(50% 60% at 50% 100%, rgba(18, 107, 135, 0.1), transparent 60%);
+
+    /* Feedback tints → dark translucent so boxes aren't light in dark mode */
+    --error-soft: rgba(220, 44, 16, 0.16);
+    --success-soft: rgba(18, 172, 123, 0.16);
+    --warning-soft: rgba(217, 106, 0, 0.18);
+    --info-soft: rgba(0, 102, 216, 0.18);
+    --accent-900: rgba(18, 210, 217, 0.12);
+
+    --grad-hero: radial-gradient(120% 120% at 0% 0%, rgba(18, 210, 217, 0.16) 0%, rgba(18, 210, 217, 0) 45%),
+      radial-gradient(120% 120% at 100% 0%, rgba(18, 107, 135, 0.22) 0%, rgba(18, 107, 135, 0) 50%),
+      linear-gradient(180deg, #0e171b 0%, #0b1316 100%);
+
+    /* Shadows need more weight to register on dark surfaces. */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.42), 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.5), 0 2px 6px rgba(0, 0, 0, 0.35);
+    --shadow-lg: 0 18px 48px rgba(0, 0, 0, 0.6), 0 6px 16px rgba(0, 0, 0, 0.4);
+  }
 }

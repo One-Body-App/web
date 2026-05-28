@@ -61,7 +61,26 @@ function num(v: unknown): number | undefined {
   return typeof v === 'number' && Number.isFinite(v) ? v : undefined;
 }
 
-function mapVideo(raw: Raw): WatchVideo | null {
+/** Parse "16:9" / "1.78" / numbers (mirrors the app's resolveVideoMetadata). */
+function parseAspect(raw: Raw): number | undefined {
+  for (const c of [raw.aspect_ratio, raw.aspectRatio]) {
+    if (typeof c === 'number' && Number.isFinite(c) && c > 0) return c;
+    if (typeof c === 'string') {
+      const s = c.trim();
+      if (s.includes(':')) {
+        const [w, h] = s.split(':').map(Number);
+        if (w > 0 && h > 0) return w / h;
+      }
+      const n = Number(s);
+      if (Number.isFinite(n) && n > 0) return n;
+    }
+  }
+  const w = num(raw.videoWidth);
+  const h = num(raw.videoHeight);
+  return w && h ? w / h : undefined;
+}
+
+export function mapVideo(raw: Raw): WatchVideo | null {
   const playbackId = String(raw.playBackId ?? raw.playbackId ?? '');
   if (!playbackId) return null;
   const userData = (raw.userData ?? raw.user ?? {}) as Raw;
@@ -70,10 +89,9 @@ function mapVideo(raw: Raw): WatchVideo | null {
     : num(raw.reactionCount) ?? 0;
   const comments = Array.isArray(raw.comments)
     ? (raw.comments as unknown[]).length
-    : num(raw.commentNumber) ?? 0;
-  const w = num(raw.videoWidth);
-  const h = num(raw.videoHeight);
-  const aspectRatio = num(raw.aspectRatio) ?? (w && h ? w / h : 9 / 16);
+    : num(raw.commentNumber) ?? num(raw.commentsCount) ?? 0;
+  const aspectRatio = parseAspect(raw) ?? 9 / 16;
+  const durationMs = num(raw.durationMs) ?? (num(raw.duration) ? num(raw.duration)! * 1000 : undefined);
   return {
     id: String(raw.postId ?? raw._id ?? raw.id ?? playbackId),
     playbackId,
@@ -84,7 +102,7 @@ function mapVideo(raw: Raw): WatchVideo | null {
     authorUsername: typeof userData.username === 'string' ? userData.username : undefined,
     authorAvatar: (typeof userData.profileImage === 'string' && userData.profileImage) || FALLBACK_AVATAR,
     aspectRatio,
-    durationMs: num(raw.durationMs),
+    durationMs,
     reactions,
     comments,
     time: timeAgo(String(raw.created ?? raw.createdAt ?? raw.date ?? '')),
@@ -93,8 +111,9 @@ function mapVideo(raw: Raw): WatchVideo | null {
 }
 
 export const watchApi = {
+  /** Watch portal = global discovery feed (all public videos, newest first). */
   async feed(page = 1): Promise<WatchVideo[]> {
-    const payload = await api.get(`user/get-following-feed/watch/${page}`);
+    const payload = await api.get('watch', { itemsPerPage: 24, page });
     return unwrap(payload)
       .map(mapVideo)
       .filter((v): v is WatchVideo => v !== null);
@@ -120,52 +139,3 @@ export const watchApi = {
       type: kind === 'love' ? 'love' : kind === 'pray' ? 'praying' : 'praise',
     }),
 };
-
-/** Shown when the live watch feed is unavailable (offline/CORS). */
-export const MOCK_VIDEOS: WatchVideo[] = [
-  {
-    id: 'mv1',
-    playbackId: '',
-    title: 'Sunday worship moment',
-    caption: '“Goodness of God” — live from the 11am service 🙌',
-    authorId: 'u_maria',
-    authorName: 'Maria Santos',
-    authorUsername: 'mariasings',
-    authorAvatar: '/brand/avatar2.png',
-    aspectRatio: 9 / 16,
-    reactions: 1284,
-    comments: 96,
-    time: '2h',
-    thumbnail: 'https://picsum.photos/seed/ob-watch-1/600/1066',
-  },
-  {
-    id: 'mv2',
-    playbackId: '',
-    title: '60-second devotional: Be still',
-    caption: 'A quick word for your Monday. Psalm 46:10.',
-    authorId: 'u_david',
-    authorName: 'Pastor David Cole',
-    authorUsername: 'pastordavid',
-    authorAvatar: '/brand/avatar1.png',
-    aspectRatio: 16 / 9,
-    reactions: 902,
-    comments: 54,
-    time: '6h',
-    thumbnail: 'https://picsum.photos/seed/ob-watch-2/900/506',
-  },
-  {
-    id: 'mv3',
-    playbackId: '',
-    title: 'Serving downtown',
-    caption: '240 meals served tonight. This is the Body in motion.',
-    authorId: 'u_mercy',
-    authorName: 'Mercy House',
-    authorUsername: 'mercyhouse',
-    authorAvatar: '/brand/avatar1.png',
-    aspectRatio: 9 / 16,
-    reactions: 760,
-    comments: 42,
-    time: '14h',
-    thumbnail: 'https://picsum.photos/seed/ob-watch-3/600/1066',
-  },
-];

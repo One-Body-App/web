@@ -70,7 +70,7 @@
     box-shadow 0.18s ease;
 }
 .segmented__item.is-active {
-  background: #fff;
+  background: var(--surface);
   color: var(--sapphire);
   font-weight: 600;
   box-shadow: var(--shadow-xs);
@@ -90,7 +90,7 @@
     transform 0.18s var(--ease-out);
 }
 .composer-prompt:hover {
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-lg);
 }
 .composer-prompt > span:nth-child(2) {
   color: var(--muted);

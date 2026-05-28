@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { BookOpen, Globe, Image as ImageIcon, MapPin, Smile, Users, X } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { BookOpen, Globe, Image as ImageIcon, MapPin, Repeat2, Smile, Users, X } from 'lucide-react';
 import { Avatar } from '@/components/Avatar';
 import { useAuth } from '@/auth/context';
-import { endpoints } from '@/api/endpoints';
+import { endpoints, type SocialContentType } from '@/api/endpoints';
 import './CreatePost.css';
 
 const AUDIENCES = [
@@ -11,20 +11,39 @@ const AUDIENCES = [
   { key: 'connections', label: 'Connections', Icon: Users },
 ];
 
+/** Passed via router state when reposting-with-quote from a post's action bar. */
+interface QuoteDraft {
+  sourceId: string;
+  sourceType: SocialContentType;
+  author: string;
+  username: string;
+  avatar: string;
+  verified?: boolean;
+  body?: string;
+  image?: string;
+}
+
 export function CreatePost() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const quote = (location.state as { quote?: QuoteDraft } | null)?.quote;
   const [text, setText] = useState('');
   const [audience, setAudience] = useState('everyone');
   const [publishing, setPublishing] = useState(false);
 
-  const canPost = text.trim().length > 0 && !publishing;
+  // When quoting, an empty body is still a valid (plain) repost.
+  const canPost = !publishing && (Boolean(quote) || text.trim().length > 0);
 
   async function publish() {
     if (!canPost) return;
     setPublishing(true);
     try {
-      await endpoints.createPost(text.trim());
+      if (quote) {
+        await endpoints.repost(quote.sourceId, quote.sourceType, text.trim() || undefined);
+      } else {
+        await endpoints.createPost(text.trim());
+      }
     } catch {
       // Best-effort in dev (offline/CORS); still return to the feed.
     }
@@ -37,9 +56,9 @@ export function CreatePost() {
         <button className="iconbtn" onClick={() => navigate(-1)} aria-label="Cancel">
           <X size={22} />
         </button>
-        <span className="compose__title">New Post</span>
+        <span className="compose__title">{quote ? 'Quote Post' : 'New Post'}</span>
         <button className="btn btn--brand btn--sm" disabled={!canPost} onClick={publish}>
-          {publishing ? 'Posting…' : 'Post'}
+          {publishing ? (quote ? 'Reposting…' : 'Posting…') : quote ? 'Repost' : 'Post'}
         </button>
       </header>
 
@@ -64,12 +83,33 @@ export function CreatePost() {
 
         <textarea
           className="compose__input"
-          placeholder="Share a testimony, a verse, a prayer request, or what God is doing…"
+          placeholder={
+            quote
+              ? 'Add your thoughts…'
+              : 'Share a testimony, a verse, a prayer request, or what God is doing…'
+          }
           value={text}
           onChange={(e) => setText(e.target.value)}
           autoFocus
-          rows={6}
+          rows={quote ? 3 : 6}
         />
+
+        {quote ? (
+          <div className="compose__quote">
+            <div className="compose__quote-head">
+              <Avatar src={quote.avatar} alt={quote.author} size={28} verified={quote.verified} />
+              <span className="compose__quote-name">{quote.author}</span>
+              <span className="compose__quote-user">@{quote.username}</span>
+              <Repeat2 size={15} className="compose__quote-icon" />
+            </div>
+            {quote.body ? <p className="compose__quote-body">{quote.body}</p> : null}
+            {quote.image ? (
+              <div className="compose__quote-media">
+                <img src={quote.image} alt="" loading="lazy" />
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="compose__audience-pick">
           {AUDIENCES.map(({ key, label, Icon }) => (

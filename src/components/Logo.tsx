@@ -32,8 +32,8 @@ export function Logo({ size = 32, tone = 'brand', withWordmark = false, classNam
     >
       <defs>
         <linearGradient id={gradientId} x1="15" y1="0" x2="15" y2="28" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#0E5469" />
-          <stop offset="1" stopColor="#032F3C" />
+          <stop stopColor="var(--logo-grad-1, #0e5469)" />
+          <stop offset="1" stopColor="var(--logo-grad-2, #032f3c)" />
         </linearGradient>
       </defs>
       <path d={OB_PATH_1} fill={fill} />
