@@ -175,6 +175,7 @@ export function PostDetail() {
             ref={inputRef}
             className="postdetail__input"
             placeholder={commentId && focused ? `Reply to @${focused.author.username}` : 'Post your reply'}
+            aria-label={commentId && focused ? `Reply to ${focused.author.username}` : 'Post reply'}
             value={text}
             rows={1}
             onChange={(e) => setText(e.target.value)}

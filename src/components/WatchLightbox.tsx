@@ -61,9 +61,14 @@ export function WatchLightbox({ video, onClose }: { video: WatchVideo; onClose: 
   }
 
   return (
-    <div className="watch-lightbox" role="dialog" aria-modal="true" aria-label={video.title || 'Video'}>
-      <div className="watch-lightbox__backdrop" onClick={onClose} />
-      <button className="watch-lightbox__close" onClick={onClose} aria-label="Close">
+    <dialog className="watch-lightbox" aria-label={video.title || 'Video'} open>
+      <button
+        type="button"
+        className="watch-lightbox__backdrop"
+        onClick={onClose}
+        aria-label="Close video"
+      />
+      <button type="button" className="watch-lightbox__close" onClick={onClose} aria-label="Close">
         <X size={22} />
       </button>
       <motion.div
@@ -104,7 +109,11 @@ export function WatchLightbox({ video, onClose }: { video: WatchVideo; onClose: 
           </div>
           {video.caption ? <p className="watch-lightbox__cap">{video.caption}</p> : null}
           <div className="watch-lightbox__actions">
-            <button className={`watch-lightbox__like${liked ? ' is-active' : ''}`} onClick={like}>
+            <button
+              type="button"
+              className={`watch-lightbox__like${liked ? ' is-active' : ''}`}
+              onClick={like}
+            >
               <Heart size={19} fill={liked ? 'currentColor' : 'none'} /> {formatCount(likeCount)}
             </button>
             <span className="watch-lightbox__stat">
@@ -113,6 +122,6 @@ export function WatchLightbox({ video, onClose }: { video: WatchVideo; onClose: 
           </div>
         </div>
       </motion.div>
-    </div>
+    </dialog>
   );
 }

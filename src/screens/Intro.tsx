@@ -139,10 +139,10 @@ export function Intro() {
           </p>
 
           <div className="intro__cta">
-            <button className="btn btn--brand btn--lg btn--block" onClick={() => navigate('/sign-up')}>
+            <button type="button" className="btn btn--brand btn--lg btn--block" onClick={() => navigate('/sign-up')}>
               Join the Family
             </button>
-            <button className="btn btn--outline btn--lg btn--block" onClick={() => navigate('/sign-in')}>
+            <button type="button" className="btn btn--outline btn--lg btn--block" onClick={() => navigate('/sign-in')}>
               I have an account
             </button>
           </div>

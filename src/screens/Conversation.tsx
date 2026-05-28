@@ -116,8 +116,7 @@ export function Conversation() {
     return () => {
       active = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+  }, [groupId, isGroup, peerUserId]);
 
   // ---- Realtime listeners ----
   useEffect(() => {
@@ -157,8 +156,7 @@ export function Conversation() {
       socket.off('chat:new_group_message', onGroup);
       socket.off('chat:message_status', onStatus);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [socket, id]);
+  }, [groupId, isGroup, peerUserId, socket]);
 
   // Keep scrolled to newest.
   useEffect(() => {
@@ -302,7 +300,7 @@ export function Conversation() {
             ))}
           </>
         ) : (
-          <div className="thread__empty">Say hello — messages are end-to-end encrypted.</div>
+          <div className="thread__empty">Say hello. Messages are end-to-end encrypted.</div>
         )}
       </div>
 

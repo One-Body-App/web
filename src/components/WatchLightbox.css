@@ -2,14 +2,27 @@
   position: fixed;
   inset: 0;
   z-index: 130;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
   display: grid;
   place-items: center;
   padding: var(--sp-24);
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+.watch-lightbox::backdrop {
+  background: transparent;
 }
 .watch-lightbox__backdrop {
   position: absolute;
   inset: 0;
+  padding: 0;
+  border: 0;
   background: rgba(3, 16, 20, 0.82);
+  -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
 }
 .watch-lightbox__close {

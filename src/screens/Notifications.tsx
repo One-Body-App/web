@@ -33,7 +33,7 @@ export function Notifications() {
       <PageHeader
         title="Notifications"
         action={
-          <button className="btn btn--ghost btn--sm" onClick={markAll}>
+          <button type="button" className="btn btn--ghost btn--sm" onClick={markAll}>
             Mark all read
           </button>
         }

@@ -40,21 +40,32 @@ export function HlsVideo({
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
       video.src = src;
       if (autoPlay) video.play().catch(() => {});
-      return;
+      return () => {
+        video.removeAttribute('src');
+        video.load();
+      };
     }
 
     if (Hls.isSupported()) {
       const hls = new Hls({ enableWorker: true });
       hls.loadSource(src);
       hls.attachMedia(video);
+      const onManifestParsed = () => video.play().catch(() => {});
       if (autoPlay) {
-        hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
+        hls.on(Hls.Events.MANIFEST_PARSED, onManifestParsed);
       }
-      return () => hls.destroy();
+      return () => {
+        if (autoPlay) hls.off(Hls.Events.MANIFEST_PARSED, onManifestParsed);
+        hls.destroy();
+      };
     }
 
     // Last resort.
     video.src = src;
+    return () => {
+      video.removeAttribute('src');
+      video.load();
+    };
   }, [src, autoPlay]);
 
   // Playback telemetry: play / pause / progress milestones (25/50/75) / complete.
@@ -99,6 +110,7 @@ export function HlsVideo({
       muted={muted}
       playsInline
       preload="metadata"
+      aria-label="Video player"
     />
   );
 }

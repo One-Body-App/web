@@ -60,7 +60,7 @@ function unwrap(payload: unknown): Raw[] {
   return [];
 }
 
-function mapPrayer(raw: Raw, myUserId?: string): Prayer {
+export function mapPrayer(raw: Raw, myUserId?: string): Prayer {
   const userData = (raw.userData ?? raw.user ?? {}) as Raw;
   const reactionsArr = Array.isArray(raw.reactions) ? (raw.reactions as Raw[]) : [];
   const reactions: Record<PrayerReaction, number> = { love: 0, pray: 0, rejoice: 0 };

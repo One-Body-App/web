@@ -48,16 +48,18 @@ export function Watch() {
 
       <div className="segmented watch__tabs" role="tablist">
         <button
+          type="button"
           role="tab"
-          aria-selected={tab === 'foryou'}
+          aria-selected={tab === 'foryou' ? 'true' : 'false'}
           className={`segmented__item${tab === 'foryou' ? ' is-active' : ''}`}
           onClick={() => setTab('foryou')}
         >
           For You
         </button>
         <button
+          type="button"
           role="tab"
-          aria-selected={tab === 'sermons'}
+          aria-selected={tab === 'sermons' ? 'true' : 'false'}
           className={`segmented__item${tab === 'sermons' ? ' is-active' : ''}`}
           onClick={() => setTab('sermons')}
         >
@@ -134,6 +136,7 @@ export function Watch() {
 function ShortCard({ video, index, onOpen }: { video: WatchVideo; index: number; onOpen: (v: WatchVideo) => void }) {
   return (
     <button
+      type="button"
       className="wshort"
       style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}
       onClick={() => onOpen(video)}
@@ -169,6 +172,7 @@ function WideCard({
   return (
     <article className={`wwide card${large ? ' wwide--lg' : ''}`} style={{ animationDelay: `${Math.min(index, 8) * 55}ms` }}>
       <button
+        type="button"
         className="wwide__frame"
         style={{ aspectRatio: String(video.aspectRatio || 16 / 9) }}
         onClick={() => onOpen(video)}

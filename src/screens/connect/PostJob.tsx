@@ -32,8 +32,10 @@ export function PostJob() {
 
   const reqList = requirements
     .split('\n')
-    .map((r) => r.trim())
-    .filter(Boolean);
+    .flatMap((r) => {
+      const trimmed = r.trim();
+      return trimmed ? [trimmed] : [];
+    });
   const canSubmit =
     Boolean(
       title.trim() &&
@@ -92,7 +94,7 @@ export function PostJob() {
 
   return (
     <div className="cdetail manage">
-      <button className="cdetail__back" onClick={() => navigate('/connect/manage')}>
+      <button type="button" className="cdetail__back" onClick={() => navigate('/connect/manage')}>
         <ArrowLeft size={18} /> Manage
       </button>
 

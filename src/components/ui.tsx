@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import type { ReactNode } from 'react';
 import { Avatar } from './Avatar';
 import { useAuth } from '@/auth/context';
@@ -42,9 +42,10 @@ export function Segmented<T extends string>({
     <div className="segmented" role="tablist">
       {options.map((o) => (
         <button
+          type="button"
           key={o.key}
           role="tab"
-          aria-selected={value === o.key}
+          aria-selected={value === o.key ? 'true' : 'false'}
           className={`segmented__item${value === o.key ? ' is-active' : ''}`}
           onClick={() => onChange(o.key)}
         >
@@ -59,9 +60,14 @@ export function Segmented<T extends string>({
 export function ComposerPrompt() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   if (!user) return null;
   return (
-    <button className="composer-prompt card" onClick={() => navigate('/post/new')}>
+    <button
+      type="button"
+      className="composer-prompt card"
+      onClick={() => navigate('/post/new', { state: { backgroundLocation: location } })}
+    >
       <Avatar src={user.imageUrl} alt={user.fullName} size={44} />
       <span>What’s on your heart, {user.firstName}?</span>
       <span className="composer-prompt__cta">Post</span>

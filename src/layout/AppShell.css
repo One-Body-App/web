@@ -171,8 +171,8 @@
     padding: var(--sp-24) var(--sp-12) var(--sp-20);
     border-right: 1px solid var(--glass-border);
     background: var(--glass-bg);
-    backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
     -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
   }
   .shell__brand {
     padding: var(--sp-8) var(--sp-12) var(--sp-20);
@@ -243,8 +243,8 @@
   }
 }
 
-/* ===== Small laptop (900–1023px): collapse the left sidebar to icons ===== */
-@media (min-width: 900px) and (max-width: 1023.98px) {
+/* ===== Small laptop (900–1279px): collapse the left sidebar to icons ===== */
+@media (min-width: 900px) and (max-width: 1279.98px) {
   .shell {
     grid-template-columns: var(--sidebar-icon-w) minmax(0, 1fr) var(--rail-w);
     column-gap: 20px;
@@ -343,6 +343,39 @@
   .rail-trend__count {
     font-size: var(--fs-1);
     color: var(--muted);
+  }
+  .rail-topic-bubbles {
+    gap: 7px;
+  }
+  .rail-topic-bubble {
+    max-width: 100%;
+    min-height: 28px;
+    box-shadow: var(--shadow-xs);
+  }
+  .rail-topic-bubble.topic-bubble--tier-1 {
+    padding: 5px 9px;
+    font-size: 12px;
+  }
+  .rail-topic-bubble.topic-bubble--tier-2 {
+    padding: 5px 10px;
+    font-size: 12.5px;
+  }
+  .rail-topic-bubble.topic-bubble--tier-3 {
+    padding: 6px 11px;
+    font-size: 13px;
+  }
+  .rail-topic-bubble.topic-bubble--tier-4 {
+    padding: 6px 12px;
+    font-size: 13.5px;
+  }
+  .rail-topic-bubble .topic-bubble__tag {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .rail-topic-bubble .topic-bubble__count {
+    flex: 0 0 auto;
   }
   .rail-people {
     display: flex;
@@ -466,6 +499,7 @@
   inset: 0;
   z-index: 55;
   background: rgba(3, 47, 60, 0.45);
+  -webkit-backdrop-filter: blur(1px);
   backdrop-filter: blur(1px);
   opacity: 0;
   pointer-events: none;
@@ -488,8 +522,8 @@
   padding: calc(var(--sp-12) + env(safe-area-inset-top)) var(--sp-12)
     calc(var(--sp-20) + env(safe-area-inset-bottom));
   background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+  backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
   border-right: 1px solid var(--glass-border);
   box-shadow: 0 12px 48px rgba(3, 47, 60, 0.28);
   transform: translateX(-100%);

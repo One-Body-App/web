@@ -16,7 +16,7 @@ export function JobApplications() {
 
   return (
     <div className="cdetail manage">
-      <button className="cdetail__back" onClick={() => navigate('/connect/manage')}>
+      <button type="button" className="cdetail__back" onClick={() => navigate('/connect/manage')}>
         <ArrowLeft size={18} /> Manage
       </button>
 

@@ -28,11 +28,15 @@ Create `web/.env.local` with your Clerk publishable key:
 VITE_CLERK_PUBLISHABLE_KEY=pk_test_xxxxxxxxxxxxxxxxxxxx
 # optional — points the data layer at the shared NestJS API
 VITE_API_BASE_URL=https://api.onebody...
+# optional - enables Mapbox-backed Connect maps and geocoding
+VITE_MAPBOX_PUBLIC_TOKEN=pk_xxxxxxxxxxxxxxxxxxxx
 ```
 
 > **Preview mode:** if `VITE_CLERK_PUBLISHABLE_KEY` is absent, the app runs in a
 > local demo session (no Clerk) so the full UI can be browsed without keys. As
 > soon as a key is present, real Clerk auth takes over automatically.
+> If `VITE_MAPBOX_PUBLIC_TOKEN` is absent, Connect map view falls back to
+> OpenFreeMap/MapLibre and address geocoding falls back to Nominatim.
 
 ```bash
 npm run build    # type-check (tsc -b) + production bundle

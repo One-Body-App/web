@@ -150,21 +150,27 @@ export function CommentRow({
           <span className="cmt__handle">@{comment.author.username}</span>
           <span className="cmt__sep">·</span>
           <span className="cmt__time">{comment.createdAt}</span>
-          <button className="cmt__more" onClick={stop} aria-label="More options">
+          <button type="button" className="cmt__more" onClick={stop} aria-label="More options">
             <MoreHorizontal size={16} />
           </button>
         </div>
         <p className="cmt__body">{comment.body}</p>
         <div className="cmt__actions">
-          <button className="cmt__action" onClick={onReply} aria-label="Reply">
+          <button type="button" className="cmt__action" onClick={onReply} aria-label="Reply">
             <ReplyIcon />
             {comment.replies > 0 ? <span>{formatCount(comment.replies)}</span> : null}
           </button>
-          <button className="cmt__action cmt__action--repost" onClick={doRepost} aria-label="Repost">
+          <button
+            type="button"
+            className="cmt__action cmt__action--repost"
+            onClick={doRepost}
+            aria-label="Repost"
+          >
             <Repeat2 size={17} />
             {reposts > 0 ? <span>{formatCount(reposts)}</span> : null}
           </button>
           <button
+            type="button"
             className={`cmt__action cmt__action--like${liked ? ' is-active' : ''}`}
             onClick={toggleLike}
             aria-label={liked ? 'Unlike' : 'Like'}
@@ -173,13 +179,19 @@ export function CommentRow({
             {reactions > 0 ? <span>{formatCount(reactions)}</span> : null}
           </button>
           <button
+            type="button"
             className={`cmt__action cmt__action--bookmark${bookmarked ? ' is-active' : ''}`}
             onClick={toggleBookmark}
             aria-label={bookmarked ? 'Remove bookmark' : 'Bookmark'}
           >
             <Bookmark size={16} fill={bookmarked ? 'currentColor' : 'none'} />
           </button>
-          <button className="cmt__action cmt__action--share" onClick={share} aria-label="Share">
+          <button
+            type="button"
+            className="cmt__action cmt__action--share"
+            onClick={share}
+            aria-label="Share"
+          >
             <Send size={16} />
             {copied ? <span className="cmt__copied">Copied</span> : null}
           </button>

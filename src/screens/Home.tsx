@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDown, Inbox, Search } from 'lucide-react';
 import { PostCard } from '@/components/PostCard';
@@ -95,9 +95,15 @@ function mockForTab(top: TopTab, sub: SubType): FeedEntry[] {
   if (top === 'read') return MOCK_ARTICLES.map((article) => ({ kind: 'article', article }));
   if (top === 'pray') return MOCK_PRAYERS.map((prayer) => ({ kind: 'prayer', prayer }));
   const feedKey: FeedType = top === 'feed' ? sub : top;
-  return mockPosts
-    .filter((p) => p.feeds.includes(feedKey))
-    .map((post) => ({ kind: 'post', post }));
+  const entries: FeedEntry[] = [];
+  for (const post of mockPosts) {
+    for (const feed of post.feeds) {
+      if (feed !== feedKey) continue;
+      entries.push({ kind: 'post', post });
+      break;
+    }
+  }
+  return entries;
 }
 
 /** Search bar that replaces the "Home" title (desktop/tablet). Submits to Explore. */
@@ -210,10 +216,30 @@ function TrackedFeedItem({
   }, [feedType, postId, postType, rank]);
 
   return (
-    <FeedItemTelemetryContext.Provider value={{ feedType, postId, postType, rankPosition: rank }}>
+    <FeedTelemetryProvider feedType={feedType} postId={postId} postType={postType} rank={rank}>
       <div ref={ref}>{children}</div>
-    </FeedItemTelemetryContext.Provider>
+    </FeedTelemetryProvider>
   );
+}
+
+function FeedTelemetryProvider({
+  feedType,
+  postId,
+  postType,
+  rank,
+  children,
+}: {
+  feedType: TelemetryFeedType;
+  postId: string;
+  postType: string;
+  rank: number;
+  children: ReactNode;
+}) {
+  const value = useMemo(
+    () => ({ feedType, postId, postType, rankPosition: rank }),
+    [feedType, postId, postType, rank],
+  );
+  return <FeedItemTelemetryContext.Provider value={value}>{children}</FeedItemTelemetryContext.Provider>;
 }
 
 function FeedSkeleton() {
@@ -336,8 +362,9 @@ export function Home() {
       <div style={{ marginBottom: 'var(--sp-16)' }}>
         <div className="segmented" role="tablist">
           <button
+            type="button"
             role="tab"
-            aria-selected={top === 'feed'}
+            aria-selected={top === 'feed' ? 'true' : 'false'}
             className={`segmented__item${top === 'feed' ? ' is-active' : ''}`}
             onClick={() =>
               top === 'feed'
@@ -353,9 +380,10 @@ export function Home() {
           </button>
           {(['read', 'pray', 'watch'] as const).map((t) => (
             <button
+              type="button"
               key={t}
               role="tab"
-              aria-selected={top === t}
+              aria-selected={top === t ? 'true' : 'false'}
               className={`segmented__item${top === t ? ' is-active' : ''}`}
               onClick={() => setTop(t)}
             >

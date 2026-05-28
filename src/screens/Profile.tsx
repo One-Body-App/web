@@ -58,10 +58,10 @@ export function Profile() {
           <Avatar src={profile.avatar} alt={profile.name} size={104} ring />
         </div>
         <div className="profile__actions">
-          <button className="iconbtn profile__icon" aria-label="Settings" onClick={() => navigate('/settings')}>
+          <button type="button" className="iconbtn profile__icon" aria-label="Settings" onClick={() => navigate('/settings')}>
             <Settings size={20} />
           </button>
-          <button className="btn btn--outline btn--sm" onClick={handleSignOut}>
+          <button type="button" className="btn btn--outline btn--sm" onClick={handleSignOut}>
             <LogOut size={16} /> Sign out
           </button>
         </div>
@@ -90,7 +90,7 @@ export function Profile() {
           </div>
         </div>
 
-        <button className="btn btn--brand btn--block">
+        <button type="button" className="btn btn--brand btn--block">
           <Sparkles size={18} /> Edit profile
         </button>
       </div>
@@ -110,7 +110,7 @@ export function Profile() {
         <>
           <div className="profile__grid">
             {profilePosts.map((p) => (
-              <button key={p.id} className="profile__grid-item">
+              <button type="button" key={p.id} className="profile__grid-item">
                 <img src={p.image} alt="" loading="lazy" />
                 <span className="profile__grid-overlay">
                   <Grid3x3 size={18} />

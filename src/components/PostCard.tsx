@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bookmark, Heart, MessageCircle, MoreHorizontal, PenLine, Repeat2, Send } from 'lucide-react';
 import { Avatar } from './Avatar';
@@ -25,6 +25,7 @@ interface PostCardProps {
 
 export function PostCard({ post, detail = false, onCommentClick }: PostCardProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [myReaction, setMyReaction] = useState<ReactionKind | null>(post.myReaction ?? null);
   const [counts, setCounts] = useState(post.reactions);
   const [saved, setSaved] = useState(Boolean(post.saved));
@@ -85,6 +86,7 @@ export function PostCard({ post, detail = false, onCommentClick }: PostCardProps
     track('quote', 'post_quote_create', { repostType: 'quote', sourceType: 'social' });
     navigate('/post/new', {
       state: {
+        backgroundLocation: location,
         quote: {
           sourceId: post.id,
           sourceType: 'social',
@@ -147,7 +149,7 @@ export function PostCard({ post, detail = false, onCommentClick }: PostCardProps
             @{post.author.username} · {post.createdAt}
           </span>
         </div>
-        <button className="post__more" aria-label="More options">
+        <button type="button" className="post__more" aria-label="More options">
           <MoreHorizontal size={20} />
         </button>
       </header>
@@ -180,6 +182,7 @@ export function PostCard({ post, detail = false, onCommentClick }: PostCardProps
           onMouseLeave={() => setPickerOpen(false)}
         >
           <button
+            type="button"
             className={`post__action${myReaction ? ' is-active' : ''}`}
             style={active ? { color: active.color } : undefined}
             onClick={() => react(myReaction ?? 'love')}
@@ -206,6 +209,7 @@ export function PostCard({ post, detail = false, onCommentClick }: PostCardProps
               >
                 {REACTIONS.map((r) => (
                   <button
+                    type="button"
                     key={r.kind}
                     className="post__picker-btn"
                     onClick={() => react(r.kind)}
@@ -221,7 +225,7 @@ export function PostCard({ post, detail = false, onCommentClick }: PostCardProps
         </div>
 
         {/* Comment — opens the post detail (feed) or focuses the composer (detail). */}
-        <button className="post__action" onClick={openDetail} aria-label="Comments">
+        <button type="button" className="post__action" onClick={openDetail} aria-label="Comments">
           <MessageCircle size={22} />
           {post.comments > 0 ? (
             <span className="post__action-count">{formatCount(post.comments)}</span>
@@ -231,11 +235,12 @@ export function PostCard({ post, detail = false, onCommentClick }: PostCardProps
         {/* Repost — menu with Repost / Quote (mobile parity) */}
         <div className="post__repost-wrap" onMouseLeave={() => setRepostMenuOpen(false)}>
           <button
+            type="button"
             className={`post__action${reposted ? ' is-reposted' : ''}`}
             onClick={() => setRepostMenuOpen((o) => !o)}
             aria-label="Repost"
             aria-haspopup="menu"
-            aria-expanded={repostMenuOpen}
+            aria-expanded={repostMenuOpen ? 'true' : 'false'}
           >
             <Repeat2 size={22} />
             {repostCount > 0 ? (
@@ -253,11 +258,11 @@ export function PostCard({ post, detail = false, onCommentClick }: PostCardProps
                 exit={{ opacity: 0, y: 8, scale: 0.95 }}
                 transition={{ duration: 0.16 }}
               >
-                <button className="post__repost-item" role="menuitem" onClick={doRepost}>
+                <button type="button" className="post__repost-item" role="menuitem" onClick={doRepost}>
                   <Repeat2 size={17} />
                   <span>Repost</span>
                 </button>
-                <button className="post__repost-item" role="menuitem" onClick={quotePost}>
+                <button type="button" className="post__repost-item" role="menuitem" onClick={quotePost}>
                   <PenLine size={16} />
                   <span>Quote</span>
                 </button>
@@ -267,7 +272,12 @@ export function PostCard({ post, detail = false, onCommentClick }: PostCardProps
         </div>
 
         {/* Share */}
-        <button className="post__action post__action--share" onClick={sharePost} aria-label="Share">
+        <button
+          type="button"
+          className="post__action post__action--share"
+          onClick={sharePost}
+          aria-label="Share"
+        >
           <Send size={21} />
           <AnimatePresence>
             {copied ? (
@@ -285,6 +295,7 @@ export function PostCard({ post, detail = false, onCommentClick }: PostCardProps
 
         {/* Save */}
         <button
+          type="button"
           className={`post__action post__action--save${saved ? ' is-active' : ''}`}
           onClick={toggleSave}
           aria-label={saved ? 'Saved' : 'Save'}

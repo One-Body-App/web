@@ -68,7 +68,7 @@ export function DemoAuth({ mode }: { mode: 'sign-in' | 'sign-up' }) {
         <SubmitButton>{mode === 'sign-up' ? 'Create account' : 'Sign in'}</SubmitButton>
       </form>
       <p className="auth-step-note" style={{ textAlign: 'center', marginTop: 'var(--sp-8)' }}>
-        Preview mode — any details continue to the app.
+        Preview mode, any details continue to the app.
       </p>
     </div>
   );

@@ -221,7 +221,7 @@ export function AccountTypePicker({
           type="button"
           className={`acct-card${value === key ? ' is-active' : ''}`}
           onClick={() => onChange(key)}
-          aria-pressed={value === key}
+          aria-pressed={value === key ? 'true' : 'false'}
         >
           <span className="acct-card__icon">
             <Icon size={22} />

@@ -42,7 +42,7 @@ export function JobDetail() {
 
   return (
     <div className="cdetail">
-      <button className="cdetail__back" onClick={() => navigate('/connect')}>
+      <button type="button" className="cdetail__back" onClick={() => navigate('/connect')}>
         <ArrowLeft size={18} /> Connect
       </button>
 
@@ -68,7 +68,7 @@ export function JobDetail() {
       </div>
 
       <div className="cdetail__actions cdetail__actions--top">
-        <button className="btn btn--brand btn--block" onClick={apply} disabled={job.hiringStatus === 'closed'}>
+        <button type="button" className="btn btn--brand btn--block" onClick={apply} disabled={job.hiringStatus === 'closed'}>
           {canApplyInApp ? 'Apply' : (
             <>
               Apply <ExternalLink size={16} />
@@ -76,6 +76,7 @@ export function JobDetail() {
           )}
         </button>
         <button
+          type="button"
           className={`btn cdetail__save ${saved ? 'btn--primary' : 'btn--outline'}`}
           onClick={() => setSaved((s) => !s)}
           aria-label="Save"
@@ -105,8 +106,8 @@ export function JobDetail() {
         <section className="cdetail__section">
           <h2 className="cdetail__label">Requirements</h2>
           <ul className="jdetail__reqs">
-            {job.requirements.map((r, i) => (
-              <li key={i}>{r}</li>
+            {job.requirements.map((r) => (
+              <li key={r}>{r}</li>
             ))}
           </ul>
         </section>

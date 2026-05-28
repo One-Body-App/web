@@ -7,9 +7,9 @@ export function ApiOfflineBanner() {
   const status = useApiStatus();
   if (status !== 'offline') return null;
   return (
-    <div className="api-offline" role="status">
+    <output className="api-offline">
       <CloudOff size={15} />
-      <span>Showing sample data — couldn’t reach the live API.</span>
-    </div>
+      <span>Showing sample data, couldn’t reach the live API.</span>
+    </output>
   );
 }

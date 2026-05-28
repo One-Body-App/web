@@ -41,6 +41,7 @@ export function FeedVideoCard({ video }: { video: WatchVideo }) {
       transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
     >
       <button
+        type="button"
         className={`fvideo__frame${portrait ? ' is-portrait' : ''}`}
         style={{ aspectRatio: String(video.aspectRatio || 16 / 9) }}
         onClick={play}

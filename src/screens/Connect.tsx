@@ -37,6 +37,12 @@ type Tab = 'go' | 'places' | 'serve';
 const GO_CHIPS = ['Upcoming', 'Online', 'In Person'] as const;
 const PLACE_CHIPS = ['Nearby', 'Churches', 'Non-Profits'] as const;
 
+function hasCoordinates<T extends { lat?: number; lng?: number }>(
+  item: T,
+): item is T & { lat: number; lng: number } {
+  return typeof item.lat === 'number' && typeof item.lng === 'number';
+}
+
 export function Connect() {
   const [tab, setTab] = useState<Tab>('go');
   const [view, setView] = useState<'list' | 'map'>('list');
@@ -67,7 +73,7 @@ export function Connect() {
   const serveTypes = useMemo(() => {
     const set = new Set<string>();
     (jobs.data ?? CONNECT_JOBS_MOCK).forEach((j) => j.opportunityType && set.add(j.opportunityType));
-    return ['All', ...[...set].sort()];
+    return ['All', ...Array.from(set).sort()];
   }, [jobs.data]);
 
   const visibleJobs = useMemo(() => {
@@ -96,38 +102,53 @@ export function Connect() {
   }, [orgs.data, placeChip, query]);
 
   const mapItems: MapItem[] = useMemo(() => {
-    const has = (o: { lat?: number; lng?: number }) =>
-      typeof o.lat === 'number' && typeof o.lng === 'number';
-    if (tab === 'go')
-      return visibleEvents.filter(has).map((e) => ({
-        id: e.id,
-        lat: e.lat as number,
-        lng: e.lng as number,
-        title: e.title,
-        subtitle: e.dateLabel || e.locationLabel,
-        image: e.image,
-        to: `/connect/events/${e.id}`,
-        kind: 'event' as const,
-      }));
-    if (tab === 'serve')
-      return visibleJobs.filter(has).map((j) => ({
-        id: j.id,
-        lat: j.lat as number,
-        lng: j.lng as number,
-        title: j.title,
-        subtitle: [j.organizationName, j.opportunityType].filter(Boolean).join(' · '),
-        to: `/connect/serve/${j.id}`,
-        kind: 'job' as const,
-      }));
-    return visibleOrgs.filter(has).map((o) => ({
-      id: o.id,
-      lat: o.lat as number,
-      lng: o.lng as number,
-      title: o.title,
-      subtitle: o.subtitle,
-      image: o.avatar,
-      kind: 'place' as const,
-    }));
+    if (tab === 'go') {
+      const mapped: MapItem[] = [];
+      for (const e of visibleEvents) {
+        if (!hasCoordinates(e)) continue;
+        mapped.push({
+          id: e.id,
+          lat: e.lat,
+          lng: e.lng,
+          title: e.title,
+          subtitle: e.dateLabel || e.locationLabel,
+          image: e.image,
+          to: `/connect/events/${e.id}`,
+          kind: 'event',
+        });
+      }
+      return mapped;
+    }
+    if (tab === 'serve') {
+      const mapped: MapItem[] = [];
+      for (const j of visibleJobs) {
+        if (!hasCoordinates(j)) continue;
+        mapped.push({
+          id: j.id,
+          lat: j.lat,
+          lng: j.lng,
+          title: j.title,
+          subtitle: [j.organizationName, j.opportunityType].filter(Boolean).join(' · '),
+          to: `/connect/serve/${j.id}`,
+          kind: 'job',
+        });
+      }
+      return mapped;
+    }
+    const mapped: MapItem[] = [];
+    for (const o of visibleOrgs) {
+      if (!hasCoordinates(o)) continue;
+      mapped.push({
+        id: o.id,
+        lat: o.lat,
+        lng: o.lng,
+        title: o.title,
+        subtitle: o.subtitle,
+        image: o.avatar,
+        kind: 'place',
+      });
+    }
+    return mapped;
   }, [tab, visibleEvents, visibleJobs, visibleOrgs]);
 
   const searchPlaceholder =
@@ -162,6 +183,7 @@ export function Connect() {
         <input
           className="search__input"
           placeholder={searchPlaceholder}
+          aria-label={searchPlaceholder}
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
@@ -173,6 +195,7 @@ export function Connect() {
         {tab === 'go' &&
           GO_CHIPS.map((c) => (
             <button
+              type="button"
               key={c}
               className={`chip${goChip === c ? ' chip--active' : ''}`}
               onClick={() => setGoChip(c)}
@@ -183,6 +206,7 @@ export function Connect() {
         {tab === 'serve' &&
           serveTypes.map((c) => (
             <button
+              type="button"
               key={c}
               className={`chip${serveChip === c ? ' chip--active' : ''}`}
               onClick={() => setServeChip(c)}
@@ -193,6 +217,7 @@ export function Connect() {
         {tab === 'places' &&
           PLACE_CHIPS.map((c) => (
             <button
+              type="button"
               key={c}
               className={`chip${placeChip === c ? ' chip--active' : ''}`}
               onClick={() => setPlaceChip(c)}
@@ -205,7 +230,7 @@ export function Connect() {
           <button
             type="button"
             role="tab"
-            aria-selected={view === 'list'}
+            aria-selected={view === 'list' ? 'true' : 'false'}
             className={view === 'list' ? 'is-active' : ''}
             onClick={() => setView('list')}
             aria-label="List view"
@@ -215,7 +240,7 @@ export function Connect() {
           <button
             type="button"
             role="tab"
-            aria-selected={view === 'map'}
+            aria-selected={view === 'map' ? 'true' : 'false'}
             className={view === 'map' ? 'is-active' : ''}
             onClick={() => setView('map')}
             aria-label="Map view"
@@ -396,6 +421,7 @@ function PlaceCard({ org }: { org: ConnectOrg }) {
         </span>
       </div>
       <button
+        type="button"
         className={`btn btn--sm ${following ? 'btn--outline' : 'btn--accent'}`}
         onClick={() => {
           const next = !following;

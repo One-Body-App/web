@@ -44,7 +44,7 @@ export function Messages() {
       <PageHeader
         title="Messages"
         action={
-          <button className="iconbtn" aria-label="New message">
+          <button type="button" className="iconbtn" aria-label="New message">
             <PenSquare size={20} />
           </button>
         }

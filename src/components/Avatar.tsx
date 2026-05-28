@@ -63,7 +63,6 @@ export function Avatar({ src, alt, size = 44, ring = false, verified = false }: 
         />
       ) : (
         <span
-          role="img"
           aria-label={safeAlt}
           style={{
             display: 'grid',

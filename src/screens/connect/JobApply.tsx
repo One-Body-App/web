@@ -62,7 +62,7 @@ export function JobApply() {
             <strong>{job.title}</strong> has been shared with the ministry team for prayerful review.
             They’ll reach out by email.
           </p>
-          <button className="btn btn--brand btn--lg" onClick={() => navigate('/connect')}>
+          <button type="button" className="btn btn--brand btn--lg" onClick={() => navigate('/connect')}>
             Back to Connect
           </button>
         </div>
@@ -72,7 +72,7 @@ export function JobApply() {
 
   return (
     <div className="cdetail apply">
-      <button className="cdetail__back" onClick={() => navigate(`/connect/serve/${id}`)}>
+      <button type="button" className="cdetail__back" onClick={() => navigate(`/connect/serve/${id}`)}>
         <ArrowLeft size={18} /> Back
       </button>
 
@@ -119,6 +119,7 @@ export function JobApply() {
         <div className="apply-field">
           <span>Resume or ministry portfolio</span>
           <input
+            aria-label="Resume or ministry portfolio"
             ref={fileRef}
             type="file"
             accept=".pdf,.doc,.docx"
@@ -129,13 +130,13 @@ export function JobApply() {
             <div className="apply__file">
               <FileText size={18} />
               <span className="apply__file-name">{resume.name}</span>
-              <button type="button" onClick={() => { setResume(null); if (fileRef.current) fileRef.current.value = ''; }} aria-label="Remove">
+              <button type="button" onClick={() => { setResume(null); if (fileRef.current) fileRef.current.value = ''; }} aria-label="Remove resume">
                 <X size={16} />
               </button>
             </div>
           ) : (
             <button type="button" className="apply__upload" onClick={() => fileRef.current?.click()}>
-              <Upload size={18} /> Tap to upload — PDF or DOCX (max 5MB)
+              <Upload size={18} /> Tap to upload, PDF or DOCX (max 5MB)
             </button>
           )}
         </div>

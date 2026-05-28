@@ -127,7 +127,17 @@
   color: var(--ink);
 }
 
-/* MapLibre attribution/controls tuned to brand */
+/* Mapbox/MapLibre attribution and controls tuned to brand */
+.cmap .mapboxgl-ctrl-attrib,
 .cmap .maplibregl-ctrl-attrib {
   font-size: 10px;
+}
+.cmap .mapboxgl-ctrl-group,
+.cmap .maplibregl-ctrl-group {
+  border-radius: var(--r-sm);
+  box-shadow: var(--shadow-sm);
+}
+.cmap .mapboxgl-ctrl button,
+.cmap .maplibregl-ctrl button {
+  color: var(--brand-ink);
 }

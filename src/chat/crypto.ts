@@ -107,7 +107,10 @@ export function parsePlaintext(plaintext: string): ParsedMessage {
         return {
           type: 'images',
           text: typeof parsed.text === 'string' ? parsed.text : '',
-          mediaUrls: parsed.urls.map((u: unknown) => String(u || '').trim()).filter(Boolean),
+          mediaUrls: parsed.urls.flatMap((u: unknown) => {
+            const url = String(u || '').trim();
+            return url ? [url] : [];
+          }),
         };
       }
     }

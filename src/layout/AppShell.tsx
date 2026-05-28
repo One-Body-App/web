@@ -13,10 +13,11 @@ export function AppShell() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const pathname = location.pathname;
   const [menuOpen, setMenuOpen] = useState(false);
 
   // Close the mobile drawer on navigation and on Escape.
-  useEffect(() => setMenuOpen(false), [location.pathname]);
+  useEffect(() => setMenuOpen(false), [pathname]);
   useEffect(() => {
     if (!menuOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -47,7 +48,11 @@ export function AppShell() {
           ))}
         </nav>
 
-        <button className="btn btn--brand btn--block shell__post" onClick={() => navigate('/post/new')}>
+        <button
+          type="button"
+          className="btn btn--brand btn--block shell__post"
+          onClick={() => navigate('/post/new', { state: { backgroundLocation: location } })}
+        >
           <Plus size={20} strokeWidth={2.5} />
           <span className="shell__post-label">Post</span>
         </button>
@@ -66,10 +71,11 @@ export function AppShell() {
       {/* -------- Mobile top bar (matches the app: avatar · logo · bell) -------- */}
       <header className="shell__topbar glass">
         <button
+          type="button"
           className="shell__topbar-me"
           onClick={() => setMenuOpen(true)}
           aria-label="Open menu"
-          aria-expanded={menuOpen}
+          {...{ 'aria-expanded': menuOpen ? 'true' : 'false' }}
         >
           <Avatar src={user?.imageUrl ?? '/brand/avatar1.png'} alt={user?.fullName ?? 'Menu'} size={32} />
         </button>
@@ -90,12 +96,12 @@ export function AppShell() {
         onClick={() => setMenuOpen(false)}
         aria-hidden="true"
       />
-      <aside className={`shell__drawer${menuOpen ? ' is-open' : ''}`} aria-hidden={!menuOpen}>
+      <aside className={`shell__drawer${menuOpen ? ' is-open' : ''}`} {...{ 'aria-hidden': !menuOpen ? 'true' : 'false' }}>
         <div className="shell__drawer-head">
           <NavLink to="/home" className="shell__brand" aria-label="One Body home">
             <Logo size={28} withWordmark />
           </NavLink>
-          <button className="iconbtn" onClick={() => setMenuOpen(false)} aria-label="Close menu">
+          <button type="button" className="iconbtn" onClick={() => setMenuOpen(false)} aria-label="Close menu">
             <X size={22} />
           </button>
         </div>
@@ -114,10 +120,11 @@ export function AppShell() {
         </nav>
 
         <button
+          type="button"
           className="btn btn--brand btn--block shell__post"
           onClick={() => {
             setMenuOpen(false);
-            navigate('/post/new');
+            navigate('/post/new', { state: { backgroundLocation: location } });
           }}
         >
           <Plus size={20} strokeWidth={2.5} />
@@ -159,7 +166,12 @@ export function AppShell() {
             </NavLink>
           ))}
 
-        <button className="shell__tab-fab" onClick={() => navigate('/post/new')} aria-label="Create post">
+        <button
+          type="button"
+          className="shell__tab-fab"
+          onClick={() => navigate('/post/new', { state: { backgroundLocation: location } })}
+          aria-label="Create post"
+        >
           <Plus size={26} strokeWidth={2.5} />
         </button>
 

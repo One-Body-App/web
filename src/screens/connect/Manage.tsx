@@ -26,6 +26,7 @@ function EventManageRow({ event }: { event: ConnectEvent }) {
         </div>
       </div>
       <button
+        type="button"
         className={`manage-toggle${live ? ' is-live' : ''}`}
         onClick={() => {
           const next = !live;
@@ -50,7 +51,7 @@ export function ConnectManage() {
 
   return (
     <div className="cdetail manage">
-      <button className="cdetail__back" onClick={() => navigate('/connect')}>
+      <button type="button" className="cdetail__back" onClick={() => navigate('/connect')}>
         <ArrowLeft size={18} /> Connect
       </button>
 

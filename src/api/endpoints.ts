@@ -1,4 +1,5 @@
 import { api } from './client';
+import { mapPrayer, type Prayer } from './prayer';
 import { mapVideo, type WatchVideo } from './watch';
 import type { ChatMessage, Conversation, OBNotification, OBPost, OBUser, ReactionKind } from '@/data/mock';
 
@@ -199,6 +200,8 @@ export type OBFeedItem =
   | { kind: 'article'; article: OBArticle }
   | { kind: 'video'; video: WatchVideo };
 
+export type OBSearchItem = OBFeedItem | { kind: 'prayer'; prayer: Prayer };
+
 interface ApiRssItem {
   _id?: string;
   id?: string;
@@ -247,6 +250,37 @@ function coerceSocialPost(entry: unknown): ApiSocialPost | null {
   if (e.post && typeof e.post === 'object') return coerceSocialPost(e.post);
   if (e.social && typeof e.social === 'object') return coerceSocialPost(e.social);
   return null;
+}
+
+function mapSearchItem(entry: unknown): OBSearchItem | null {
+  if (!entry || typeof entry !== 'object') return null;
+  const e = entry as Record<string, unknown>;
+  const subtype = String(e.postSubtype ?? e.contentType ?? e.type ?? '').toLowerCase();
+  const sourceIndex = String(e.sourceIndex ?? '').toLowerCase();
+
+  if (subtype === 'prayer' || sourceIndex.includes('prayer')) {
+    return { kind: 'prayer', prayer: mapPrayer(e) };
+  }
+
+  if (subtype === 'watch' || e.playBackId || e.playbackId || sourceIndex.includes('watch')) {
+    const video = mapVideo(e);
+    return video ? { kind: 'video', video } : null;
+  }
+
+  if (
+    subtype === 'rss' ||
+    subtype === 'blog' ||
+    subtype === 'news' ||
+    subtype === 'article' ||
+    sourceIndex.includes('blog') ||
+    sourceIndex.includes('news')
+  ) {
+    const article = mapArticle(e as ApiRssItem);
+    return article ? { kind: 'article', article } : null;
+  }
+
+  const social = coerceSocialPost(entry);
+  return social ? { kind: 'post', post: mapPost(social) } : null;
 }
 
 function unwrapList(payload: unknown): unknown[] {
@@ -451,23 +485,38 @@ export const endpoints = {
     return unwrapList(payload).map((u) => mapUser(u as ApiUser));
   },
 
+  async searchContent(text: string): Promise<OBSearchItem[]> {
+    const payload = await api.post('user/search', { text, type: 'posts', limit: 24 });
+    return unwrapList(payload)
+      .map(mapSearchItem)
+      .filter((item): item is OBSearchItem => item !== null);
+  },
+
   async getSuggestedUsers(): Promise<OBUser[]> {
     const payload = await api.get('user/get-users-to-subscribe/1', { itemsPerPage: 10 });
     return unwrapList(payload).map((u) => mapUser(u as ApiUser));
   },
 
   /** Trending interest tags — scored from feed telemetry (tags/interest?sort=trending). */
-  async getTrendingTags(): Promise<{ tag: string; posts: string; hot?: boolean }[]> {
+  async getTrendingTags(): Promise<{ tag: string; posts: string; popularity: number; hot?: boolean }[]> {
     const payload = await api.get('tags/interest', { sort: 'trending', limit: 24 });
     const fmt = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : `${n}`);
-    return unwrapList(payload)
-      .map((raw, i) => {
-        const r = raw as Record<string, unknown>;
-        const name = String(r.name ?? r.title ?? '').trim();
-        const popularity = typeof r.popularity === 'number' ? r.popularity : 0;
-        return { tag: name.replace(/\s+/g, ''), posts: popularity > 0 ? fmt(popularity) : '', hot: i < 3 };
-      })
-      .filter((t) => t.tag.length > 0);
+    const tags: { tag: string; posts: string; popularity: number; hot?: boolean }[] = [];
+    const items = unwrapList(payload);
+    for (let i = 0; i < items.length; i += 1) {
+      const r = items[i] as Record<string, unknown>;
+      const name = String(r.name ?? r.title ?? '').trim();
+      const tag = name.replace(/\s+/g, '');
+      if (!tag) continue;
+      const popularity = typeof r.popularity === 'number' ? r.popularity : 0;
+      tags.push({
+        tag,
+        posts: popularity > 0 ? fmt(popularity) : '',
+        popularity,
+        hot: i < 3,
+      });
+    }
+    return tags;
   },
 
   followUser: (id: string) => api.patch(`user/subscribe/${id}`),

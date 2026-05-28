@@ -1,12 +1,44 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { HandHeart, Play, PlayCircle, Sparkles, TrendingUp } from 'lucide-react';
+import { Flame, HandHeart, Play, PlayCircle, Sparkles, TrendingUp } from 'lucide-react';
 import { Avatar } from '@/components/Avatar';
-import { suggestedAccounts, trendingTopics, type OBUser } from '@/data/mock';
+import type { OBUser } from '@/data/mock';
 import { endpoints } from '@/api/endpoints';
 import { useApiQuery } from '@/api/useApi';
-import { MOCK_PRAYERS, prayerApi } from '@/api/prayer';
+import { prayerApi } from '@/api/prayer';
 import { watchApi } from '@/api/watch';
+
+const COPYRIGHT_YEAR = new Date().getFullYear();
+
+type RailTopic = {
+  tag: string;
+  posts: string;
+  hot?: boolean;
+  popularity?: number;
+};
+type TopicTier = 1 | 2 | 3 | 4;
+type TopicStyle = CSSProperties & {
+  '--topic-delay': string;
+};
+
+function parsePopularity(topic: RailTopic): number {
+  if (typeof topic.popularity === 'number' && Number.isFinite(topic.popularity)) {
+    return topic.popularity;
+  }
+  const posts = topic.posts.trim().toLowerCase();
+  const multiplier = posts.endsWith('k') ? 1000 : 1;
+  const value = Number(posts.replace(/k$/, ''));
+  return Number.isFinite(value) ? value * multiplier : 1;
+}
+
+function getTopicTier(popularity: number, min: number, max: number): TopicTier {
+  if (max <= min) return 1;
+  const normalized = (popularity - min) / (max - min);
+  if (normalized < 0.25) return 1;
+  if (normalized < 0.55) return 2;
+  if (normalized < 0.8) return 3;
+  return 4;
+}
 
 /** True at >=900px, where the rail is visible — gates its data fetches. */
 function useWideScreen(): boolean {
@@ -27,122 +59,135 @@ export function DiscoverRail() {
   const navigate = useNavigate();
   const wide = useWideScreen();
 
-  const { data: prayers } = useApiQuery(() => prayerApi.list(1), { fallback: MOCK_PRAYERS, enabled: wide });
+  const { data: prayers } = useApiQuery(() => prayerApi.list(1), { enabled: wide });
   const { data: videos } = useApiQuery(() => watchApi.feed(1), { enabled: wide });
-  const { data: people } = useApiQuery(() => endpoints.getSuggestedUsers(), {
-    fallback: suggestedAccounts,
-    enabled: wide,
-  });
-  const { data: trends } = useApiQuery(() => endpoints.getTrendingTags(), {
-    fallback: trendingTopics,
-    enabled: wide,
-  });
+  const { data: people } = useApiQuery(() => endpoints.getSuggestedUsers(), { enabled: wide });
+  const { data: trends } = useApiQuery(() => endpoints.getTrendingTags(), { enabled: wide });
 
-  if (!wide) return null;
-
-  // Fall back to sample content when a live list is empty so widgets stay populated.
-  const prayerList = (prayers && prayers.length ? prayers : MOCK_PRAYERS).slice(0, 3);
+  const prayerList = (prayers ?? []).slice(0, 3);
   const videoList = (videos ?? []).slice(0, 3);
   const suggested = (people ?? []).filter((u) => u.id && u.id !== 'unknown');
-  const peopleList = (suggested.length ? suggested : suggestedAccounts).slice(0, 3);
-  const trendList = (trends && trends.length ? trends : trendingTopics).slice(0, 5);
+  const peopleList = suggested.slice(0, 3);
+  const trendList = useMemo(() => (trends ?? []).slice(0, 8), [trends]);
+  const trendPills = useMemo(() => {
+    const popularities = trendList.map(parsePopularity);
+    const min = popularities.length ? Math.min(...popularities) : 1;
+    const max = popularities.length ? Math.max(...popularities) : 1;
+    return trendList.map((topic, index) => ({
+      topic,
+      tier: getTopicTier(popularities[index] ?? 1, min, max),
+    }));
+  }, [trendList]);
+
+  if (!wide) return null;
 
   return (
     <aside className="shell__rail">
       {/* Prayer Wall */}
-      <div className="rail-card card">
-        <h3 className="rail-card__title">
-          <HandHeart size={18} /> Prayer Wall
-        </h3>
-        <ul className="rail-list">
-          {prayerList.map((p) => (
-            <li key={p.id}>
-              <Link to="/prayer" className="rail-list__item">
-                <Avatar
-                  src={p.isPrivate ? '' : p.authorAvatar}
-                  alt={p.isPrivate ? 'Anonymous' : p.authorName}
-                  size={34}
-                />
-                <span className="rail-list__meta">
-                  <strong>{p.isPrivate ? 'Anonymous' : p.authorName}</strong>
-                  <small>{p.content}</small>
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-        <Link to="/prayer" className="rail-card__more">
-          Open Prayer Wall
-        </Link>
-      </div>
+      {prayerList.length ? (
+        <div className="rail-card card">
+          <h3 className="rail-card__title">
+            <HandHeart size={18} /> Prayer Wall
+          </h3>
+          <ul className="rail-list">
+            {prayerList.map((p) => (
+              <li key={p.id}>
+                <Link to="/prayer" className="rail-list__item">
+                  <Avatar
+                    src={p.isPrivate ? '' : p.authorAvatar}
+                    alt={p.isPrivate ? 'Anonymous' : p.authorName}
+                    size={34}
+                  />
+                  <span className="rail-list__meta">
+                    <strong>{p.isPrivate ? 'Anonymous' : p.authorName}</strong>
+                    <small>{p.content}</small>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <Link to="/prayer" className="rail-card__more">
+            Open Prayer Wall
+          </Link>
+        </div>
+      ) : null}
 
-      {/* Watch — only when there's live video content (no sample fallback). */}
+      {/* Watch */}
       {videoList.length ? (
-      <div className="rail-card card">
-        <h3 className="rail-card__title">
-          <PlayCircle size={18} /> Watch
-        </h3>
-        <ul className="rail-watch">
-          {videoList.map((v) => (
-            <li key={v.id}>
-              <Link to="/watch" className="rail-watch__item">
-                <span className="rail-watch__thumb">
-                  <img src={v.thumbnail} alt="" loading="lazy" />
-                  <Play size={16} fill="currentColor" />
-                </span>
-                <span className="rail-list__meta">
-                  <strong>{v.title || v.authorName}</strong>
-                  <small>{v.authorName}</small>
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
-        <Link to="/watch" className="rail-card__more">
-          See all videos
-        </Link>
-      </div>
+        <div className="rail-card card">
+          <h3 className="rail-card__title">
+            <PlayCircle size={18} /> Watch
+          </h3>
+          <ul className="rail-watch">
+            {videoList.map((v) => (
+              <li key={v.id}>
+                <Link to="/watch" className="rail-watch__item">
+                  <span className="rail-watch__thumb">
+                    <img src={v.thumbnail} alt="" loading="lazy" />
+                    <Play size={16} fill="currentColor" />
+                  </span>
+                  <span className="rail-list__meta">
+                    <strong>{v.title || v.authorName}</strong>
+                    <small>{v.authorName}</small>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <Link to="/watch" className="rail-card__more">
+            See all videos
+          </Link>
+        </div>
       ) : null}
 
       {/* Explore */}
-      <div className="rail-card card">
-        <h3 className="rail-card__title">
-          <TrendingUp size={18} /> Explore
-        </h3>
-        <ul className="rail-trend">
-          {trendList.map((t) => (
-            <li key={t.tag}>
-              <button className="rail-trend__item" onClick={() => navigate('/explore')}>
-                <span className="rail-trend__tag">#{t.tag}</span>
-                <span className="rail-trend__count">{t.posts ? `${t.posts} posts` : 'Trending'}</span>
+      {trendList.length ? (
+        <div className="rail-card card">
+          <h3 className="rail-card__title">
+            <TrendingUp size={18} /> Explore
+          </h3>
+          <div className="topic-bubbles rail-topic-bubbles">
+            {trendPills.map(({ topic, tier }, i) => (
+              <button
+                type="button"
+                key={topic.tag}
+                className={`topic-bubble topic-bubble--tier-${tier} rail-topic-bubble`}
+                {...{ style: { '--topic-delay': `${i * 35}ms` } as TopicStyle }}
+                onClick={() => navigate(`/explore?q=${encodeURIComponent(topic.tag)}`)}
+              >
+                {topic.hot ? <Flame size={11} /> : null}
+                <span className="topic-bubble__tag">#{topic.tag}</span>
+                {topic.posts ? <span className="topic-bubble__count">{topic.posts}</span> : null}
               </button>
-            </li>
-          ))}
-        </ul>
-        <Link to="/explore" className="rail-card__more">
-          Explore more
-        </Link>
-      </div>
+            ))}
+          </div>
+          <Link to="/explore" className="rail-card__more">
+            Explore more
+          </Link>
+        </div>
+      ) : null}
 
       {/* Who to follow */}
-      <div className="rail-card card">
-        <h3 className="rail-card__title">
-          <Sparkles size={18} /> Who to follow
-        </h3>
-        <ul className="rail-people">
-          {peopleList.map((u) => (
-            <FollowRow key={u.id} user={u} />
-          ))}
-        </ul>
-        <Link to="/explore" className="rail-card__more">
-          Show more
-        </Link>
-      </div>
+      {peopleList.length ? (
+        <div className="rail-card card">
+          <h3 className="rail-card__title">
+            <Sparkles size={18} /> Who to follow
+          </h3>
+          <ul className="rail-people">
+            {peopleList.map((u) => (
+              <FollowRow key={u.id} user={u} />
+            ))}
+          </ul>
+          <Link to="/explore" className="rail-card__more">
+            Show more
+          </Link>
+        </div>
+      ) : null}
 
       <p className="rail-foot">
         One Body · Built with love for the global church.
         <br />
-        <span className="muted">© {new Date().getFullYear()} One Body</span>
+        <span className="muted">© {COPYRIGHT_YEAR} One Body</span>
       </p>
     </aside>
   );
@@ -166,6 +211,7 @@ function FollowRow({ user }: { user: OBUser }) {
         <small>@{user.username}</small>
       </span>
       <button
+        type="button"
         className={`btn btn--sm ${following ? 'btn--outline' : 'btn--brand'}`}
         onClick={toggle}
       >

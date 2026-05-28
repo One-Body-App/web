@@ -26,7 +26,7 @@ export function Logo({ size = 32, tone = 'brand', withWordmark = false, classNam
       viewBox="0 0 31 28"
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      aria-hidden={withWordmark ? true : undefined}
+      aria-hidden={withWordmark ? 'true' : undefined}
       role={withWordmark ? undefined : 'img'}
       aria-label={withWordmark ? undefined : 'One Body'}
     >

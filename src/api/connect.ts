@@ -148,6 +148,7 @@ function compensationLabel(amount?: number | null, freq?: string): string | unde
 type Raw = Record<string, unknown>;
 const str = (v: unknown): string | undefined => (typeof v === 'string' && v.trim() ? v : undefined);
 const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+const MAPBOX_PUBLIC_TOKEN = (import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN ?? '').trim();
 
 /** Extracts { lat, lng } from a GeoJSON Point ([lon,lat]), a [lon,lat] tuple, or {lat,lon|lng}. */
 function coords(...sources: unknown[]): { lat?: number; lng?: number } {
@@ -280,10 +281,43 @@ function mapApplicant(a: Raw): JobApplicant {
   };
 }
 
-/** Geocode an address to [lng, lat] via OSM Nominatim (free, no key, CORS-enabled). */
+async function geocodeAddressWithMapbox(query: string): Promise<[number, number] | undefined> {
+  if (!MAPBOX_PUBLIC_TOKEN) return undefined;
+  try {
+    const params = new URLSearchParams({
+      q: query,
+      limit: '1',
+      access_token: MAPBOX_PUBLIC_TOKEN,
+    });
+    const res = await fetch(`https://api.mapbox.com/search/geocode/v6/forward?${params.toString()}`, {
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) return undefined;
+    const data = (await res.json()) as {
+      features?: Array<{ geometry?: { coordinates?: number[] } }>;
+    };
+    const coordinates = data.features?.[0]?.geometry?.coordinates;
+    if (
+      coordinates &&
+      coordinates.length >= 2 &&
+      Number.isFinite(coordinates[0]) &&
+      Number.isFinite(coordinates[1])
+    ) {
+      return [coordinates[0], coordinates[1]];
+    }
+  } catch {
+    /* fall through to Nominatim */
+  }
+  return undefined;
+}
+
+/** Geocode an address to [lng, lat] via Mapbox, then OSM Nominatim as fallback. */
 export async function geocodeAddress(address: string): Promise<[number, number] | undefined> {
   const q = address.trim();
   if (!q) return undefined;
+  const mapboxCoordinate = await geocodeAddressWithMapbox(q);
+  if (mapboxCoordinate) return mapboxCoordinate;
+
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`,
@@ -291,7 +325,9 @@ export async function geocodeAddress(address: string): Promise<[number, number] 
     );
     const data = (await res.json()) as Array<{ lat?: string; lon?: string }>;
     const hit = Array.isArray(data) ? data[0] : undefined;
-    if (hit?.lat && hit?.lon) return [Number(hit.lon), Number(hit.lat)];
+    const lng = Number(hit?.lon);
+    const lat = Number(hit?.lat);
+    if (Number.isFinite(lng) && Number.isFinite(lat)) return [lng, lat];
   } catch {
     /* ignore — caller handles missing coordinate */
   }

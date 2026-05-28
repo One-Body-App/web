@@ -52,7 +52,14 @@ const GROUPS: { title: string; rows: Row[] }[] = [
 
 function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
   return (
-    <button className={`toggle${on ? ' is-on' : ''}`} onClick={onClick} role="switch" aria-checked={on}>
+    <button
+      type="button"
+      className={`toggle${on ? ' is-on' : ''}`}
+      onClick={onClick}
+      role="switch"
+      aria-checked={on ? 'true' : 'false'}
+      aria-label={on ? 'Disable setting' : 'Enable setting'}
+    >
       <span className="toggle__knob" />
     </button>
   );
@@ -99,7 +106,11 @@ export function Settings() {
         <section key={g.title} className="settings__group card">
           <h2 className="settings__group-title">{g.title}</h2>
           {g.rows.map((r) => (
-            <button key={r.label} className={`settings__row settings__row--btn${r.danger ? ' is-danger' : ''}`}>
+            <button
+              type="button"
+              key={r.label}
+              className={`settings__row settings__row--btn${r.danger ? ' is-danger' : ''}`}
+            >
               <span className="settings__row-left">
                 <span className="settings__row-icon">
                   <r.Icon size={19} />
@@ -115,7 +126,7 @@ export function Settings() {
         </section>
       ))}
 
-      <button className="btn btn--outline btn--block settings__signout" onClick={handleSignOut}>
+      <button type="button" className="btn btn--outline btn--block settings__signout" onClick={handleSignOut}>
         <LogOut size={18} /> Sign out
       </button>
       <p className="settings__version">One Body Web · v0.1.0</p>

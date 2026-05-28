@@ -148,14 +148,27 @@
   position: fixed;
   inset: 0;
   z-index: 100;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
   display: grid;
   place-items: center;
   padding: var(--sp-16);
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+.prayer-modal::backdrop {
+  background: transparent;
 }
 .prayer-modal__backdrop {
   position: absolute;
   inset: 0;
+  padding: 0;
+  border: 0;
   background: rgba(3, 47, 60, 0.45);
+  -webkit-backdrop-filter: blur(2px);
   backdrop-filter: blur(2px);
 }
 .prayer-modal__panel {

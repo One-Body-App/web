@@ -50,10 +50,10 @@ export function CreateEvent() {
       endTime: endTime || undefined,
       ticketType,
       organizerName: user?.fullName,
-      tags: tags
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean),
+      tags: tags.split(',').flatMap((t) => {
+        const trimmed = t.trim();
+        return trimmed ? [trimmed] : [];
+      }),
     } as EventDraft & { organizerName?: string };
     try {
       await connectApi.publishEvent(draft);
@@ -71,7 +71,7 @@ export function CreateEvent() {
 
   return (
     <div className="cdetail manage">
-      <button className="cdetail__back" onClick={() => navigate('/connect/manage')}>
+      <button type="button" className="cdetail__back" onClick={() => navigate('/connect/manage')}>
         <ArrowLeft size={18} /> Manage
       </button>
 

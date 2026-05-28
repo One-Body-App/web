@@ -62,9 +62,9 @@ export function PrayerWall() {
     <div>
       <PageHeader
         title="Prayer Wall"
-        subtitle="Bring your requests to the Body — and pray for one another."
+        subtitle="Bring your requests to the Body, and pray for one another."
         action={
-          <button className="btn btn--brand" onClick={() => setComposeOpen(true)}>
+          <button type="button" className="btn btn--brand" onClick={() => setComposeOpen(true)}>
             <Plus size={18} strokeWidth={2.5} />
             Share
           </button>
@@ -184,6 +184,7 @@ export function PrayerCard({
           const active = myReaction === r.kind;
           return (
             <button
+              type="button"
               key={r.kind}
               className={`prayer__react${active ? ' is-active' : ''}`}
               style={active ? { color: r.color } : undefined}
@@ -199,7 +200,11 @@ export function PrayerCard({
           {total > 0 ? `${total} praying` : 'Be the first to pray'}
         </span>
         {isMine && !prayer.answered ? (
-          <button className="prayer__answer-btn" onClick={() => setAnswerOpen((o) => !o)}>
+          <button
+            type="button"
+            className="prayer__answer-btn"
+            onClick={() => setAnswerOpen((o) => !o)}
+          >
             <Check size={15} /> Mark answered
           </button>
         ) : null}
@@ -211,14 +216,15 @@ export function PrayerCard({
             value={testimony}
             onChange={(e) => setTestimony(e.target.value)}
             placeholder="Share how God answered… (optional)"
+            aria-label="Answered prayer testimony"
             maxLength={150}
             rows={3}
           />
           <div className="prayer__answer-actions">
-            <button className="btn" onClick={() => setAnswerOpen(false)}>
+            <button type="button" className="btn" onClick={() => setAnswerOpen(false)}>
               Cancel
             </button>
-            <button className="btn btn--brand" onClick={confirmAnswered}>
+            <button type="button" className="btn btn--brand" onClick={confirmAnswered}>
               Save testimony
             </button>
           </div>
@@ -244,8 +250,13 @@ function PrayerComposer({ onClose, onPosted }: { onClose: () => void; onPosted: 
   }
 
   return (
-    <div className="prayer-modal" role="dialog" aria-modal="true">
-      <div className="prayer-modal__backdrop" onClick={onClose} />
+    <dialog className="prayer-modal" aria-label="Share a prayer" open>
+      <button
+        type="button"
+        className="prayer-modal__backdrop"
+        onClick={onClose}
+        aria-label="Close prayer composer"
+      />
       <form className="prayer-modal__panel card" onSubmit={submit}>
         <header className="prayer-modal__head">
           <h2>Share a prayer</h2>
@@ -254,10 +265,10 @@ function PrayerComposer({ onClose, onPosted }: { onClose: () => void; onPosted: 
           </button>
         </header>
         <textarea
-          autoFocus
           value={content}
           onChange={(e) => setContent(e.target.value)}
           placeholder="What can the Body pray with you about?"
+          aria-label="Prayer request"
           rows={5}
           maxLength={1000}
         />
@@ -274,7 +285,12 @@ function PrayerComposer({ onClose, onPosted }: { onClose: () => void; onPosted: 
           ))}
         </div>
         <label className="prayer-modal__private">
-          <input type="checkbox" checked={isPrivate} onChange={(e) => setIsPrivate(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={isPrivate}
+            onChange={(e) => setIsPrivate(e.target.checked)}
+            aria-label="Post anonymously"
+          />
           Post anonymously
         </label>
         <div className="prayer-modal__actions">
@@ -286,7 +302,7 @@ function PrayerComposer({ onClose, onPosted }: { onClose: () => void; onPosted: 
           </button>
         </div>
       </form>
-    </div>
+    </dialog>
   );
 }
 

@@ -28,7 +28,7 @@ export function EventDetail() {
 
   return (
     <div className="cdetail">
-      <button className="cdetail__back" onClick={() => navigate('/connect')}>
+      <button type="button" className="cdetail__back" onClick={() => navigate('/connect')}>
         <ArrowLeft size={18} /> Connect
       </button>
 
@@ -101,6 +101,7 @@ export function EventDetail() {
           </a>
         ) : (
           <button
+            type="button"
             className={`btn btn--lg btn--block ${going ? 'btn--outline' : 'btn--brand'}`}
             onClick={() => {
               setGoing((g) => !g);

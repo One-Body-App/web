@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation, type Location } from 'react-router-dom';
 import { clerkEnabled, useAuth } from './auth/context';
 import { RequireAuth } from './auth/RequireAuth';
 import { AppShell } from './layout/AppShell';
@@ -40,63 +40,90 @@ function Root() {
   return <Intro />;
 }
 
+/**
+ * React Router's modal pattern. The "Post" button stamps the current location
+ * onto `state.backgroundLocation` before navigating to `/post/new`. The main
+ * `<Routes>` reads that background so the feed (or wherever the user came
+ * from) stays mounted underneath, and a second `<Routes>` paints the modal
+ * composer on top. For deep links straight to `/post/new`, we synthesize a
+ * `/home` background so the composer never floats over a blank void.
+ */
+function isModalPath(pathname: string): boolean {
+  return pathname === '/post/new';
+}
+
 export function App() {
+  const location = useLocation();
+  const state = (location.state as { backgroundLocation?: Location } | null) ?? null;
+  const isModal = isModalPath(location.pathname);
+  // When deep-linking straight to a modal route there's no backgroundLocation;
+  // fall back to /home so the modal always has something to sit on top of.
+  const backgroundLocation =
+    state?.backgroundLocation ?? (isModal ? { ...location, pathname: '/home' } : undefined);
+
   return (
-    <Routes>
-      <Route path="/" element={<Root />} />
-      <Route path="/sign-in/*" element={<SignInScreen />} />
-      <Route path="/sign-up/*" element={<SignUpScreen />} />
-      {clerkEnabled ? <Route path="/sso-callback" element={<SsoCallback />} /> : null}
+    <>
+      <Routes location={backgroundLocation ?? location}>
+        <Route path="/" element={<Root />} />
+        <Route path="/sign-in/*" element={<SignInScreen />} />
+        <Route path="/sign-up/*" element={<SignUpScreen />} />
+        {clerkEnabled ? <Route path="/sso-callback" element={<SsoCallback />} /> : null}
 
-      {/* Authenticated app shell */}
-      <Route
-        element={
-          <RequireAuth>
-            <AppShell />
-          </RequireAuth>
-        }
-      >
-        <Route path="/home" element={<Home />} />
-        <Route path="/explore" element={<Explore />} />
-        <Route path="/prayer" element={<PrayerWall />} />
+        {/* Authenticated app shell */}
         <Route
-          path="/watch"
           element={
-            <Suspense fallback={<Splash label="Watch" />}>
-              <Watch />
-            </Suspense>
+            <RequireAuth>
+              <AppShell />
+            </RequireAuth>
           }
-        />
-        <Route path="/connect" element={<Connect />} />
-        <Route path="/connect/manage" element={<ConnectManage />} />
-        <Route path="/connect/manage/events/new" element={<CreateEvent />} />
-        <Route path="/connect/manage/jobs/new" element={<PostJob />} />
-        <Route path="/connect/events/:id" element={<EventDetail />} />
-        <Route path="/connect/serve/:id" element={<JobDetail />} />
-        <Route path="/connect/serve/:id/apply" element={<JobApply />} />
-        <Route path="/connect/serve/:id/applications" element={<JobApplications />} />
-        <Route path="/messages" element={<Messages />} />
-        <Route path="/messages/:id" element={<Conversation />} />
-        <Route path="/notifications" element={<Notifications />} />
-        <Route path="/saved" element={<Saved />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/settings" element={<Settings />} />
-        {/* X-style post / comment detail (focused item + flat replies). */}
-        <Route path="/post/:type/:id" element={<PostDetail />} />
-        <Route path="/post/:type/:id/c/:commentId" element={<PostDetail />} />
-      </Route>
+        >
+          <Route path="/home" element={<Home />} />
+          <Route path="/explore" element={<Explore />} />
+          <Route path="/prayer" element={<PrayerWall />} />
+          <Route
+            path="/watch"
+            element={
+              <Suspense fallback={<Splash label="Watch" />}>
+                <Watch />
+              </Suspense>
+            }
+          />
+          <Route path="/connect" element={<Connect />} />
+          <Route path="/connect/manage" element={<ConnectManage />} />
+          <Route path="/connect/manage/events/new" element={<CreateEvent />} />
+          <Route path="/connect/manage/jobs/new" element={<PostJob />} />
+          <Route path="/connect/events/:id" element={<EventDetail />} />
+          <Route path="/connect/serve/:id" element={<JobDetail />} />
+          <Route path="/connect/serve/:id/apply" element={<JobApply />} />
+          <Route path="/connect/serve/:id/applications" element={<JobApplications />} />
+          <Route path="/messages" element={<Messages />} />
+          <Route path="/messages/:id" element={<Conversation />} />
+          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/saved" element={<Saved />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="/settings" element={<Settings />} />
+          {/* X-style post / comment detail (focused item + flat replies). */}
+          <Route path="/post/:type/:id" element={<PostDetail />} />
+          <Route path="/post/:type/:id/c/:commentId" element={<PostDetail />} />
+        </Route>
 
-      {/* Full-screen composer (still gated) */}
-      <Route
-        path="/post/new"
-        element={
-          <RequireAuth>
-            <CreatePost />
-          </RequireAuth>
-        }
-      />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
 
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+      {/* Modal layer — read by the real location, painted over whatever the
+          main Routes rendered above. Composer dismisses via navigate(-1). */}
+      {isModal ? (
+        <Routes>
+          <Route
+            path="/post/new"
+            element={
+              <RequireAuth>
+                <CreatePost />
+              </RequireAuth>
+            }
+          />
+        </Routes>
+      ) : null}
+    </>
   );
 }
