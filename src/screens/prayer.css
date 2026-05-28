@@ -54,6 +54,7 @@
   line-height: 1.55;
   color: var(--ink);
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 .prayer__answered {
   margin-top: var(--sp-12);

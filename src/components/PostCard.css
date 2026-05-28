@@ -45,6 +45,7 @@
   font-size: var(--fs-3);
   line-height: 1.55;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
 .post__verse {
@@ -73,6 +74,7 @@
   line-height: 1.5;
   color: var(--brand);
   font-style: italic;
+  overflow-wrap: anywhere;
 }
 .post__verse cite {
   display: block;

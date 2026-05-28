@@ -167,6 +167,7 @@
   color: var(--ink);
   white-space: pre-wrap;
   word-break: break-word;
+  overflow-wrap: anywhere;
 }
 .cmt__actions {
   display: flex;
