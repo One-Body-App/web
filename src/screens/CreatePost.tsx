@@ -1,11 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   BookOpen,
   ChevronDown,
+  Eye,
+  EyeOff,
+  Film,
   Globe,
+  Heart,
   Image as ImageIcon,
   MapPin,
+  MessageCircle,
+  Play,
   Repeat2,
   Smile,
   Users,
@@ -14,6 +21,7 @@ import {
 import { Avatar } from '@/components/Avatar';
 import { useAuth } from '@/auth/context';
 import { endpoints, type SocialContentType } from '@/api/endpoints';
+import { ComposerMediaTray, type ComposerMediaItem } from '@/components/ComposerMediaTray';
 import './CreatePost.css';
 
 // Mirrors MAX_CONTENT_LENGHT in the mobile NewPost screen — keep parity so the
@@ -58,15 +66,20 @@ export function CreatePost() {
   const [audience, setAudience] = useState<AudienceKey>('everyone');
   const [audienceOpen, setAudienceOpen] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [media, setMedia] = useState<ComposerMediaItem[]>([]);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const audienceRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
+  const videoInputRef = useRef<HTMLInputElement | null>(null);
 
   // When quoting, an empty body is still a valid (plain) repost.
   const trimmed = text.trim();
   const overLimit = text.length > MAX_LEN;
-  const canPost = !publishing && !overLimit && (Boolean(quote) || trimmed.length > 0);
-  const dirty = trimmed.length > 0;
+  const hasMedia = media.length > 0;
+  const canPost = !publishing && !overLimit && (Boolean(quote) || hasMedia || trimmed.length > 0);
+  const dirty = trimmed.length > 0 || hasMedia;
 
   const close = useCallback(() => {
     if (dirty && !window.confirm('Discard this post?')) return;
@@ -83,6 +96,11 @@ export function CreatePost() {
     try {
       if (quote) {
         await endpoints.repost(quote.sourceId, quote.sourceType, trimmed || undefined);
+      } else if (hasMedia) {
+        await endpoints.createPostWithMedia({
+          content: trimmed,
+          images: media.filter((item) => item.kind === 'photo').map((item) => item.file),
+        });
       } else {
         await endpoints.createPost(trimmed);
       }
@@ -90,7 +108,7 @@ export function CreatePost() {
       // Best-effort in dev (offline/CORS); still return to the feed.
     }
     navigate('/home', { replace: true });
-  }, [canPost, navigate, quote, trimmed]);
+  }, [canPost, hasMedia, media, navigate, quote, trimmed]);
 
   // Esc to close, Cmd/Ctrl+Enter to publish — standard composer ergonomics.
   useEffect(() => {
@@ -188,6 +206,15 @@ export function CreatePost() {
           </div>
 
           <div className="compose__post-wrap">
+            <button
+              type="button"
+              className={`compose__preview-toggle${previewOpen ? ' is-on' : ''}`}
+              onClick={() => setPreviewOpen((value) => !value)}
+              aria-label={previewOpen ? 'Hide preview' : 'Show preview'}
+              aria-pressed={previewOpen}
+            >
+              {previewOpen ? <EyeOff size={16} strokeWidth={2.25} /> : <Eye size={16} strokeWidth={2.25} />}
+            </button>
             <CounterRing
               tone={counterTone}
               circumference={ringC}
@@ -286,11 +313,93 @@ export function CreatePost() {
           ) : null}
         </div>
 
+        <ComposerMediaTray items={media} onChange={setMedia} maxItems={10} />
+
+        <AnimatePresence initial={false}>
+          {previewOpen ? (
+            <ComposePreview
+              key="preview"
+              text={text}
+              media={media}
+              authorName={user?.fullName ?? 'You'}
+              authorAvatar={user?.imageUrl}
+              audienceLabel={activeAudience.label}
+            />
+          ) : null}
+        </AnimatePresence>
+
+        <input
+          ref={photoInputRef}
+          type="file"
+          multiple
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={(e) => {
+            const files = Array.from(e.target.files ?? []);
+            if (files.length === 0) return;
+            setMedia((current) => {
+              const next = [...current];
+              for (const file of files) {
+                if (next.length >= 10) break;
+                next.push({
+                  id: `mi_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+                  kind: 'photo',
+                  file,
+                  previewUrl: URL.createObjectURL(file),
+                });
+              }
+              return next;
+            });
+            // Reset so the same files can be picked again if needed.
+            if (photoInputRef.current) photoInputRef.current.value = '';
+          }}
+        />
+        <input
+          ref={videoInputRef}
+          type="file"
+          accept="video/*"
+          style={{ display: 'none' }}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            setMedia((current) => {
+              const next = [...current];
+              // For now: only one video per post. Replace any existing video.
+              const withoutVideo = next.filter((item) => item.kind !== 'video');
+              if (withoutVideo.length >= 10) {
+                return current;
+              }
+              withoutVideo.push({
+                id: `mi_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
+                kind: 'video',
+                file,
+                previewUrl: URL.createObjectURL(file),
+              });
+              return withoutVideo;
+            });
+            if (videoInputRef.current) videoInputRef.current.value = '';
+          }}
+        />
+
         <footer className="compose__toolbar">
           <div className="compose__tools">
-            <button type="button" className="compose__tool" aria-label="Add photo">
+            <button
+              type="button"
+              className="compose__tool"
+              aria-label="Add photo"
+              onClick={() => photoInputRef.current?.click()}
+            >
               <ImageIcon size={20} strokeWidth={2} />
               <span>Photo</span>
+            </button>
+            <button
+              type="button"
+              className="compose__tool"
+              aria-label="Add video"
+              onClick={() => videoInputRef.current?.click()}
+            >
+              <Film size={20} strokeWidth={2} />
+              <span>Video</span>
             </button>
             <button type="button" className="compose__tool" aria-label="Add verse">
               <BookOpen size={20} strokeWidth={2} />
@@ -346,5 +455,102 @@ function CounterRing({ tone, circumference, offset, radius, shown }: CounterRing
         transform="rotate(-90 11 11)"
       />
     </svg>
+  );
+}
+
+interface ComposePreviewProps {
+  text: string;
+  media: ComposerMediaItem[];
+  authorName: string;
+  authorAvatar?: string;
+  audienceLabel: string;
+}
+
+/**
+ * Live "how this looks in feed" preview. Renders inline below the editor so the
+ * author can sanity-check formatting without leaving the composer.
+ */
+function ComposePreview({
+  text,
+  media,
+  authorName,
+  authorAvatar,
+  audienceLabel,
+}: ComposePreviewProps) {
+  const heroVideo = media.find((item) => item.kind === 'video');
+  const hero = heroVideo ?? media[0];
+  const extras = media.filter((item) => item.id !== hero?.id);
+
+  return (
+    <motion.aside
+      className="compose-preview"
+      initial={{ opacity: 0, y: 8, height: 0 }}
+      animate={{ opacity: 1, y: 0, height: 'auto' }}
+      exit={{ opacity: 0, y: 8, height: 0 }}
+      transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+      aria-label="Post preview"
+    >
+      <header className="compose-preview__head">
+        <span className="compose-preview__eyebrow">Preview</span>
+        <span className="compose-preview__hint">How this looks in the feed</span>
+      </header>
+
+      <article className="compose-preview__card">
+        <header className="compose-preview__card-head">
+          {authorAvatar ? (
+            <Avatar src={authorAvatar} alt={authorName} size={36} />
+          ) : (
+            <div className="compose-preview__avatar-fallback" aria-hidden />
+          )}
+          <div className="compose-preview__author">
+            <strong>{authorName}</strong>
+            <span>{audienceLabel}</span>
+          </div>
+        </header>
+
+        {text ? <p className="compose-preview__body">{text}</p> : null}
+
+        {hero ? (
+          <div className={`compose-preview__hero${hero.kind === 'video' ? ' is-video' : ''}`}>
+            {hero.kind === 'video' ? (
+              <>
+                <video src={hero.previewUrl} muted playsInline />
+                <span className="compose-preview__play" aria-hidden>
+                  <Play size={26} fill="currentColor" />
+                </span>
+              </>
+            ) : (
+              <img src={hero.previewUrl} alt="" />
+            )}
+          </div>
+        ) : null}
+
+        {extras.length > 0 ? (
+          <div className="compose-preview__strip">
+            {extras.slice(0, 4).map((item) => (
+              <div key={item.id} className="compose-preview__strip-item">
+                {item.kind === 'video' ? (
+                  <video src={item.previewUrl} muted playsInline />
+                ) : (
+                  <img src={item.previewUrl} alt="" />
+                )}
+              </div>
+            ))}
+            {extras.length > 4 ? (
+              <div className="compose-preview__strip-item is-more">+{extras.length - 4}</div>
+            ) : null}
+          </div>
+        ) : null}
+
+        <footer className="compose-preview__stats">
+          <span>
+            <Heart size={15} /> 0
+          </span>
+          <span>
+            <MessageCircle size={15} /> 0
+          </span>
+        </footer>
+      </article>
+    </motion.aside>
   );
 }

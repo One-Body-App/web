@@ -43,6 +43,67 @@ npm run build    # type-check (tsc -b) + production bundle
 npm run preview  # serve the production build
 ```
 
+## Cloudflare Turnstile (CAPTCHA)
+
+Turnstile is split across two surfaces:
+
+### Auth screens — handled by Clerk
+
+`SignIn` and `SignUp` already mount Clerk's CAPTCHA at `<div id="clerk-captcha" />`.
+To use Turnstile there:
+
+1. In Cloudflare Dashboard → **Turnstile** → add a site → grab the **Site Key**
+   and **Secret Key**.
+2. In Clerk Dashboard → your app → **User & Authentication → Attack Protection
+   → Bot sign-up protection** → enable **Smart CAPTCHA** → choose
+   **Cloudflare Turnstile (Custom)** → paste both keys.
+
+That's it. No code or env changes are needed in `web/`; Clerk validates the
+token server-side against Cloudflare before completing the session.
+
+### Non-auth surfaces — `<TurnstileGate>`
+
+For surfaces NOT mediated by Clerk (e.g. composer submit, prayer wall, contact
+forms), use the standalone component:
+
+```tsx
+import { TurnstileGate, verifyTurnstileTokenWithApi } from '@/components/TurnstileGate';
+
+function MyForm() {
+  const [verified, setVerified] = useState(false);
+
+  return (
+    <form onSubmit={...}>
+      ...
+      <TurnstileGate
+        action="prayer-wall-submit"
+        onVerify={async (token) => {
+          setVerified(await verifyTurnstileTokenWithApi(token));
+        }}
+      />
+      <button type="submit" disabled={!verified}>Submit</button>
+    </form>
+  );
+}
+```
+
+**Keys:**
+
+- **Site Key (public)** → `web/.env.local` as `VITE_CLOUDFLARE_TURNSTILE_SITE_KEY`.
+  Dev test keys: `1x00000000000000000000AA` (always passes),
+  `2x00000000000000000000AB` (always blocks), `3x00000000000000000000FF`
+  (forces interaction).
+- **Secret Key (private)** → NestJS API env as `CLOUDFLARE_TURNSTILE_SECRET`.
+  Dev test secret: `1x0000000000000000000000000000000AA` (always passes).
+
+The API should expose a `POST /auth/verify-turnstile` endpoint that accepts
+`{ token }`, forwards it to
+`https://challenges.cloudflare.com/turnstile/v0/siteverify` with the secret,
+and returns `{ success: true }` only on a `success: true` Cloudflare response.
+
+If `VITE_CLOUDFLARE_TURNSTILE_SITE_KEY` is unset the gate renders a polite
+"Preview mode" hint so it's obvious in dev that no real challenge is running.
+
 ## Architecture
 
 ```

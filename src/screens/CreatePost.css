@@ -554,3 +554,184 @@
     box-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
   }
 }
+
+/* ===================== Preview toggle + preview pane ===================== */
+.compose__preview-toggle {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+  color: var(--ink-3);
+  cursor: pointer;
+  transition:
+    background 0.18s var(--ease-out),
+    color 0.18s var(--ease-out),
+    border-color 0.18s var(--ease-out),
+    transform 0.18s var(--ease-out);
+  margin-right: 4px;
+}
+.compose__preview-toggle:hover {
+  background: var(--sapphire-900);
+  color: var(--sapphire);
+  border-color: var(--sapphire-700);
+}
+.compose__preview-toggle.is-on {
+  background: var(--grad-aqua);
+  color: #ffffff;
+  border-color: transparent;
+}
+
+.compose-preview {
+  overflow: hidden;
+  margin-top: var(--sp-16);
+  padding: var(--sp-16) var(--sp-16) var(--sp-12);
+  border-radius: var(--r-card);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-10);
+}
+.compose-preview__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.compose-preview__eyebrow {
+  font-family: var(--font-body);
+  font-size: var(--fs-1);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--sapphire);
+  font-weight: 700;
+}
+.compose-preview__hint {
+  font-size: var(--fs-1);
+  color: var(--muted);
+}
+
+.compose-preview__card {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: var(--r-base);
+  padding: var(--sp-14);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-10);
+}
+.compose-preview__card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+}
+.compose-preview__avatar-fallback {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+}
+.compose-preview__author {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+.compose-preview__author strong {
+  font-family: var(--font-display);
+  color: var(--brand);
+  font-size: var(--fs-3);
+}
+.compose-preview__author span {
+  font-size: var(--fs-1);
+  color: var(--muted);
+}
+.compose-preview__body {
+  margin: 0;
+  font-size: var(--fs-3);
+  line-height: 1.55;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.compose-preview__hero {
+  position: relative;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: var(--surface-3);
+  aspect-ratio: 4 / 3;
+}
+.compose-preview__hero.is-video {
+  aspect-ratio: 16 / 9;
+}
+.compose-preview__hero img,
+.compose-preview__hero video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.compose-preview__play {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  background: rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.55);
+}
+.compose-preview__strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-6);
+}
+.compose-preview__strip-item {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--r-xs);
+  overflow: hidden;
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+}
+.compose-preview__strip-item img,
+.compose-preview__strip-item video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.compose-preview__strip-item.is-more {
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--muted);
+}
+.compose-preview__stats {
+  display: flex;
+  gap: var(--sp-14);
+  padding-top: var(--sp-6);
+  color: var(--muted);
+  font-size: var(--fs-2);
+}
+.compose-preview__stats span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .compose__preview-toggle {
+    background: var(--surface-2);
+    border-color: var(--line);
+  }
+  .compose-preview {
+    background: var(--surface-2);
+  }
+  .compose-preview__card {
+    background: var(--surface);
+  }
+}

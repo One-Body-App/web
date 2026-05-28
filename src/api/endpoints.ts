@@ -384,6 +384,32 @@ export const endpoints = {
   createPost: (content: string, extra?: { gif?: unknown; location?: unknown }) =>
     api.post('social/post', { content, ...extra }),
 
+  /**
+   * Create a post with attached photos. Uses multipart/form-data so the API's
+   * existing image upload pipeline kicks in. Mirrors how the mobile composer
+   * submits.
+   */
+  createPostWithMedia: (params: {
+    content: string;
+    images: File[];
+    mentionedUserIds?: string[];
+    gif?: unknown;
+    location?: { coordinates: number[]; name: string };
+  }) => {
+    const form = new FormData();
+    form.append('content', params.content);
+    if (params.mentionedUserIds) {
+      params.mentionedUserIds.forEach((id) => form.append('mentionedUserIds[]', id));
+    }
+    if (params.gif) form.append('gif', JSON.stringify(params.gif));
+    if (params.location) form.append('location', JSON.stringify(params.location));
+    params.images.forEach((file) => form.append('images', file, file.name));
+    return api.post<{ postId?: string; _id?: string; id?: string; pendingReview?: boolean }>(
+      'social/post',
+      form
+    );
+  },
+
   /* --- Comments (GET list / POST add / reply) --- */
   async getComments(
     postId: string,

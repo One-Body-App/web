@@ -36,8 +36,10 @@ function buildUrl(path: string, query?: Query): string {
 export async function apiFetch<T = unknown>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, query, auth = true, signal } = options;
 
+  const isFormData = typeof FormData !== 'undefined' && body instanceof FormData;
   const headers: Record<string, string> = { Accept: 'application/json' };
-  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  // FormData: let the browser set the multipart Content-Type with its boundary.
+  if (body !== undefined && !isFormData) headers['Content-Type'] = 'application/json';
 
   if (auth) {
     const token = await getAuthToken();
@@ -49,7 +51,7 @@ export async function apiFetch<T = unknown>(path: string, options: RequestOption
     res = await fetch(buildUrl(path, query), {
       method,
       headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body === undefined ? undefined : isFormData ? (body as FormData) : JSON.stringify(body),
       signal,
     });
   } catch (err) {
