@@ -65,3 +65,12 @@ __pycache__/
 node_modules
 package-lock.json
 .DS_Store
+
+# Agents
+AGENTS.md 
+agents.md 
+CLAUDE.md 
+claude.md
+MEMORY.md 
+memory.md
+README.md
