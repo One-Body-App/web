@@ -134,6 +134,14 @@
   border-top-color: #fff;
   animation: splash-spin 0.7s linear infinite;
 }
+.auth-turnstile {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--sp-4);
+}
+.auth-turnstile .turnstile {
+  width: 100%;
+}
 
 /* Social */
 .auth-social {

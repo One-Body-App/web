@@ -13,6 +13,8 @@ import {
   TextField,
 } from '@/components/auth/AuthControls';
 import { AFTER_AUTH_URL, SSO_CALLBACK_URL, clerkErrorMessage } from '@/auth/clerkErrors';
+import { TurnstileGate } from '@/components/TurnstileGate';
+import { useTurnstileVerification } from '@/auth/useTurnstileVerification';
 
 type Mode = 'signin' | 'reset-request' | 'reset-verify';
 
@@ -27,6 +29,7 @@ export function ClerkSignIn() {
   const [newPassword, setNewPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const turnstile = useTurnstileVerification(setError);
 
   async function social(strategy: 'oauth_google' | 'oauth_apple') {
     if (!isLoaded) return;
@@ -48,6 +51,9 @@ export function ClerkSignIn() {
     setBusy(true);
     setError(null);
     try {
+      const turnstileOk = await turnstile.verify('auth-sign-in');
+      if (!turnstileOk) return;
+
       const res = await signIn.create({ identifier: email, password });
       if (res.status === 'complete') {
         await setActive({ session: res.createdSessionId });
@@ -181,9 +187,19 @@ export function ClerkSignIn() {
             Forgot password?
           </button>
         </div>
-        {/* Clerk Smart CAPTCHA mounts here when required */}
-        <div id="clerk-captcha" />
-        <SubmitButton loading={busy} disabled={!email || !password}>
+        {turnstile.enabled ? (
+          <div className="auth-turnstile">
+            <TurnstileGate
+              key={turnstile.resetKey}
+              action="auth-sign-in"
+              size="flexible"
+              onVerify={turnstile.handleVerify}
+              onExpire={turnstile.clear}
+              onError={turnstile.clear}
+            />
+          </div>
+        ) : null}
+        <SubmitButton loading={busy} disabled={!email || !password || !turnstile.passed}>
           Sign in
         </SubmitButton>
       </form>

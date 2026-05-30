@@ -1,13 +1,12 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { AlertTriangle, Shield } from 'lucide-react';
+import { TURNSTILE_SITE_KEY } from './turnstile';
 import './TurnstileGate.css';
 
 /**
  * Standalone Cloudflare Turnstile widget.
  *
- * Designed for non-Clerk surfaces (post composer, prayer wall submission,
- * contact forms, etc.). The Clerk-managed auth screens get Turnstile via
- * the Clerk Dashboard config and DO NOT use this component.
+ * Designed for One Body-managed Turnstile surfaces.
  *
  * Site key comes from VITE_CLOUDFLARE_TURNSTILE_SITE_KEY. The matching
  * secret stays on the NestJS API and is never read here.
@@ -130,7 +129,7 @@ export function TurnstileGate({
   onErrorRef.current = onError;
   onExpireRef.current = onExpire;
 
-  const resolvedSiteKey = (siteKey ?? import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY ?? '').trim();
+  const resolvedSiteKey = (siteKey ?? TURNSTILE_SITE_KEY).trim();
 
   useEffect(() => {
     if (!resolvedSiteKey) {
@@ -241,25 +240,4 @@ export function TurnstileGate({
       ) : null}
     </div>
   );
-}
-
-/**
- * Convenience helper: POST the token to the NestJS verify endpoint and resolve
- * to true if the secret-side check passes. Wire to whichever route your API
- * exposes (defaults to /auth/verify-turnstile).
- */
-export async function verifyTurnstileTokenWithApi(
-  token: string,
-  options?: { route?: string; signal?: AbortSignal }
-): Promise<boolean> {
-  const { api } = await import('@/api/client');
-  try {
-    const response = await api.post<{ success?: boolean }>(
-      options?.route ?? 'auth/verify-turnstile',
-      { token }
-    );
-    return Boolean(response?.success);
-  } catch {
-    return false;
-  }
 }

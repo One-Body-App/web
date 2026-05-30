@@ -18,6 +18,8 @@ import {
 import { AFTER_AUTH_URL, SSO_CALLBACK_URL, clerkErrorMessage } from '@/auth/clerkErrors';
 import { ApiError } from '@/api/client';
 import { endpoints } from '@/api/endpoints';
+import { TurnstileGate } from '@/components/TurnstileGate';
+import { useTurnstileVerification } from '@/auth/useTurnstileVerification';
 
 type Step = 'type' | 'details' | 'verify';
 
@@ -55,6 +57,7 @@ export function ClerkSignUp() {
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const turnstile = useTurnstileVerification(setError);
 
   const isOrg = accountType === 'organization';
   const confirmError =
@@ -114,6 +117,9 @@ export function ClerkSignUp() {
     setError(null);
     const [firstName, ...rest] = name.trim().split(/\s+/);
     try {
+      const turnstileOk = await turnstile.verify('auth-sign-up');
+      if (!turnstileOk) return;
+
       await signUp.create({
         emailAddress: email,
         password,
@@ -201,7 +207,11 @@ export function ClerkSignUp() {
 
   /* ----- Step 2: details ----- */
   const canSubmit =
-    username.length >= 3 && !usernameError && Boolean(name && email && password) && !confirmError;
+    username.length >= 3 &&
+    !usernameError &&
+    Boolean(name && email && password) &&
+    !confirmError &&
+    turnstile.passed;
 
   return (
     <div className="auth-form">
@@ -300,7 +310,18 @@ export function ClerkSignUp() {
           onChange={(e) => setConfirmPassword(e.target.value)}
           required
         />
-        <div id="clerk-captcha" />
+        {turnstile.enabled ? (
+          <div className="auth-turnstile">
+            <TurnstileGate
+              key={turnstile.resetKey}
+              action="auth-sign-up"
+              size="flexible"
+              onVerify={turnstile.handleVerify}
+              onExpire={turnstile.clear}
+              onError={turnstile.clear}
+            />
+          </div>
+        ) : null}
         <SubmitButton loading={busy} disabled={!canSubmit}>
           Create account
         </SubmitButton>
