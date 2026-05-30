@@ -17,4 +17,9 @@ export default defineConfig({
     host: 'localhost',
     strictPort: true,
   },
+  build: {
+    // Map providers are isolated behind dynamic imports; the largest provider
+    // chunk is expected and is not part of the initial app load.
+    chunkSizeWarningLimit: 1900,
+  },
 });

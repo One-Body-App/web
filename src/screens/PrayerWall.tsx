@@ -1,7 +1,13 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { Check, HandHeart, Plus, X } from 'lucide-react';
 import { Avatar } from '@/components/Avatar';
+import { TurnstileGate } from '@/components/TurnstileGate';
 import { EmptyState, PageHeader, Segmented } from '@/components/ui';
+
+// Standalone Turnstile only enforces when a site key is configured.
+const PRAYER_TURNSTILE_ENABLED = Boolean(
+  (import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY ?? '').trim()
+);
 import { REACTIONS } from '@/data/mock';
 import { endpoints } from '@/api/endpoints';
 import { useApiMutation, useApiQuery } from '@/api/useApi';
@@ -238,14 +244,28 @@ function PrayerComposer({ onClose, onPosted }: { onClose: () => void; onPosted: 
   const [content, setContent] = useState('');
   const [category, setCategory] = useState<PrayerCategory>('request');
   const [isPrivate, setIsPrivate] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const { mutate, loading } = useApiMutation(
-    (b: { content: string; category: PrayerCategory; private: boolean }) => prayerApi.create(b),
+    (b: {
+      content: string;
+      category: PrayerCategory;
+      private: boolean;
+      turnstileToken?: string;
+    }) => prayerApi.create(b),
   );
+
+  const turnstilePassed = !PRAYER_TURNSTILE_ENABLED || Boolean(turnstileToken);
+  const canSubmit = Boolean(content.trim()) && turnstilePassed && !loading;
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!content.trim()) return;
-    await mutate({ content: content.trim(), category, private: isPrivate });
+    if (!canSubmit) return;
+    await mutate({
+      content: content.trim(),
+      category,
+      private: isPrivate,
+      turnstileToken: turnstileToken ?? undefined,
+    });
     onPosted();
   }
 
@@ -293,11 +313,22 @@ function PrayerComposer({ onClose, onPosted }: { onClose: () => void; onPosted: 
           />
           Post anonymously
         </label>
+        {PRAYER_TURNSTILE_ENABLED ? (
+          <div className="prayer-modal__turnstile">
+            <TurnstileGate
+              action="prayer-wall-submit"
+              size="flexible"
+              onVerify={(token) => setTurnstileToken(token)}
+              onExpire={() => setTurnstileToken(null)}
+              onError={() => setTurnstileToken(null)}
+            />
+          </div>
+        ) : null}
         <div className="prayer-modal__actions">
           <button type="button" className="btn" onClick={onClose}>
             Cancel
           </button>
-          <button type="submit" className="btn btn--brand" disabled={!content.trim() || loading}>
+          <button type="submit" className="btn btn--brand" disabled={!canSubmit}>
             {loading ? 'Sharing…' : 'Share prayer'}
           </button>
         </div>

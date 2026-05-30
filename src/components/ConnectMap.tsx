@@ -1,8 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import mapboxgl, { type StyleSpecification } from 'mapbox-gl';
+import type {
+  Map as MapboxMap,
+  Marker as MapboxMarker,
+  StyleSpecification,
+} from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import maplibregl from 'maplibre-gl';
+import type { Map as MapLibreMap, Marker as MapLibreMarker } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapPin, X } from 'lucide-react';
 import './ConnectMap.css';
@@ -20,7 +24,9 @@ export interface MapItem {
 
 type MapProvider = 'mapbox' | 'maplibre';
 type Coordinate = [number, number];
-type MapMarker = mapboxgl.Marker | maplibregl.Marker;
+type MapboxLib = typeof import('mapbox-gl').default;
+type MapLibreLib = typeof import('maplibre-gl');
+type MapMarker = MapboxMarker | MapLibreMarker;
 
 const MAPBOX_PUBLIC_TOKEN = (import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN ?? '').trim();
 const MAPLIBRE_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
@@ -210,12 +216,15 @@ function createMarkerElement(item: MapItem, onSelect: (event: MouseEvent) => voi
 
 export function ConnectMap({ items }: { items: MapItem[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapboxMapRef = useRef<mapboxgl.Map | null>(null);
-  const maplibreMapRef = useRef<maplibregl.Map | null>(null);
+  const mapboxLibRef = useRef<MapboxLib | null>(null);
+  const maplibreLibRef = useRef<MapLibreLib | null>(null);
+  const mapboxMapRef = useRef<MapboxMap | null>(null);
+  const maplibreMapRef = useRef<MapLibreMap | null>(null);
   const providerRef = useRef<MapProvider | null>(null);
   const markersRef = useRef<MapMarker[]>([]);
   const styleModeRef = useRef<boolean | null>(null);
   const [selected, setSelected] = useState<MapItem | null>(null);
+  const [mapReady, setMapReady] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
@@ -240,66 +249,91 @@ export function ConnectMap({ items }: { items: MapItem[] }) {
 
     const onMapClick = () => setSelected(null);
     const initialDarkMode = getPreferredDarkMode();
-    let provider: MapProvider = 'maplibre';
+    let cancelled = false;
+    let cleanup: (() => void) | undefined;
 
-    if (MAPBOX_PUBLIC_TOKEN) {
-      try {
-        mapboxgl.accessToken = MAPBOX_PUBLIC_TOKEN;
-        const map = new mapboxgl.Map({
+    async function initMap() {
+      let provider: MapProvider = 'maplibre';
+      let initializedMapboxMap: MapboxMap | null = null;
+      let initializedMapLibreMap: MapLibreMap | null = null;
+
+      if (MAPBOX_PUBLIC_TOKEN) {
+        try {
+          const mapboxgl = (await import('mapbox-gl')).default;
+          if (cancelled || !containerRef.current) return;
+          mapboxLibRef.current = mapboxgl;
+          mapboxgl.accessToken = MAPBOX_PUBLIC_TOKEN;
+          const map = new mapboxgl.Map({
+            container: containerRef.current,
+            style: createConnectMapStyle(initialDarkMode),
+            center: DEFAULT_CENTER,
+            zoom: 3.2,
+            attributionControl: true,
+            dragRotate: false,
+            touchPitch: false,
+          });
+          map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
+          map.on('click', onMapClick);
+          initializedMapboxMap = map;
+          mapboxMapRef.current = map;
+          provider = 'mapbox';
+          styleModeRef.current = initialDarkMode;
+        } catch {
+          mapboxMapRef.current = null;
+          mapboxLibRef.current = null;
+        }
+      }
+
+      if (provider !== 'mapbox') {
+        const maplibregl = await import('maplibre-gl');
+        if (cancelled || !containerRef.current) return;
+        maplibreLibRef.current = maplibregl;
+        const map = new maplibregl.Map({
           container: containerRef.current,
-          style: createConnectMapStyle(initialDarkMode),
+          style: MAPLIBRE_STYLE_URL,
           center: DEFAULT_CENTER,
           zoom: 3.2,
-          attributionControl: true,
+          attributionControl: { compact: true },
           dragRotate: false,
           touchPitch: false,
         });
-        map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
+        map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
         map.on('click', onMapClick);
-        mapboxMapRef.current = map;
-        provider = 'mapbox';
-        styleModeRef.current = initialDarkMode;
-      } catch {
-        mapboxMapRef.current = null;
+        initializedMapLibreMap = map;
+        maplibreMapRef.current = map;
       }
+
+      providerRef.current = provider;
+      setMapReady(true);
+      cleanup = () => {
+        if (provider === 'mapbox') {
+          initializedMapboxMap?.off('click', onMapClick);
+          initializedMapboxMap?.remove();
+          mapboxMapRef.current = null;
+          mapboxLibRef.current = null;
+        } else {
+          initializedMapLibreMap?.off('click', onMapClick);
+          initializedMapLibreMap?.remove();
+          maplibreMapRef.current = null;
+          maplibreLibRef.current = null;
+        }
+        providerRef.current = null;
+        styleModeRef.current = null;
+      };
     }
 
-    if (provider !== 'mapbox') {
-      const map = new maplibregl.Map({
-        container: containerRef.current,
-        style: MAPLIBRE_STYLE_URL,
-        center: DEFAULT_CENTER,
-        zoom: 3.2,
-        attributionControl: { compact: true },
-        dragRotate: false,
-        touchPitch: false,
-      });
-      map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
-      map.on('click', onMapClick);
-      maplibreMapRef.current = map;
-    }
-
-    providerRef.current = provider;
+    void initMap();
 
     return () => {
-      if (provider === 'mapbox') {
-        mapboxMapRef.current?.off('click', onMapClick);
-        mapboxMapRef.current?.remove();
-        mapboxMapRef.current = null;
-      } else {
-        maplibreMapRef.current?.off('click', onMapClick);
-        maplibreMapRef.current?.remove();
-        maplibreMapRef.current = null;
-      }
-      providerRef.current = null;
-      styleModeRef.current = null;
+      cancelled = true;
+      cleanup?.();
     };
   }, []);
 
   // Sync markers whenever items change.
   useEffect(() => {
     const provider = providerRef.current;
-    if (!provider) return;
+    if (!provider || !mapReady) return;
 
     const previousMarkers = markersRef.current;
     markersRef.current = [];
@@ -310,7 +344,8 @@ export function ConnectMap({ items }: { items: MapItem[] }) {
 
     if (provider === 'mapbox') {
       const map = mapboxMapRef.current;
-      if (!map) return;
+      const mapboxgl = mapboxLibRef.current;
+      if (!map || !mapboxgl) return;
 
       const bounds = new mapboxgl.LngLatBounds();
       items.forEach((item) => {
@@ -334,7 +369,8 @@ export function ConnectMap({ items }: { items: MapItem[] }) {
       }
     } else {
       const map = maplibreMapRef.current;
-      if (!map) return;
+      const maplibregl = maplibreLibRef.current;
+      if (!map || !maplibregl) return;
 
       const bounds = new maplibregl.LngLatBounds();
       items.forEach((item) => {
@@ -365,13 +401,18 @@ export function ConnectMap({ items }: { items: MapItem[] }) {
       nextMarkers.forEach((marker) => marker.remove());
       markersRef.current = [];
     };
-  }, [items]);
+  }, [items, mapReady]);
 
   return (
     <div className="cmap">
       <div ref={containerRef} className="cmap__canvas" />
 
-      {items.length === 0 ? (
+      {!mapReady ? (
+        <div className="cmap__empty">
+          <MapPin size={22} />
+          <span>Loading map&hellip;</span>
+        </div>
+      ) : items.length === 0 ? (
         <div className="cmap__empty">
           <MapPin size={22} />
           <span>No mapped locations for this filter yet.</span>

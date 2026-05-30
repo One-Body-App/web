@@ -381,8 +381,10 @@ export const endpoints = {
 
   removeReaction: (postId: string) => api.patch('social/remove-reaction', { postId }),
 
-  createPost: (content: string, extra?: { gif?: unknown; location?: unknown }) =>
-    api.post('social/post', { content, ...extra }),
+  createPost: (
+    content: string,
+    extra?: { gif?: unknown; location?: unknown; turnstileToken?: string }
+  ) => api.post('social/post', { content, ...extra }),
 
   /**
    * Create a post with attached photos. Uses multipart/form-data so the API's
@@ -395,6 +397,7 @@ export const endpoints = {
     mentionedUserIds?: string[];
     gif?: unknown;
     location?: { coordinates: number[]; name: string };
+    turnstileToken?: string;
   }) => {
     const form = new FormData();
     form.append('content', params.content);
@@ -403,6 +406,7 @@ export const endpoints = {
     }
     if (params.gif) form.append('gif', JSON.stringify(params.gif));
     if (params.location) form.append('location', JSON.stringify(params.location));
+    if (params.turnstileToken) form.append('turnstileToken', params.turnstileToken);
     params.images.forEach((file) => form.append('images', file, file.name));
     return api.post<{ postId?: string; _id?: string; id?: string; pendingReview?: boolean }>(
       'social/post',

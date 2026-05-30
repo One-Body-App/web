@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useLocation, type Location } from 'react-router-dom';
 import { clerkEnabled, useAuth } from './auth/context';
 import { RequireAuth } from './auth/RequireAuth';
@@ -9,28 +9,35 @@ import { Intro } from './screens/Intro';
 import { SignInScreen } from './screens/SignIn';
 import { SignUpScreen } from './screens/SignUp';
 import { SsoCallback } from './screens/SsoCallback';
-import { Home } from './screens/Home';
-import { Explore } from './screens/Explore';
-import { Connect } from './screens/Connect';
-import { EventDetail } from './screens/connect/EventDetail';
-import { JobDetail } from './screens/connect/JobDetail';
-import { JobApply } from './screens/connect/JobApply';
-import { ConnectManage } from './screens/connect/Manage';
-import { CreateEvent } from './screens/connect/CreateEvent';
-import { PostJob } from './screens/connect/PostJob';
-import { JobApplications } from './screens/connect/JobApplications';
-import { Messages } from './screens/Messages';
-import { Conversation } from './screens/Conversation';
-import { Notifications } from './screens/Notifications';
-import { Saved } from './screens/Saved';
-import { Profile } from './screens/Profile';
-import { CreatePost } from './screens/CreatePost';
-import { PostDetail } from './screens/PostDetail';
-import { Settings } from './screens/Settings';
-import { PrayerWall } from './screens/PrayerWall';
 
+const Home = lazy(() => import('./screens/Home').then((m) => ({ default: m.Home })));
+const Explore = lazy(() => import('./screens/Explore').then((m) => ({ default: m.Explore })));
 // Watch pulls in hls.js (~400KB) — load it only when its route is visited.
 const Watch = lazy(() => import('./screens/Watch').then((m) => ({ default: m.Watch })));
+// Connect can pull in map UI. Keep it out of the initial authenticated shell.
+const Connect = lazy(() => import('./screens/Connect').then((m) => ({ default: m.Connect })));
+const PrayerWall = lazy(() => import('./screens/PrayerWall').then((m) => ({ default: m.PrayerWall })));
+const ConnectManage = lazy(() => import('./screens/connect/Manage').then((m) => ({ default: m.ConnectManage })));
+const CreateEvent = lazy(() => import('./screens/connect/CreateEvent').then((m) => ({ default: m.CreateEvent })));
+const PostJob = lazy(() => import('./screens/connect/PostJob').then((m) => ({ default: m.PostJob })));
+const EventDetail = lazy(() => import('./screens/connect/EventDetail').then((m) => ({ default: m.EventDetail })));
+const JobDetail = lazy(() => import('./screens/connect/JobDetail').then((m) => ({ default: m.JobDetail })));
+const JobApply = lazy(() => import('./screens/connect/JobApply').then((m) => ({ default: m.JobApply })));
+const JobApplications = lazy(() =>
+  import('./screens/connect/JobApplications').then((m) => ({ default: m.JobApplications })),
+);
+const Messages = lazy(() => import('./screens/Messages').then((m) => ({ default: m.Messages })));
+const Conversation = lazy(() =>
+  import('./screens/Conversation').then((m) => ({ default: m.Conversation })),
+);
+const Notifications = lazy(() =>
+  import('./screens/Notifications').then((m) => ({ default: m.Notifications })),
+);
+const Saved = lazy(() => import('./screens/Saved').then((m) => ({ default: m.Saved })));
+const Profile = lazy(() => import('./screens/Profile').then((m) => ({ default: m.Profile })));
+const Settings = lazy(() => import('./screens/Settings').then((m) => ({ default: m.Settings })));
+const PostDetail = lazy(() => import('./screens/PostDetail').then((m) => ({ default: m.PostDetail })));
+const CreatePost = lazy(() => import('./screens/CreatePost').then((m) => ({ default: m.CreatePost })));
 
 /** Public landing — sends signed-in users straight to the feed. */
 function Root() {
@@ -50,6 +57,10 @@ function Root() {
  */
 function isModalPath(pathname: string): boolean {
   return pathname === '/post/new';
+}
+
+function deferred(label: string, children: ReactNode) {
+  return <Suspense fallback={<Splash label={label} />}>{children}</Suspense>;
 }
 
 export function App() {
@@ -77,34 +88,30 @@ export function App() {
             </RequireAuth>
           }
         >
-          <Route path="/home" element={<Home />} />
-          <Route path="/explore" element={<Explore />} />
-          <Route path="/prayer" element={<PrayerWall />} />
+          <Route path="/home" element={deferred('Home', <Home />)} />
+          <Route path="/explore" element={deferred('Explore', <Explore />)} />
+          <Route path="/prayer" element={deferred('Prayer', <PrayerWall />)} />
+          <Route path="/watch" element={deferred('Watch', <Watch />)} />
+          <Route path="/connect" element={deferred('Connect', <Connect />)} />
+          <Route path="/connect/manage" element={deferred('Manage', <ConnectManage />)} />
+          <Route path="/connect/manage/events/new" element={deferred('Create Event', <CreateEvent />)} />
+          <Route path="/connect/manage/jobs/new" element={deferred('Post Job', <PostJob />)} />
+          <Route path="/connect/events/:id" element={deferred('Event', <EventDetail />)} />
+          <Route path="/connect/serve/:id" element={deferred('Opportunity', <JobDetail />)} />
+          <Route path="/connect/serve/:id/apply" element={deferred('Apply', <JobApply />)} />
           <Route
-            path="/watch"
-            element={
-              <Suspense fallback={<Splash label="Watch" />}>
-                <Watch />
-              </Suspense>
-            }
+            path="/connect/serve/:id/applications"
+            element={deferred('Applications', <JobApplications />)}
           />
-          <Route path="/connect" element={<Connect />} />
-          <Route path="/connect/manage" element={<ConnectManage />} />
-          <Route path="/connect/manage/events/new" element={<CreateEvent />} />
-          <Route path="/connect/manage/jobs/new" element={<PostJob />} />
-          <Route path="/connect/events/:id" element={<EventDetail />} />
-          <Route path="/connect/serve/:id" element={<JobDetail />} />
-          <Route path="/connect/serve/:id/apply" element={<JobApply />} />
-          <Route path="/connect/serve/:id/applications" element={<JobApplications />} />
-          <Route path="/messages" element={<Messages />} />
-          <Route path="/messages/:id" element={<Conversation />} />
-          <Route path="/notifications" element={<Notifications />} />
-          <Route path="/saved" element={<Saved />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/settings" element={<Settings />} />
+          <Route path="/messages" element={deferred('Messages', <Messages />)} />
+          <Route path="/messages/:id" element={deferred('Conversation', <Conversation />)} />
+          <Route path="/notifications" element={deferred('Notifications', <Notifications />)} />
+          <Route path="/saved" element={deferred('Saved', <Saved />)} />
+          <Route path="/profile" element={deferred('Profile', <Profile />)} />
+          <Route path="/settings" element={deferred('Settings', <Settings />)} />
           {/* X-style post / comment detail (focused item + flat replies). */}
-          <Route path="/post/:type/:id" element={<PostDetail />} />
-          <Route path="/post/:type/:id/c/:commentId" element={<PostDetail />} />
+          <Route path="/post/:type/:id" element={deferred('Post', <PostDetail />)} />
+          <Route path="/post/:type/:id/c/:commentId" element={deferred('Post', <PostDetail />)} />
         </Route>
 
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -117,9 +124,12 @@ export function App() {
           <Route
             path="/post/new"
             element={
-              <RequireAuth>
-                <CreatePost />
-              </RequireAuth>
+              deferred(
+                'Create Post',
+                <RequireAuth>
+                  <CreatePost />
+                </RequireAuth>,
+              )
             }
           />
         </Routes>

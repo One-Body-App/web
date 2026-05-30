@@ -241,3 +241,9 @@
     color: #4ade80;
   }
 }
+
+.prayer-modal__turnstile {
+  margin-top: var(--sp-12);
+  display: flex;
+  justify-content: flex-start;
+}

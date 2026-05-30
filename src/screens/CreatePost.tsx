@@ -22,7 +22,14 @@ import { Avatar } from '@/components/Avatar';
 import { useAuth } from '@/auth/context';
 import { endpoints, type SocialContentType } from '@/api/endpoints';
 import { ComposerMediaTray, type ComposerMediaItem } from '@/components/ComposerMediaTray';
+import { TurnstileGate } from '@/components/TurnstileGate';
 import './CreatePost.css';
+
+// Standalone Turnstile only enforces when a site key is configured. In
+// preview mode (key absent) we let posts through so the dev UX still works.
+const TURNSTILE_ENABLED = Boolean(
+  (import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY ?? '').trim()
+);
 
 // Mirrors MAX_CONTENT_LENGHT in the mobile NewPost screen — keep parity so the
 // API never sees a body that one client allows and the other doesn't.
@@ -68,6 +75,7 @@ export function CreatePost() {
   const [publishing, setPublishing] = useState(false);
   const [media, setMedia] = useState<ComposerMediaItem[]>([]);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
 
   const audienceRef = useRef<HTMLDivElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -78,7 +86,12 @@ export function CreatePost() {
   const trimmed = text.trim();
   const overLimit = text.length > MAX_LEN;
   const hasMedia = media.length > 0;
-  const canPost = !publishing && !overLimit && (Boolean(quote) || hasMedia || trimmed.length > 0);
+  const turnstilePassed = !TURNSTILE_ENABLED || Boolean(turnstileToken);
+  const canPost =
+    !publishing &&
+    !overLimit &&
+    turnstilePassed &&
+    (Boolean(quote) || hasMedia || trimmed.length > 0);
   const dirty = trimmed.length > 0 || hasMedia;
 
   const close = useCallback(() => {
@@ -100,15 +113,18 @@ export function CreatePost() {
         await endpoints.createPostWithMedia({
           content: trimmed,
           images: media.filter((item) => item.kind === 'photo').map((item) => item.file),
+          turnstileToken: turnstileToken ?? undefined,
         });
       } else {
-        await endpoints.createPost(trimmed);
+        await endpoints.createPost(trimmed, {
+          turnstileToken: turnstileToken ?? undefined,
+        });
       }
     } catch {
       // Best-effort in dev (offline/CORS); still return to the feed.
     }
     navigate('/home', { replace: true });
-  }, [canPost, hasMedia, media, navigate, quote, trimmed]);
+  }, [canPost, hasMedia, media, navigate, quote, trimmed, turnstileToken]);
 
   // Esc to close, Cmd/Ctrl+Enter to publish — standard composer ergonomics.
   useEffect(() => {
@@ -380,6 +396,18 @@ export function CreatePost() {
             if (videoInputRef.current) videoInputRef.current.value = '';
           }}
         />
+
+        {TURNSTILE_ENABLED ? (
+          <div className="compose__turnstile">
+            <TurnstileGate
+              action="social-post-publish"
+              size="flexible"
+              onVerify={(token) => setTurnstileToken(token)}
+              onExpire={() => setTurnstileToken(null)}
+              onError={() => setTurnstileToken(null)}
+            />
+          </div>
+        ) : null}
 
         <footer className="compose__toolbar">
           <div className="compose__tools">

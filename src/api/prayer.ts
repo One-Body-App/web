@@ -106,8 +106,12 @@ export const prayerApi = {
     const raw = (payload?.data ?? payload) as Raw | undefined;
     return raw ? mapPrayer(raw, myUserId) : null;
   },
-  create: (body: { content: string; category: PrayerCategory; private: boolean }) =>
-    api.post('prayer', body),
+  create: (body: {
+    content: string;
+    category: PrayerCategory;
+    private: boolean;
+    turnstileToken?: string;
+  }) => api.post('prayer', body),
   react: (postId: string, kind: PrayerReaction) =>
     api.patch('prayer/react', { postId, type: KIND_TO_API[kind] }),
   removeReaction: (postId: string) => api.patch('prayer/remove-reaction', { postId }),

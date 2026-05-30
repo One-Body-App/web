@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react';
-import Hls from 'hls.js';
 
 interface HlsVideoProps {
   src: string;
@@ -35,6 +34,8 @@ export function HlsVideo({
   useEffect(() => {
     const video = ref.current;
     if (!video || !src) return;
+    let disposed = false;
+    let cleanup: (() => void) | undefined;
 
     // Native HLS (Safari / iOS).
     if (video.canPlayType('application/vnd.apple.mpegurl')) {
@@ -46,25 +47,44 @@ export function HlsVideo({
       };
     }
 
-    if (Hls.isSupported()) {
-      const hls = new Hls({ enableWorker: true });
-      hls.loadSource(src);
-      hls.attachMedia(video);
-      const onManifestParsed = () => video.play().catch(() => {});
-      if (autoPlay) {
-        hls.on(Hls.Events.MANIFEST_PARSED, onManifestParsed);
+    async function loadHls() {
+      const currentVideo = video as HTMLVideoElement;
+      let Hls: typeof import('hls.js/light').default | null = null;
+      try {
+        Hls = (await import('hls.js/light')).default;
+      } catch {
+        Hls = null;
       }
-      return () => {
-        if (autoPlay) hls.off(Hls.Events.MANIFEST_PARSED, onManifestParsed);
-        hls.destroy();
+      if (disposed) return;
+
+      if (Hls?.isSupported()) {
+        const hls = new Hls({ enableWorker: true });
+        hls.loadSource(src);
+        hls.attachMedia(currentVideo);
+        const onManifestParsed = () => currentVideo.play().catch(() => {});
+        if (autoPlay) {
+          hls.on(Hls.Events.MANIFEST_PARSED, onManifestParsed);
+        }
+        cleanup = () => {
+          if (autoPlay) hls.off(Hls.Events.MANIFEST_PARSED, onManifestParsed);
+          hls.destroy();
+        };
+        return;
+      }
+
+      // Last resort.
+      currentVideo.src = src;
+      cleanup = () => {
+        currentVideo.removeAttribute('src');
+        currentVideo.load();
       };
     }
 
-    // Last resort.
-    video.src = src;
+    void loadHls();
+
     return () => {
-      video.removeAttribute('src');
-      video.load();
+      disposed = true;
+      cleanup?.();
     };
   }, [src, autoPlay]);
 

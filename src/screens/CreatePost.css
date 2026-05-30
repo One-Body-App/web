@@ -735,3 +735,9 @@
     background: var(--surface);
   }
 }
+
+.compose__turnstile {
+  margin-top: var(--sp-16);
+  display: flex;
+  justify-content: flex-start;
+}

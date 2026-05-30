@@ -158,14 +158,37 @@ Notifications (`/user/notifications` + read-all).
 `app/src/services/chat/socketClient.ts` — so web needs a socket client, not REST)
 and Connect (events/serve endpoints not yet mapped).
 
+### Domain map (web ↔ API)
+
+The web SPA shares the `app.onebodyapp.com` domain with the mobile app's
+Universal Links — the same URL deep-links into the native app on iOS/Android
+and renders the SPA in any other browser. So per environment:
+
+| Environment | Web SPA URL | API URL | Build env (`VITE_API_BASE_URL`) |
+|---|---|---|---|
+| **Production** | `https://app.onebodyapp.com` | `https://api.onebodyapp.com/api` | `https://api.onebodyapp.com/api` (required) |
+| **Staging** | `https://stagingapp.onebodyapp.com` | `https://stagingapi.onebodyapp.com/api` | _unset — falls through to the in-code default_ |
+| **Local dev** | `http://localhost:5173` | usually staging | _unset — defaults to staging, override in `web/.env.local` if needed_ |
+
+The in-code default ([`src/api/config.ts`](src/api/config.ts)) points at the
+**staging** API so a missing build env never accidentally exposes prod data
+during dev. Production deploys **must** set `VITE_API_BASE_URL` explicitly
+to the prod API.
+
+The web SPA must **continue serving** `apple-app-site-association` and
+`/.well-known/assetlinks.json` at the root of `app.onebodyapp.com` (today the
+[`api/public/index.html`](../api/public/index.html) placeholder lives there). If
+your static host's SPA catch-all swallows those paths, Universal Links break
+silently for everyone on the mobile app.
+
 ### Going live (CORS + Clerk)
 
-In dev, browser calls from `http://localhost:5173` to staging are **blocked by
-CORS** (verified: the API returns no `access-control-allow-origin` for that
-origin), so the app shows sample data + an "offline" banner. To enable live data,
-the API must allow the web origin:
+In dev, browser calls from `http://localhost:5173` to the API are blocked by
+CORS unless the API allowlists the origin. To enable live data:
 
-- Add the web origin(s) to the API's CORS allowlist (`api/src/main.ts`).
+- Add the web origin(s) to the API's CORS allowlist
+  ([`api/src/main.ts`](../api/src/main.ts)). The current allowlist already
+  includes `app.onebodyapp.com`, `stagingapp.onebodyapp.com`, and the dev ports.
 - Add the web origin(s) to `CLERK_AUTHORIZED_PARTIES` in the API env so Clerk
   token verification accepts them.
 
