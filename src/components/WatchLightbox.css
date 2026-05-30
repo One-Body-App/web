@@ -1,0 +1,150 @@
+.watch-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 130;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  display: grid;
+  place-items: center;
+  padding: var(--sp-24);
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+.watch-lightbox::backdrop {
+  background: transparent;
+}
+.watch-lightbox__backdrop {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  border: 0;
+  background: rgba(3, 16, 20, 0.82);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.watch-lightbox__close {
+  position: fixed;
+  top: var(--sp-16);
+  right: var(--sp-16);
+  z-index: 2;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  transition: background 0.15s ease;
+}
+.watch-lightbox__close:hover {
+  background: rgba(255, 255, 255, 0.24);
+}
+.watch-lightbox__theater {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-14);
+  width: min(94vw, 980px);
+  max-height: 94vh;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.watch-lightbox__theater::-webkit-scrollbar {
+  display: none;
+}
+.watch-lightbox__theater.is-portrait {
+  width: auto;
+  max-width: 94vw;
+}
+.watch-lightbox__frame {
+  position: relative;
+  width: 100%;
+  max-height: 72vh;
+  background: #000;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+}
+.watch-lightbox__theater.is-portrait .watch-lightbox__frame {
+  width: auto;
+  height: min(66vh, 700px);
+  max-height: none;
+}
+.watch-lightbox__video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.watch-lightbox__loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+}
+
+.watch-lightbox__meta {
+  width: 100%;
+  padding: var(--sp-14) var(--sp-16);
+  border-radius: var(--r-base);
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+.watch-lightbox__head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-12);
+}
+.watch-lightbox__id {
+  min-width: 0;
+}
+.watch-lightbox__id strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: var(--fs-4);
+  color: #fff;
+  line-height: 1.3;
+}
+.watch-lightbox__id span {
+  font-size: var(--fs-2);
+  color: rgba(255, 255, 255, 0.7);
+}
+.watch-lightbox__cap {
+  margin-top: var(--sp-8);
+  font-size: var(--fs-2);
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.85);
+}
+.watch-lightbox__actions {
+  display: flex;
+  gap: var(--sp-20);
+  margin-top: var(--sp-12);
+}
+.watch-lightbox__like,
+.watch-lightbox__stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-2);
+  font-weight: 600;
+  color: #fff;
+}
+.watch-lightbox__like.is-active {
+  color: var(--react-love);
+}
+
+.spin {
+  animation: watch-spin 1s linear infinite;
+}
+@keyframes watch-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

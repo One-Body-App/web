@@ -1,0 +1,73 @@
+.turnstile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+}
+
+.turnstile__widget {
+  /* Cloudflare injects its own iframe with fixed dimensions; we just make sure
+     the slot itself doesn't collapse before that paints. */
+  min-height: 65px;
+}
+
+.turnstile__widget[data-status='loading'] {
+  opacity: 0.85;
+}
+
+.turnstile__error {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-2);
+  color: #b91c1c;
+}
+
+.turnstile--preview {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-10);
+  padding: var(--sp-10) var(--sp-12);
+  border-radius: var(--r-sm);
+  border: 1px dashed var(--line-strong);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: var(--fs-2);
+}
+
+.turnstile--preview svg {
+  color: var(--sapphire);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.turnstile--preview strong {
+  font-family: var(--font-display);
+  color: var(--brand);
+  display: block;
+  font-size: var(--fs-2);
+}
+
+.turnstile--preview p {
+  margin: 4px 0 0 0;
+  line-height: 1.5;
+}
+
+.turnstile--preview code {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  font-size: 0.92em;
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .turnstile__error {
+    color: #f87171;
+  }
+  .turnstile--preview {
+    background: var(--surface-2);
+    border-color: var(--line);
+  }
+}

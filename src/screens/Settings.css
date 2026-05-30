@@ -1,0 +1,102 @@
+.settings__group {
+  padding: var(--sp-8) var(--sp-8) var(--sp-4);
+  margin-bottom: var(--sp-16);
+}
+.settings__group-title {
+  font-size: var(--fs-1);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  font-weight: 700;
+  padding: var(--sp-10) var(--sp-12) var(--sp-6);
+}
+.settings__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--sp-12);
+  border-radius: var(--r-base);
+  text-align: left;
+}
+.settings__row--btn {
+  transition: background 0.15s ease;
+}
+.settings__row--btn:hover {
+  background: var(--surface-3);
+}
+.settings__row-left {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-12);
+  font-size: var(--fs-3);
+  font-weight: 500;
+  color: var(--ink);
+}
+.settings__row-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--r-sm);
+  background: var(--sapphire-900);
+  color: var(--sapphire);
+}
+.settings__row-right {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  color: var(--muted);
+}
+.settings__hint {
+  font-size: var(--fs-2);
+}
+.is-danger .settings__row-left {
+  color: var(--error);
+}
+.is-danger .settings__row-icon {
+  background: var(--error-soft);
+  color: var(--error);
+}
+
+/* Toggle */
+.toggle {
+  width: 48px;
+  height: 28px;
+  border-radius: var(--r-pill);
+  background: var(--line-strong);
+  padding: 3px;
+  transition: background 0.2s ease;
+  flex-shrink: 0;
+}
+.toggle.is-on {
+  background: var(--sapphire);
+}
+.toggle__knob {
+  display: block;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.2s var(--ease-spring);
+}
+.toggle.is-on .toggle__knob {
+  transform: translateX(20px);
+}
+
+.settings__signout {
+  color: var(--error);
+  border-color: var(--error-soft);
+  margin-top: var(--sp-8);
+}
+.settings__signout:hover {
+  border-color: var(--error);
+  color: var(--error);
+}
+.settings__version {
+  text-align: center;
+  font-size: var(--fs-1);
+  color: var(--muted);
+  margin-top: var(--sp-16);
+}

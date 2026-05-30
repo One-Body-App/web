@@ -1,0 +1,743 @@
+/* =====================================================================
+   One Body — Compose screen
+   "Sanctuary Glass" — a centered floating composer card on a softly-
+   tinted brand mesh backdrop. Editorial, refined, deliberately spacious.
+   Mobile collapses to a full-screen takeover (the previous mobile-first
+   layout) so the iOS/Android-shaped flow still feels native.
+   ===================================================================== */
+
+/* ---------------- Stage (scrim + centering) ----------------
+   The composer mounts as a sibling of the AppShell, so the scrim's
+   `backdrop-filter` blurs whatever the feed paints underneath. The
+   tint is a translucent brand-ink wash that dims the page just
+   enough for the glass card to read as the focal element. */
+.compose-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  display: grid;
+  place-items: center;
+  padding: var(--sp-24);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  isolation: isolate;
+  animation: compose-stage-in 240ms var(--ease-out) both;
+}
+.compose-stage::backdrop {
+  background: transparent;
+}
+
+/* Soft cyan halo positioned just behind the card to give it a warm
+   focus glow. Non-interactive — purely atmospheric. */
+.compose-stage__backdrop {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    40% 36% at 50% 50%,
+    rgba(18, 210, 217, 0.16),
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+/* Click-anywhere-outside scrim. Carries the backdrop-filter blur so
+   the feed visible behind reads as a dimmed, frosted layer. */
+.compose-stage__scrim {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  cursor: default;
+  background: rgba(232, 238, 240, 0.42);
+  -webkit-backdrop-filter: blur(16px) saturate(1.05);
+  backdrop-filter: blur(16px) saturate(1.05);
+}
+
+@keyframes compose-stage-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ---------------- Card ---------------- */
+.compose {
+  position: relative;
+  width: min(100%, 680px);
+  display: flex;
+  flex-direction: column;
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(calc(var(--glass-blur) + 6px)) saturate(1.4);
+  backdrop-filter: blur(calc(var(--glass-blur) + 6px)) saturate(1.4);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-card-lg);
+  box-shadow: var(--glass-shadow), 0 24px 80px rgba(3, 47, 60, 0.18);
+  overflow: hidden;
+  max-height: min(820px, calc(100vh - var(--sp-48)));
+  animation: compose-card-in 360ms var(--ease-spring) both;
+}
+
+@keyframes compose-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Signature detail: a 1px aqua→sapphire hairline along the top edge. */
+.compose__ribbon {
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--accent) 18%,
+    var(--sapphire) 50%,
+    var(--accent) 82%,
+    transparent 100%
+  );
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+/* ---------------- Header ---------------- */
+.compose__head {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  align-items: center;
+  gap: var(--sp-16);
+  padding: var(--sp-20) var(--sp-24) var(--sp-16);
+  border-bottom: 1px solid var(--line);
+}
+
+.compose__close {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ink-3);
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s var(--ease-out);
+}
+.compose__close:hover {
+  background: var(--surface-3);
+  color: var(--brand);
+}
+.compose__close:active {
+  transform: scale(0.94);
+}
+
+.compose__title {
+  text-align: center;
+  line-height: 1;
+}
+.compose__eyebrow {
+  display: block;
+  font-family: var(--font-display);
+  font-size: var(--fs-92);
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sapphire);
+  margin-bottom: 6px;
+}
+.compose__title h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--fs-5);
+  color: var(--brand);
+  letter-spacing: -0.005em;
+}
+
+.compose__post-wrap {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+}
+
+.compose__post {
+  padding: 9px 20px;
+  font-size: var(--fs-3);
+  font-weight: 600;
+}
+
+/* Character-count ring — small, only visible once the user starts typing. */
+.compose__counter {
+  display: block;
+  flex-shrink: 0;
+  transform: translateZ(0);
+}
+.compose__counter-track {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 2;
+}
+.compose__counter-fill {
+  fill: none;
+  stroke: var(--sapphire);
+  stroke-width: 2;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.2s ease, stroke 0.2s ease;
+}
+.compose__counter.is-warn .compose__counter-fill {
+  stroke: var(--warning);
+}
+.compose__counter.is-over .compose__counter-fill {
+  stroke: var(--error);
+}
+.compose__counter.is-over .compose__counter-track {
+  stroke: var(--error-soft);
+}
+
+/* ---------------- Body ---------------- */
+.compose__body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: var(--sp-20) var(--sp-24) var(--sp-20);
+}
+
+.compose__author {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-12);
+  margin-bottom: var(--sp-16);
+}
+.compose__author-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.15;
+}
+.compose__author-meta strong {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--fs-3);
+  color: var(--brand);
+}
+
+/* Audience pill + popover. */
+.compose__audience-wrap {
+  position: relative;
+  align-self: flex-start;
+}
+.compose__audience {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-body);
+  font-size: var(--fs-1);
+  font-weight: 600;
+  color: var(--sapphire);
+  background: var(--sapphire-900);
+  border: 1px solid transparent;
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  transition:
+    background 0.18s ease,
+    border-color 0.18s ease,
+    color 0.18s ease;
+}
+.compose__audience:hover {
+  background: var(--sapphire-800);
+}
+.compose__audience.is-open {
+  background: var(--surface);
+  border-color: var(--sapphire);
+}
+.compose__audience-caret {
+  transition: transform 0.18s var(--ease-out);
+  opacity: 0.7;
+}
+.compose__audience.is-open .compose__audience-caret {
+  transform: rotate(180deg);
+}
+
+.compose__audience-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 5;
+  min-width: 260px;
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  border-radius: var(--r-base);
+  box-shadow: var(--shadow-md);
+  animation: compose-pop 180ms var(--ease-out) both;
+}
+@keyframes compose-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.compose__audience-opt {
+  display: flex;
+  width: 100%;
+  align-items: flex-start;
+  gap: var(--sp-10);
+  padding: var(--sp-10) var(--sp-12);
+  border-radius: var(--r-sm);
+  text-align: left;
+  color: var(--ink-2);
+  background: transparent;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.compose__audience-opt:hover {
+  background: var(--sapphire-900);
+  color: var(--brand);
+}
+.compose__audience-opt.is-active {
+  background: var(--sapphire-900);
+  color: var(--sapphire);
+}
+.compose__audience-opt svg {
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+.compose__audience-opt-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  line-height: 1.2;
+}
+.compose__audience-opt-text strong {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--fs-3);
+}
+.compose__audience-opt-text small {
+  color: var(--ink-4);
+  font-size: var(--fs-1);
+}
+
+/* ---------------- Composer field ---------------- */
+.compose__input {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  resize: none;
+  overflow: hidden;
+  font-family: var(--font-body);
+  font-size: var(--fs-5);
+  line-height: 1.55;
+  color: var(--ink);
+  min-height: 168px;
+  padding: 0;
+  caret-color: var(--sapphire);
+}
+.compose__input:focus {
+  outline: none;
+}
+.compose__input::placeholder {
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* ---------------- Quote card ---------------- */
+.compose__quote {
+  margin-top: var(--sp-16);
+  border: 1px solid var(--line);
+  border-radius: var(--r-base);
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.compose__quote-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  padding: var(--sp-10) var(--sp-12) 0;
+}
+.compose__quote-name {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--fs-2);
+  color: var(--brand);
+}
+.compose__quote-user {
+  font-size: var(--fs-1);
+  color: var(--muted);
+  margin-right: auto;
+}
+.compose__quote-icon {
+  color: var(--muted);
+}
+.compose__quote-body {
+  padding: var(--sp-6) var(--sp-12) var(--sp-12);
+  font-size: var(--fs-2);
+  line-height: 1.45;
+  color: var(--ink-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.compose__quote-media {
+  max-height: 220px;
+  overflow: hidden;
+}
+.compose__quote-media img {
+  width: 100%;
+  object-fit: cover;
+}
+
+/* ---------------- Toolbar ---------------- */
+.compose__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-16);
+  padding: var(--sp-14) var(--sp-16);
+  border-top: 1px solid var(--line);
+  background: linear-gradient(180deg, transparent 0%, var(--surface-2) 100%);
+}
+
+.compose__tools {
+  display: flex;
+  gap: var(--sp-4);
+}
+
+.compose__tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 12px;
+  border-radius: var(--r-pill);
+  color: var(--sapphire);
+  background: transparent;
+  font-family: var(--font-display);
+  font-size: var(--fs-1);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition:
+    background 0.18s ease,
+    color 0.18s ease,
+    transform 0.18s var(--ease-out);
+}
+.compose__tool:hover {
+  background: var(--sapphire-900);
+  color: var(--brand);
+}
+.compose__tool:active {
+  transform: scale(0.96);
+}
+
+/* Subtle keyboard hint at the trailing edge of the toolbar. */
+.compose__hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-4);
+  font-size: var(--fs-1);
+  font-family: var(--font-body);
+}
+.compose__hint kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  border-radius: 5px;
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ink-3);
+  box-shadow: 0 1px 0 var(--line-strong);
+}
+
+/* ===================== Mobile takeover =====================
+   Below the desktop threshold the composer behaves as a full-screen
+   sheet again — this preserves the mobile flow the team shipped and
+   matches the rest of the app's mobile breakpoints. */
+@media (max-width: 720px) {
+  .compose-stage {
+    padding: 0;
+  }
+  /* Mobile devices struggle with full-screen backdrop-filter; switch to a
+     solid surface takeover instead. */
+  .compose-stage__backdrop {
+    background: var(--bg);
+  }
+  .compose-stage__scrim {
+    background: transparent;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .compose {
+    width: 100%;
+    max-height: none;
+    min-height: 100dvh;
+    border-radius: 0;
+    border: 0;
+    box-shadow: none;
+    background: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+  .compose__head {
+    grid-template-columns: 36px 1fr auto;
+    padding: calc(var(--sp-12) + env(safe-area-inset-top)) var(--sp-16) var(--sp-12);
+    gap: var(--sp-12);
+  }
+  .compose__eyebrow {
+    display: none;
+  }
+  .compose__body {
+    padding: var(--sp-16);
+  }
+  .compose__toolbar {
+    padding: var(--sp-12) var(--sp-12) calc(var(--sp-12) + env(safe-area-inset-bottom));
+  }
+  .compose__hint {
+    display: none;
+  }
+  .compose__tools {
+    width: 100%;
+    justify-content: space-around;
+  }
+  .compose__tool span {
+    display: none;
+  }
+  .compose__tool {
+    padding: 10px;
+    width: 44px;
+    height: 44px;
+    justify-content: center;
+  }
+}
+
+/* ===================== Dark mode polish =====================
+   The shared tokens already flip surface/text — these tweaks tune the
+   atmospheric layers so the card reads as a lit pane on a moody field. */
+@media (prefers-color-scheme: dark) {
+  /* Dark surfaces darken under the scrim; pull the tint deeper so the page
+     still reads as dimmed without becoming opaque. */
+  .compose-stage__scrim {
+    background: rgba(8, 14, 17, 0.55);
+  }
+  .compose-stage__backdrop {
+    background: radial-gradient(
+      40% 36% at 50% 50%,
+      rgba(18, 210, 217, 0.18),
+      transparent 70%
+    );
+  }
+  .compose {
+    box-shadow: var(--glass-shadow), 0 30px 90px rgba(0, 0, 0, 0.55);
+  }
+  .compose__hint kbd {
+    background: var(--surface-2);
+    border-color: var(--line-strong);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+  }
+}
+
+/* ===================== Preview toggle + preview pane ===================== */
+.compose__preview-toggle {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+  color: var(--ink-3);
+  cursor: pointer;
+  transition:
+    background 0.18s var(--ease-out),
+    color 0.18s var(--ease-out),
+    border-color 0.18s var(--ease-out),
+    transform 0.18s var(--ease-out);
+  margin-right: 4px;
+}
+.compose__preview-toggle:hover {
+  background: var(--sapphire-900);
+  color: var(--sapphire);
+  border-color: var(--sapphire-700);
+}
+.compose__preview-toggle.is-on {
+  background: var(--grad-aqua);
+  color: #ffffff;
+  border-color: transparent;
+}
+
+.compose-preview {
+  overflow: hidden;
+  margin-top: var(--sp-16);
+  padding: var(--sp-16) var(--sp-16) var(--sp-12);
+  border-radius: var(--r-card);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-10);
+}
+.compose-preview__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.compose-preview__eyebrow {
+  font-family: var(--font-body);
+  font-size: var(--fs-1);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--sapphire);
+  font-weight: 700;
+}
+.compose-preview__hint {
+  font-size: var(--fs-1);
+  color: var(--muted);
+}
+
+.compose-preview__card {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: var(--r-base);
+  padding: var(--sp-14);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-10);
+}
+.compose-preview__card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+}
+.compose-preview__avatar-fallback {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+}
+.compose-preview__author {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+.compose-preview__author strong {
+  font-family: var(--font-display);
+  color: var(--brand);
+  font-size: var(--fs-3);
+}
+.compose-preview__author span {
+  font-size: var(--fs-1);
+  color: var(--muted);
+}
+.compose-preview__body {
+  margin: 0;
+  font-size: var(--fs-3);
+  line-height: 1.55;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.compose-preview__hero {
+  position: relative;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: var(--surface-3);
+  aspect-ratio: 4 / 3;
+}
+.compose-preview__hero.is-video {
+  aspect-ratio: 16 / 9;
+}
+.compose-preview__hero img,
+.compose-preview__hero video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.compose-preview__play {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #ffffff;
+  background: rgba(0, 0, 0, 0.18);
+  pointer-events: none;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.55);
+}
+.compose-preview__strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--sp-6);
+}
+.compose-preview__strip-item {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--r-xs);
+  overflow: hidden;
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+}
+.compose-preview__strip-item img,
+.compose-preview__strip-item video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.compose-preview__strip-item.is-more {
+  display: grid;
+  place-items: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--muted);
+}
+.compose-preview__stats {
+  display: flex;
+  gap: var(--sp-14);
+  padding-top: var(--sp-6);
+  color: var(--muted);
+  font-size: var(--fs-2);
+}
+.compose-preview__stats span {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .compose__preview-toggle {
+    background: var(--surface-2);
+    border-color: var(--line);
+  }
+  .compose-preview {
+    background: var(--surface-2);
+  }
+  .compose-preview__card {
+    background: var(--surface);
+  }
+}
+
+.compose__turnstile {
+  margin-top: var(--sp-16);
+  display: flex;
+  justify-content: flex-start;
+}

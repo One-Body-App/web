@@ -1,0 +1,225 @@
+.postdetail {
+  width: 100%;
+}
+
+/* Sticky "← Post / Thread" header. */
+.postdetail__head {
+  position: sticky;
+  top: var(--topbar-h);
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-12);
+  padding: var(--sp-10) var(--sp-12);
+  margin-bottom: var(--sp-16);
+  border-radius: var(--r-base);
+  border: 1px solid var(--glass-border);
+}
+.postdetail__head h1 {
+  font-family: var(--font-display);
+  font-size: var(--fs-5);
+  color: var(--brand);
+}
+@media (min-width: 900px) {
+  .postdetail__head {
+    top: var(--sp-8);
+  }
+}
+
+.postdetail__body {
+  padding: 0;
+  overflow: hidden;
+}
+
+/* Focused item (the post, or the comment you drilled into) pinned at top. */
+.postdetail__focus {
+  border-bottom: 1px solid var(--line);
+}
+.postdetail__focus .post {
+  margin-bottom: 0;
+}
+.postdetail__missing {
+  padding: var(--sp-24) var(--sp-16);
+  color: var(--muted);
+  font-size: var(--fs-3);
+}
+
+/* Reply composer (under the focused item, above the replies — like X). */
+.postdetail__compose {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--sp-10);
+  padding: var(--sp-12) var(--sp-16);
+  border-bottom: 1px solid var(--line);
+}
+.postdetail__input {
+  flex: 1;
+  min-width: 0;
+  max-height: 140px;
+  padding: 10px 14px;
+  border-radius: var(--r-lg);
+  border: 1.5px solid var(--line);
+  background: var(--surface-3);
+  font-size: var(--fs-3);
+  font-family: inherit;
+  line-height: 1.4;
+  color: var(--ink);
+  resize: none;
+}
+.postdetail__input:focus {
+  outline: none;
+  border-color: var(--sapphire);
+  background: var(--surface);
+}
+.postdetail__send {
+  flex-shrink: 0;
+  gap: 6px;
+  padding: 9px 18px;
+}
+
+/* Flat reply list. */
+.postdetail__replies {
+  display: flex;
+  flex-direction: column;
+}
+.postdetail__empty {
+  padding: var(--sp-32) var(--sp-16);
+  text-align: center;
+  color: var(--muted);
+  font-size: var(--fs-3);
+}
+
+/* ---------------- Comment row (X-style), shared by CommentRow ---------------- */
+.cmt {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-10);
+  padding: var(--sp-12) var(--sp-16);
+  border-bottom: 1px solid var(--line);
+}
+.postdetail__replies .cmt:last-child {
+  border-bottom: none;
+}
+.cmt--row {
+  cursor: pointer;
+  transition: background 0.14s ease;
+}
+.cmt--row:hover {
+  background: var(--surface-2);
+}
+.cmt--anchor {
+  cursor: default;
+}
+.cmt--anchor .cmt__body {
+  font-size: var(--fs-4);
+  line-height: 1.5;
+  margin-top: var(--sp-4);
+}
+.cmt__main {
+  flex: 1;
+  min-width: 0;
+}
+.cmt__head {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  font-size: var(--fs-2);
+}
+.cmt__name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--brand);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.cmt__handle {
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.cmt__sep,
+.cmt__time {
+  color: var(--muted);
+  flex-shrink: 0;
+}
+.cmt__more {
+  flex-shrink: 0;
+  margin-left: auto;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  color: var(--muted);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.cmt__more:hover {
+  background: var(--surface-3);
+  color: var(--sapphire);
+}
+.cmt__body {
+  margin-top: 2px;
+  font-size: var(--fs-3);
+  line-height: 1.45;
+  color: var(--ink);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.cmt__actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 440px;
+  margin-top: var(--sp-8);
+  color: var(--muted);
+}
+.cmt__action {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px;
+  border-radius: var(--r-pill);
+  color: inherit;
+  font-size: var(--fs-1);
+  transition: color 0.15s ease;
+}
+.cmt__action span {
+  font-weight: 600;
+}
+.cmt__action:hover {
+  color: var(--sapphire);
+}
+.cmt__action--repost:hover {
+  color: var(--success);
+}
+.cmt__action--like:hover,
+.cmt__action--like.is-active {
+  color: var(--react-love);
+}
+.cmt__action--bookmark.is-active {
+  color: var(--sapphire);
+}
+.cmt__copied {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  padding: 4px 8px;
+  border-radius: var(--r-pill);
+  background: var(--brand);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
+}
+.skeleton--avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}

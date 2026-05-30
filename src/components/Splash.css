@@ -1,0 +1,36 @@
+.splash {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--sp-20);
+  background: var(--grad-hero);
+  z-index: 100;
+}
+.splash__mark {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 96px;
+}
+.splash__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid rgba(18, 107, 135, 0.18);
+  border-top-color: var(--sapphire);
+  animation: splash-spin 0.9s linear infinite;
+}
+.splash__label {
+  font-family: var(--font-display);
+  color: var(--sapphire);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+@keyframes splash-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

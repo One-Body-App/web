@@ -1,0 +1,125 @@
+.cmt {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-8);
+  margin-top: var(--sp-12);
+}
+
+.cmt__item {
+  position: relative;
+  width: 112px;
+  height: 112px;
+  border-radius: var(--r-base);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--surface-3);
+  cursor: grab;
+  transition:
+    box-shadow 0.18s var(--ease-out),
+    transform 0.18s var(--ease-out),
+    border-color 0.18s var(--ease-out);
+}
+
+.cmt__item.is-dropping {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(18, 210, 217, 0.35);
+}
+
+.cmt__item:active {
+  cursor: grabbing;
+}
+
+.cmt__preview {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.cmt__handle {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.45);
+  color: #ffffff;
+  display: grid;
+  place-items: center;
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.cmt__remove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #ffffff;
+  border: none;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition:
+    background 0.18s var(--ease-out),
+    transform 0.18s var(--ease-out);
+}
+
+.cmt__remove:hover {
+  background: var(--brand);
+  transform: scale(1.08);
+}
+
+.cmt__kind {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  background: rgba(0, 0, 0, 0.55);
+  color: #ffffff;
+  font-size: var(--fs-1);
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+
+.cmt__kind--video {
+  background: linear-gradient(135deg, rgba(18, 210, 217, 0.72), rgba(18, 107, 135, 0.72));
+}
+
+.cmt__index {
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #ffffff;
+  font-size: var(--fs-1);
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+
+.cmt__hint {
+  width: 100%;
+  margin: var(--sp-4) 0 0 0;
+  font-size: var(--fs-1);
+  color: var(--muted);
+}
+
+@media (max-width: 540px) {
+  .cmt__item {
+    width: calc(33% - 6px);
+    height: auto;
+    aspect-ratio: 1;
+  }
+}

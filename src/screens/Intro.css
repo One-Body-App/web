@@ -1,0 +1,241 @@
+.intro {
+  position: relative;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.intro__bg {
+  position: absolute;
+  inset: 0;
+  background: var(--grad-hero);
+  z-index: -2;
+}
+.intro__bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(40% 50% at 85% 15%, rgba(18, 210, 217, 0.16), transparent 70%),
+    radial-gradient(45% 55% at 10% 85%, rgba(18, 107, 135, 0.14), transparent 70%);
+}
+
+.intro__topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-20) var(--sp-24);
+  max-width: 1180px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.intro__grid {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-12);
+  padding: var(--sp-16) var(--sp-24) var(--sp-48);
+  max-width: 1180px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+/* ---------------- Orbit ---------------- */
+.intro__hero {
+  display: grid;
+  place-items: center;
+  width: 100%;
+}
+.orbit {
+  position: relative;
+  width: 340px;
+  height: 340px;
+  display: grid;
+  place-items: center;
+}
+.orbit__ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid var(--sapphire-800);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+.orbit__ring--1 {
+  width: 340px;
+  height: 340px;
+  background: rgba(248, 251, 252, 0.5);
+}
+.orbit__ring--2 {
+  width: 232px;
+  height: 232px;
+  background: rgba(231, 240, 243, 0.6);
+  border-color: var(--sapphire-700);
+}
+.orbit__ring--3 {
+  width: 140px;
+  height: 140px;
+  background: rgba(208, 225, 231, 0.6);
+  border-color: var(--sapphire-300);
+}
+.orbit__sun {
+  position: relative;
+  z-index: 3;
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  background: var(--surface);
+  display: grid;
+  place-items: center;
+  box-shadow:
+    0 10px 30px rgba(18, 107, 135, 0.22),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.8);
+}
+.orbit__track {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  pointer-events: none;
+}
+.orbit__item {
+  position: absolute;
+  display: grid;
+  place-items: center;
+}
+.orbit__avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2.5px solid #fff;
+  box-shadow: 0 6px 16px rgba(3, 47, 60, 0.18);
+  background: var(--surface-3);
+}
+.orbit__icon {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  color: var(--sapphire);
+  box-shadow: 0 6px 16px rgba(3, 47, 60, 0.16);
+}
+.orbit__icon--accent {
+  background: var(--accent);
+  color: var(--brand);
+}
+
+/* ---------------- Panel ---------------- */
+.intro__panel {
+  width: 100%;
+  max-width: 460px;
+  text-align: center;
+  margin-top: var(--sp-8);
+}
+.intro__title {
+  font-size: var(--fs-7);
+  font-weight: 700;
+  margin: var(--sp-8) 0 var(--sp-12);
+}
+.intro__sub {
+  color: var(--ink-3);
+  font-size: var(--fs-4);
+  line-height: 1.6;
+  margin: 0 auto var(--sp-24);
+  max-width: 420px;
+}
+.intro__cta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  max-width: 360px;
+  margin: 0 auto;
+}
+.intro__note {
+  margin-top: var(--sp-20);
+  font-size: var(--fs-1);
+  color: var(--ink-4);
+  line-height: 1.6;
+}
+.intro__note code {
+  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
+  background: var(--surface-3);
+  padding: 1px 5px;
+  border-radius: 4px;
+  color: var(--sapphire);
+  font-size: 0.92em;
+}
+
+/* ---------------- Dark mode polish ----------------
+   The orbit's hardcoded light-wash ring fills (rgba(248,251,252,..) etc) read
+   as opaque pale-grey plates on a near-black background. Override them with
+   sapphire/aqua-tinted glass so the rings stay translucent and the sun reads
+   as a glowing centerpiece rather than a hole. */
+@media (prefers-color-scheme: dark) {
+  .orbit__ring--1 {
+    background: rgba(18, 210, 217, 0.05);
+    border-color: var(--sapphire-700);
+  }
+  .orbit__ring--2 {
+    background: rgba(18, 107, 135, 0.10);
+    border-color: var(--sapphire);
+  }
+  .orbit__ring--3 {
+    background: rgba(18, 210, 217, 0.08);
+    border-color: var(--sapphire);
+  }
+  .orbit__sun {
+    background: var(--surface);
+    box-shadow:
+      0 10px 36px rgba(18, 210, 217, 0.32),
+      0 0 24px rgba(18, 210, 217, 0.20),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  }
+  .orbit__icon {
+    background: var(--surface-2);
+    color: var(--sapphire);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.55);
+  }
+  .orbit__icon--accent {
+    background: var(--accent);
+    color: var(--brand-ink);
+    box-shadow: 0 6px 18px rgba(18, 210, 217, 0.35);
+  }
+  .orbit__avatar {
+    border-color: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.55);
+    background: var(--surface-3);
+  }
+}
+
+/* ---------------- Desktop: side-by-side ---------------- */
+@media (min-width: 920px) {
+  .intro__grid {
+    flex-direction: row;
+    justify-content: center;
+    gap: var(--sp-64);
+  }
+  .intro__hero {
+    width: auto;
+    flex-shrink: 0;
+  }
+  .intro__panel {
+    text-align: left;
+    margin-top: 0;
+    flex-shrink: 0;
+  }
+  .intro__sub {
+    margin-left: 0;
+  }
+  .intro__cta {
+    margin: 0;
+    flex-direction: row;
+  }
+  .intro__title {
+    font-size: var(--fs-8);
+  }
+}

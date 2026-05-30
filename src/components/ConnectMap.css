@@ -1,0 +1,143 @@
+.cmap {
+  position: relative;
+  border-radius: var(--r-card);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+  height: clamp(380px, 62vh, 620px);
+}
+.cmap__canvas {
+  position: absolute;
+  inset: 0;
+}
+
+/* Markers */
+.cmap-pin {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  box-shadow: 0 1px 5px rgba(3, 47, 60, 0.45);
+  cursor: pointer;
+  padding: 0;
+  transition: transform 0.16s var(--ease-spring);
+}
+.cmap-pin:hover {
+  transform: scale(1.28);
+}
+.cmap-pin--event {
+  background: var(--sapphire);
+}
+.cmap-pin--place {
+  background: var(--brand);
+}
+.cmap-pin--job {
+  background: var(--accent);
+}
+
+/* Empty overlay */
+.cmap__empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-8);
+  background: rgba(244, 247, 248, 0.82);
+  color: var(--ink-3);
+  font-size: var(--fs-2);
+  z-index: 2;
+}
+.cmap__empty svg {
+  color: var(--sapphire);
+}
+
+/* Selected card */
+.cmap__card {
+  position: absolute;
+  left: var(--sp-12);
+  right: var(--sp-12);
+  bottom: var(--sp-12);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-12);
+  padding: var(--sp-10);
+  z-index: 3;
+  box-shadow: var(--shadow-lg);
+  max-width: 420px;
+  margin: 0 auto;
+  animation: cmap-rise 0.2s var(--ease-out);
+}
+@keyframes cmap-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.cmap__card-img {
+  width: 60px;
+  height: 60px;
+  border-radius: var(--r-base);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.cmap__card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+.cmap__card-body strong {
+  font-family: var(--font-display);
+  color: var(--brand);
+  font-size: var(--fs-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cmap__card-body span {
+  font-size: var(--fs-2);
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cmap__card-body .btn {
+  margin-top: var(--sp-6);
+  align-self: flex-start;
+}
+.cmap__card-close {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  color: var(--muted);
+  font-size: 13px;
+}
+.cmap__card-close:hover {
+  background: var(--surface-3);
+  color: var(--ink);
+}
+
+/* Mapbox/MapLibre attribution and controls tuned to brand */
+.cmap .mapboxgl-ctrl-attrib,
+.cmap .maplibregl-ctrl-attrib {
+  font-size: 10px;
+}
+.cmap .mapboxgl-ctrl-group,
+.cmap .maplibregl-ctrl-group {
+  border-radius: var(--r-sm);
+  box-shadow: var(--shadow-sm);
+}
+.cmap .mapboxgl-ctrl button,
+.cmap .maplibregl-ctrl button {
+  color: var(--brand-ink);
+}
