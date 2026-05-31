@@ -27,7 +27,7 @@ export function CreateEvent() {
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (!title.trim() || busy) return;
+    if (!title.trim() || !startDate || busy) return;
     setBusy(true);
     setError(null);
     // In-person events: geocode the address to a coordinate so the event maps
@@ -45,7 +45,7 @@ export function CreateEvent() {
       venueName: !isOnline ? venueName.trim() || undefined : undefined,
       address: !isOnline ? address.trim() || undefined : undefined,
       coordinate,
-      startDate: startDate || undefined,
+      startDate,
       startTime: startTime || undefined,
       endTime: endTime || undefined,
       ticketType,
@@ -80,7 +80,7 @@ export function CreateEvent() {
           <CalendarPlus size={20} />
         </span>
         <h1>Create an event</h1>
-        <p>Invite the Body to gather. Only a title is required to publish.</p>
+        <p>Invite the Body to gather. Title and date are required to publish.</p>
       </div>
 
       {error ? (
@@ -132,8 +132,8 @@ export function CreateEvent() {
 
         <div className="apply__row">
           <label className="apply-field">
-            <span>Date</span>
-            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            <span>Date *</span>
+            <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
           </label>
           <label className="apply-field">
             <span>Start time</span>
@@ -159,7 +159,7 @@ export function CreateEvent() {
           <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="worship, all ages" />
         </label>
 
-        <button type="submit" className="btn btn--brand btn--lg btn--block" disabled={!title.trim() || busy}>
+        <button type="submit" className="btn btn--brand btn--lg btn--block" disabled={!title.trim() || !startDate || busy}>
           {busy ? 'Publishing…' : 'Publish event'}
         </button>
       </form>

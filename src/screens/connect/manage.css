@@ -9,6 +9,37 @@
   color: var(--ink-3);
   margin-top: var(--sp-4);
 }
+.manage__stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-10);
+  margin-bottom: var(--sp-24);
+}
+.manage__stat {
+  padding: var(--sp-14);
+  border: 1px solid var(--line);
+  border-radius: var(--r-base);
+  background: var(--surface);
+}
+.manage__stat span {
+  display: block;
+  margin-bottom: var(--sp-4);
+  color: var(--muted);
+  font-size: var(--fs-1);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.manage__stat strong {
+  font-family: var(--font-display);
+  color: var(--brand);
+  font-size: var(--fs-5);
+}
+@media (max-width: 479px) {
+  .manage__stats {
+    grid-template-columns: 1fr;
+  }
+}
 
 /* Create CTA cards */
 .manage__cta {
@@ -96,6 +127,12 @@
   flex: 1;
   min-width: 0;
 }
+.manage-row__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--sp-8);
+}
 .manage-row__title {
   font-family: var(--font-display);
   font-weight: 600;
@@ -121,6 +158,16 @@
 .manage-row__open {
   color: var(--success);
   font-weight: 600;
+}
+@media (max-width: 559px) {
+  .manage-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .manage-row__actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
 }
 
 /* Live toggle */

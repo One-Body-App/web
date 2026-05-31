@@ -134,6 +134,8 @@
 
 .cdetail__actions {
   display: flex;
+  align-items: center;
+  flex-wrap: wrap;
   gap: var(--sp-12);
   position: sticky;
   bottom: var(--sp-16);
@@ -148,6 +150,19 @@
   flex-shrink: 0;
   width: 54px;
   padding: 0;
+}
+.cdetail__going-count {
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: var(--fs-2);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+@media (max-width: 559px) {
+  .cdetail__actions .btn--block {
+    flex-basis: 100%;
+  }
 }
 
 /* ---------------- Job detail extras ---------------- */

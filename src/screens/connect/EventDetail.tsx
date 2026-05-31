@@ -8,15 +8,41 @@ import './connect-detail.css';
 export function EventDetail() {
   const { id = '' } = useParams();
   const navigate = useNavigate();
-  const [going, setGoing] = useState(false);
+  const [goingState, setGoingState] = useState<{
+    eventId: string;
+    isGoing: boolean;
+    attendees: number;
+  } | null>(null);
+  const [savingGoing, setSavingGoing] = useState(false);
 
   const fallback = CONNECT_EVENTS_MOCK.find((e) => e.id === id) ?? CONNECT_EVENTS_MOCK[0];
   const { data, loading } = useApiQuery(() => connectApi.event(id), { fallback, deps: [id] });
   const event = data ?? fallback;
+  const going = goingState?.eventId === event.id ? goingState.isGoing : event.isGoing === true;
+  const attendeeCount = goingState?.eventId === event.id ? goingState.attendees : event.attendees;
 
   useEffect(() => {
-    if (id) connectApi.trackEvent(id, 'open');
+    if (id) connectApi.trackEvent(id, 'detail_open');
   }, [id]);
+
+  async function toggleGoing() {
+    if (!event.id || savingGoing) return;
+    const nextGoing = !going;
+    const optimisticAttendees = Math.max(0, attendeeCount + (nextGoing ? 1 : -1));
+    setSavingGoing(true);
+    setGoingState({ eventId: event.id, isGoing: nextGoing, attendees: optimisticAttendees });
+    const result = await connectApi.setEventGoing(event.id, nextGoing).catch(() => null);
+    if (result) {
+      setGoingState({
+        eventId: event.id,
+        isGoing: result.isGoing,
+        attendees: result.registrationCount,
+      });
+    } else {
+      setGoingState({ eventId: event.id, isGoing: going, attendees: attendeeCount });
+    }
+    setSavingGoing(false);
+  }
 
   if (loading && !data) {
     return (
@@ -91,32 +117,32 @@ export function EventDetail() {
       <div className="cdetail__actions">
         {event.externalEventUrl ? (
           <a
-            className="btn btn--brand btn--lg btn--block"
+            className="btn btn--outline btn--lg btn--block"
             href={event.externalEventUrl}
             target="_blank"
             rel="noreferrer"
-            onClick={() => connectApi.trackEvent(id, 'register')}
           >
-            Go! <ExternalLink size={18} />
+            Registration Link <ExternalLink size={18} />
           </a>
-        ) : (
-          <button
-            type="button"
-            className={`btn btn--lg btn--block ${going ? 'btn--outline' : 'btn--brand'}`}
-            onClick={() => {
-              setGoing((g) => !g);
-              if (!going) connectApi.trackEvent(id, 'register');
-            }}
-          >
-            {going ? (
-              <>
-                <Check size={18} /> You’re going
-              </>
-            ) : (
-              "Go! I'm attending"
-            )}
-          </button>
-        )}
+        ) : null}
+        <button
+          type="button"
+          className={`btn btn--lg btn--block ${going ? 'btn--outline' : 'btn--brand'}`}
+          onClick={toggleGoing}
+          disabled={savingGoing}
+          aria-pressed={going ? 'true' : 'false'}
+        >
+          {savingGoing ? (
+            'Saving...'
+          ) : going ? (
+            <>
+              <Check size={18} /> You're going
+            </>
+          ) : (
+            "Go! I'm attending"
+          )}
+        </button>
+        <span className="cdetail__going-count">{attendeeCount} going</span>
         <Link to="/connect" className="btn btn--outline cdetail__share" aria-label="Back to Connect">
           <Share2 size={18} />
         </Link>

@@ -24,6 +24,46 @@ import { useTurnstileVerification } from '@/auth/useTurnstileVerification';
 type Step = 'type' | 'details' | 'verify';
 
 const normalizeUsername = (value: string) => value.toLowerCase().replace(/[^a-z0-9._-]/g, '');
+const normalizeClerkUsername = (value: string) =>
+  normalizeUsername(value).replace(/[^a-z0-9_-]+/g, '_');
+const DEFAULT_PATCHABLE_MISSING_FIELDS = ['first_name', 'last_name', 'username', 'legal_accepted'];
+
+const normalizeMissingField = (field: string) =>
+  field
+    .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+
+const getMissingFields = (value: any) => {
+  const fields =
+    value?.missingFields ??
+    value?.missing_fields ??
+    value?.missingRequirements ??
+    value?.missing_requirements;
+  return Array.isArray(fields)
+    ? fields.filter((field): field is string => typeof field === 'string')
+    : [];
+};
+
+const getCreatedSessionId = (value: any) => {
+  const sessionId = value?.createdSessionId;
+  return typeof sessionId === 'string' && sessionId.trim() ? sessionId : undefined;
+};
+
+const missingFieldLabel = (field: string) => {
+  const normalized = normalizeMissingField(field);
+  if (normalized === 'first_name') return 'first name';
+  if (normalized === 'last_name') return 'last name';
+  if (normalized === 'legal_accepted') return 'terms acceptance';
+  return normalized.replace(/_/g, ' ') || field;
+};
+
+const missingRequirementsMessage = (fields: string[]) => {
+  if (fields.length === 0) return 'Additional profile information is required before continuing.';
+  const fieldList = fields.map(missingFieldLabel).join(', ');
+  return `Clerk needs ${fieldList} before continuing. Please go back and complete sign up again.`;
+};
 
 function suggestUsernames(base: string, name: string): string[] {
   const rand = () => Math.floor(Math.random() * 900 + 100);
@@ -50,7 +90,9 @@ export function ClerkSignUp() {
   const [usernameOk, setUsernameOk] = useState(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
 
-  const [name, setName] = useState('');
+  const [organizationName, setOrganizationName] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -60,8 +102,110 @@ export function ClerkSignUp() {
   const turnstile = useTurnstileVerification(setError);
 
   const isOrg = accountType === 'organization';
+  const trimmedFirstName = firstName.trim();
+  const trimmedLastName = lastName.trim();
+  const trimmedOrganizationName = organizationName.trim();
+  const profileName = isOrg
+    ? trimmedOrganizationName
+    : [trimmedFirstName, trimmedLastName].filter(Boolean).join(' ');
   const confirmError =
     confirmPassword && confirmPassword !== password ? 'Passwords must match.' : '';
+
+  function buildMissingRequirementsUpdate(missingFields: string[]) {
+    const requestedFields = new Set(
+      (missingFields.length ? missingFields : DEFAULT_PATCHABLE_MISSING_FIELDS).map(
+        normalizeMissingField
+      )
+    );
+    const update: {
+      firstName?: string;
+      lastName?: string;
+      username?: string;
+      legalAccepted?: boolean;
+    } = {};
+
+    if (requestedFields.has('first_name') && trimmedFirstName) {
+      update.firstName = trimmedFirstName;
+    }
+    if (requestedFields.has('last_name') && trimmedLastName) {
+      update.lastName = trimmedLastName;
+    }
+    const clerkUsername = username ? normalizeClerkUsername(username) : undefined;
+    if (requestedFields.has('username') && clerkUsername) {
+      update.username = clerkUsername;
+    }
+    if (requestedFields.has('legal_accepted')) {
+      update.legalAccepted = true;
+    }
+
+    return update;
+  }
+
+  function unpatchedMissingFields(
+    missingFields: string[],
+    update: ReturnType<typeof buildMissingRequirementsUpdate>
+  ) {
+    return missingFields.filter((field) => {
+      const normalized = normalizeMissingField(field);
+      if (normalized === 'first_name') return !update.firstName;
+      if (normalized === 'last_name') return !update.lastName;
+      if (normalized === 'username') return !update.username;
+      if (normalized === 'legal_accepted') return update.legalAccepted !== true;
+      return true;
+    });
+  }
+
+  async function activateCompletedSignup(resource: any) {
+    const createdSessionId = getCreatedSessionId(resource) ?? getCreatedSessionId(signUp);
+    if (!createdSessionId) {
+      setError('Your email is verified. Please sign in to continue.');
+      return;
+    }
+    if (!setActive) {
+      setError('Authentication is still loading. Please try again.');
+      return;
+    }
+    await setActive({ session: createdSessionId });
+    navigate(AFTER_AUTH_URL, { replace: true });
+  }
+
+  async function completeOrPatchSignup(resource: any) {
+    if (resource?.status === 'complete') {
+      await activateCompletedSignup(resource);
+      return;
+    }
+
+    if (resource?.status !== 'missing_requirements') {
+      setError('That code did not work. Please try again.');
+      return;
+    }
+
+    const missingFields = getMissingFields(resource);
+    const update = buildMissingRequirementsUpdate(missingFields);
+    const unpatchedFields = unpatchedMissingFields(missingFields, update);
+
+    if (unpatchedFields.length > 0 || Object.keys(update).length === 0) {
+      setError(
+        missingRequirementsMessage(unpatchedFields.length > 0 ? unpatchedFields : missingFields)
+      );
+      return;
+    }
+
+    if (!signUp) {
+      setError('Authentication is still loading. Please try again.');
+      return;
+    }
+    const updated = await signUp.update(update);
+    if (updated.status === 'complete') {
+      await activateCompletedSignup(updated);
+      return;
+    }
+
+    const remainingFields = getMissingFields(updated);
+    setError(
+      missingRequirementsMessage(remainingFields.length > 0 ? remainingFields : missingFields)
+    );
+  }
 
   async function checkUsername(raw: string) {
     const normalized = normalizeUsername(raw);
@@ -80,7 +224,7 @@ export function ClerkSignUp() {
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         setUsernameError('This username is already in use. If it belongs to you, please sign in.');
-        setSuggestions(suggestUsernames(normalized, name));
+        setSuggestions(suggestUsernames(normalized, profileName));
       }
       // Network/CORS errors: skip the pre-check; Clerk validates uniqueness on submit.
     } finally {
@@ -112,21 +256,31 @@ export function ClerkSignUp() {
     }
     if (usernameError) return;
     if (confirmError) return;
+    if (!trimmedFirstName || !trimmedLastName || (isOrg && !trimmedOrganizationName)) {
+      setError('Please enter first name, last name, and any required organization name.');
+      return;
+    }
 
     setBusy(true);
     setError(null);
-    const [firstName, ...rest] = name.trim().split(/\s+/);
     try {
       const turnstileOk = await turnstile.verify('auth-sign-up');
       if (!turnstileOk) return;
 
       await signUp.create({
-        emailAddress: email,
+        emailAddress: email.trim().toLowerCase(),
         password,
-        username,
-        firstName: firstName || name.trim(),
-        lastName: rest.join(' ') || undefined,
-        unsafeMetadata: accountType ? { accountType } : undefined,
+        username: normalizeClerkUsername(username),
+        firstName: trimmedFirstName,
+        lastName: trimmedLastName,
+        legalAccepted: true,
+        unsafeMetadata: accountType
+          ? {
+              accountType,
+              name: profileName,
+              ...(isOrg ? { organizationName: trimmedOrganizationName } : {}),
+            }
+          : undefined,
       });
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
       setStep('verify');
@@ -144,14 +298,9 @@ export function ClerkSignUp() {
     setError(null);
     try {
       const res = await signUp.attemptEmailAddressVerification({ code });
-      if (res.status === 'complete') {
-        await setActive({ session: res.createdSessionId });
-        navigate(AFTER_AUTH_URL, { replace: true });
-      } else {
-        setError('That code didn’t work. Please try again.');
-      }
+      await completeOrPatchSignup(res);
     } catch (err) {
-      setError(clerkErrorMessage(err, 'That code didn’t work. Please try again.'));
+      setError(clerkErrorMessage(err, 'That code did not work. Please try again.'));
     } finally {
       setBusy(false);
     }
@@ -209,7 +358,7 @@ export function ClerkSignUp() {
   const canSubmit =
     username.length >= 3 &&
     !usernameError &&
-    Boolean(name && email && password) &&
+    Boolean(trimmedFirstName && trimmedLastName && profileName && email && password) &&
     !confirmError &&
     turnstile.passed;
 
@@ -275,12 +424,30 @@ export function ClerkSignUp() {
           </div>
         ) : null}
 
+        {isOrg ? (
+          <TextField
+            label="Organization / Ministry Name"
+            autoComplete="organization"
+            placeholder="e.g. One Body Church"
+            value={organizationName}
+            onChange={(e) => setOrganizationName(e.target.value)}
+            required
+          />
+        ) : null}
         <TextField
-          label={isOrg ? 'Organization / Ministry Name' : 'Display Name'}
-          autoComplete="name"
-          placeholder="How should we address you?"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
+          label={isOrg ? 'Contact First Name' : 'First Name'}
+          autoComplete="given-name"
+          placeholder="First name"
+          value={firstName}
+          onChange={(e) => setFirstName(e.target.value)}
+          required
+        />
+        <TextField
+          label={isOrg ? 'Contact Last Name' : 'Last Name'}
+          autoComplete="family-name"
+          placeholder="Last name"
+          value={lastName}
+          onChange={(e) => setLastName(e.target.value)}
           required
         />
         <TextField

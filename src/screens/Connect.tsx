@@ -51,9 +51,11 @@ export function Connect() {
   const [placeChip, setPlaceChip] = useState<string>('Nearby');
   const [serveChip, setServeChip] = useState<string>('All');
 
-  const events = useApiQuery(() => connectApi.events(), { fallback: CONNECT_EVENTS_MOCK });
+  const profile = useApiQuery(() => endpoints.getMyProfileMapped());
+  const events = useApiQuery(() => connectApi.events(1, 30, 'trending'), { fallback: CONNECT_EVENTS_MOCK });
   const jobs = useApiQuery(() => connectApi.jobs(), { fallback: CONNECT_JOBS_MOCK });
   const orgs = useApiQuery(() => connectApi.organizations(), { fallback: CONNECT_ORGS_MOCK });
+  const isCreator = profile.data?.influencerProfile?.influencerStatus === 'approved';
 
   const query = q.trim().toLowerCase();
 
@@ -161,7 +163,15 @@ export function Connect() {
         subtitle="Find your people, near and far"
         action={
           <Link to="/connect/manage" className="btn btn--accent btn--sm">
-            <Plus size={16} /> Create
+            {isCreator ? (
+              <>
+                <Plus size={16} /> Create
+              </>
+            ) : (
+              <>
+                <CalendarDays size={16} /> Going
+              </>
+            )}
           </Link>
         }
       />

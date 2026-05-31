@@ -23,6 +23,7 @@ export interface ConnectEvent {
   description?: string;
   attendees: number;
   views?: number;
+  isGoing?: boolean;
   ticketType?: string;
   tags: string[];
   live?: boolean;
@@ -119,7 +120,7 @@ export interface JobApplicant {
 /* ============================ Helpers ============================ */
 function formatDate(date?: string, time?: string): string {
   if (!date) return time ?? '';
-  const parsed = new Date(date);
+  const parsed = new Date(`${date}T12:00:00`);
   let label = date;
   if (!Number.isNaN(parsed.getTime())) {
     label = parsed.toLocaleDateString(undefined, {
@@ -220,6 +221,7 @@ export function mapEvent(e: Raw): ConnectEvent {
     description: str(e.description),
     attendees: num(e.registrationCount),
     views: num(e.viewCount),
+    isGoing: e.isGoing === true,
     ticketType: str(e.ticketType),
     tags: Array.isArray(e.tags) ? (e.tags as string[]) : [],
     live: e.isLive !== false,
@@ -335,9 +337,16 @@ export async function geocodeAddress(address: string): Promise<[number, number] 
 }
 
 /* ============================ Endpoints ============================ */
+export type EventGoingResponse = {
+  event: ConnectEvent | null;
+  isGoing: boolean;
+  registrationCount: number;
+  changed?: boolean;
+};
+
 export const connectApi = {
-  async events(page = 1, limit = 30): Promise<ConnectEvent[]> {
-    return unwrap(await api.get('connect/events/public', { page, limit })).map(mapEvent);
+  async events(page = 1, limit = 30, sort?: 'trending'): Promise<ConnectEvent[]> {
+    return unwrap(await api.get('connect/events/public', { page, limit, sort })).map(mapEvent);
   },
   async event(id: string): Promise<ConnectEvent> {
     const payload = await api.get<Raw>(`connect/events/${id}`);
@@ -358,6 +367,12 @@ export const connectApi = {
   // ---- Organizer / creator ----
   async myEvents(): Promise<ConnectEvent[]> {
     return unwrap(await api.get('connect/events/mine')).map(mapEvent);
+  },
+  async goingEvents(): Promise<ConnectEvent[]> {
+    return unwrap(await api.get('connect/events/going')).map((event) => ({
+      ...mapEvent(event),
+      isGoing: true,
+    }));
   },
   async myJobs(): Promise<ConnectJob[]> {
     return unwrap(await api.get('connect/jobs/mine')).map(mapJob);
@@ -390,6 +405,17 @@ export const connectApi = {
   },
   setEventLive: (id: string, isLive: boolean) =>
     api.patch(`connect/events/${id}/live`, { isLive }),
+  async setEventGoing(id: string, going: boolean): Promise<EventGoingResponse> {
+    const payload = (await api.patch(`connect/events/${id}/going`, { going })) as Raw;
+    const rawEvent = payload?.event as Raw | undefined;
+    const event = rawEvent ? mapEvent(rawEvent) : null;
+    return {
+      event,
+      isGoing: payload?.isGoing === true,
+      registrationCount: num(payload?.registrationCount),
+      changed: payload?.changed === true,
+    };
+  },
 
   /** Jobs publish via draft → update → publish. Returns the new job id. */
   async createJob(body: JobDraft): Promise<{ id: string }> {
@@ -442,8 +468,10 @@ export const connectApi = {
     }
     return res.json().catch(() => null);
   },
-  trackEvent: (id: string, type: string) =>
-    api.post(`connect/events/${id}/telemetry`, { type }).catch(() => {}),
+  trackEvent: (
+    id: string,
+    eventType: 'publish' | 'detail_open' | 'detail_view' | 'manage_view',
+  ) => api.post(`connect/events/${id}/telemetry`, { eventType }).catch(() => {}),
 };
 
 /* ============================ Mock fallback ============================ */

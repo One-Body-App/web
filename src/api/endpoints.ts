@@ -13,6 +13,9 @@ interface ApiUser {
   bio?: string;
   profileImage?: string;
   accountType?: 'individual' | 'organization';
+  influencerProfile?: {
+    influencerStatus?: string;
+  };
   isVerified?: boolean;
   following?: unknown[];
   followers?: unknown[];
@@ -309,6 +312,9 @@ export interface MyProfile {
   followers: number;
   following: number;
   accountType?: string;
+  influencerProfile?: {
+    influencerStatus?: string;
+  };
 }
 
 export const endpoints = {
@@ -502,6 +508,7 @@ export const endpoints = {
       followers: Array.isArray(u.followers) ? u.followers.length : 0,
       following: Array.isArray(u.following) ? u.following.length : 0,
       accountType: u.accountType,
+      influencerProfile: u.influencerProfile,
     };
   },
 
