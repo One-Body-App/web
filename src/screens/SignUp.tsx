@@ -4,8 +4,12 @@ import { AuthLayout } from './AuthLayout';
 import { ClerkSignUp } from './auth/ClerkSignUp';
 import { DemoAuth } from './auth/DemoAuth';
 import { AuthError } from '@/components/auth/AuthControls';
+import { useAuth } from '@/auth/context';
 
 export function SignUpScreen() {
+  const { authError } = useAuth();
+  const errorMessage = clerkConfigError || authError;
+
   return (
     <AuthLayout
       title="Join the family"
@@ -16,8 +20,8 @@ export function SignUpScreen() {
         </>
       }
     >
-      {clerkConfigError ? (
-        <AuthError message={clerkConfigError} />
+      {errorMessage ? (
+        <AuthError message={errorMessage} />
       ) : clerkEnabled ? (
         <ClerkSignUp />
       ) : (

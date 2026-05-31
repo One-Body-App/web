@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ClerkProvider, useAuth as useClerkAuth, useClerk, useUser } from '@clerk/clerk-react';
 import {
   AuthContext,
+  AUTH_UNAVAILABLE_MESSAGE,
   CLERK_PUBLISHABLE_KEY,
   clerkConfigError,
   clerkEnabled,
@@ -12,6 +13,7 @@ import { setTokenGetter } from '@/api/token';
 import { endpoints } from '@/api/endpoints';
 
 const DEMO_KEY = 'ob_demo_session';
+const CLERK_LOAD_TIMEOUT_MS = 8000;
 
 /**
  * Maps Clerk's user/session hooks onto our app-wide AuthContext so the rest
@@ -22,6 +24,7 @@ function ClerkAuthBridge({ children }: { children: ReactNode }) {
   const { signOut } = useClerk();
   const { getToken } = useClerkAuth();
   const syncedRef = useRef(false);
+  const [loadTimedOut, setLoadTimedOut] = useState(false);
 
   // Expose Clerk's session token to the (non-React) API client.
   useEffect(() => {
@@ -46,13 +49,23 @@ function ClerkAuthBridge({ children }: { children: ReactNode }) {
     if (!isSignedIn) syncedRef.current = false;
   }, [isSignedIn, user]);
 
+  useEffect(() => {
+    if (isLoaded) {
+      setLoadTimedOut(false);
+      return;
+    }
+    const timeout = window.setTimeout(() => setLoadTimedOut(true), CLERK_LOAD_TIMEOUT_MS);
+    return () => window.clearTimeout(timeout);
+  }, [isLoaded]);
+
   const value = useMemo<AuthValue>(
     () => ({
-      isLoaded,
-      isSignedIn: Boolean(isSignedIn),
+      isLoaded: isLoaded || loadTimedOut,
+      isSignedIn: loadTimedOut ? false : Boolean(isSignedIn),
       clerkEnabled: true,
+      authError: loadTimedOut ? AUTH_UNAVAILABLE_MESSAGE : null,
       signOut: () => signOut(),
-      user: user
+      user: user && !loadTimedOut
         ? {
             id: user.id,
             fullName: user.fullName ?? user.username ?? 'Friend',
@@ -63,7 +76,7 @@ function ClerkAuthBridge({ children }: { children: ReactNode }) {
           }
         : null,
     }),
-    [isLoaded, isSignedIn, user, signOut]
+    [isLoaded, isSignedIn, loadTimedOut, user, signOut]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -81,6 +94,7 @@ function DemoAuthBridge({ children }: { children: ReactNode }) {
       isLoaded: true,
       isSignedIn: signedIn,
       clerkEnabled: false,
+      authError: null,
       user: signedIn ? DEMO_USER : null,
       demoSignIn: () => {
         localStorage.setItem(DEMO_KEY, '1');
@@ -103,6 +117,7 @@ function SignedOutAuthBridge({ children }: { children: ReactNode }) {
       isLoaded: true,
       isSignedIn: false,
       clerkEnabled: false,
+      authError: AUTH_UNAVAILABLE_MESSAGE,
       user: null,
       signOut: () => undefined,
     }),

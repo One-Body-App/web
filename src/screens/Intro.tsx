@@ -55,7 +55,7 @@ const FALLBACK_AVATARS: readonly string[] = [
 
 export function Intro() {
   const navigate = useNavigate();
-  const { clerkEnabled } = useAuth();
+  const { authError, clerkEnabled } = useAuth();
   // 4 slots that mirror the mobile intro avatars exactly. CDN URLs from the
   // backend get loaded into these; if a slot is null OR its image errors out,
   // the matching bundled face stays visible.
@@ -210,7 +210,7 @@ export function Intro() {
             </button>
           </div>
 
-          {clerkConfigError ? (
+          {clerkConfigError || authError ? (
             <p className="intro__note">
               <strong>Authentication is temporarily unavailable.</strong> Please contact One Body support.
             </p>
