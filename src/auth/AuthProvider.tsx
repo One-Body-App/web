@@ -3,6 +3,7 @@ import { ClerkProvider, useAuth as useClerkAuth, useClerk, useUser } from '@cler
 import {
   AuthContext,
   CLERK_PUBLISHABLE_KEY,
+  clerkConfigError,
   clerkEnabled,
   DEMO_USER,
   type AuthValue,
@@ -96,6 +97,21 @@ function DemoAuthBridge({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+function SignedOutAuthBridge({ children }: { children: ReactNode }) {
+  const value = useMemo<AuthValue>(
+    () => ({
+      isLoaded: true,
+      isSignedIn: false,
+      clerkEnabled: false,
+      user: null,
+      signOut: () => undefined,
+    }),
+    []
+  );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   if (clerkEnabled) {
     return (
@@ -104,5 +120,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       </ClerkProvider>
     );
   }
+  if (clerkConfigError) return <SignedOutAuthBridge>{children}</SignedOutAuthBridge>;
   return <DemoAuthBridge>{children}</DemoAuthBridge>;
 }

@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
-import { clerkEnabled } from '@/auth/context';
+import { clerkConfigError, clerkEnabled } from '@/auth/context';
 import { AuthLayout } from './AuthLayout';
 import { ClerkSignIn } from './auth/ClerkSignIn';
 import { DemoAuth } from './auth/DemoAuth';
+import { AuthError } from '@/components/auth/AuthControls';
 
 export function SignInScreen() {
   return (
@@ -15,7 +16,13 @@ export function SignInScreen() {
         </>
       }
     >
-      {clerkEnabled ? <ClerkSignIn /> : <DemoAuth mode="sign-in" />}
+      {clerkConfigError ? (
+        <AuthError message={clerkConfigError} />
+      ) : clerkEnabled ? (
+        <ClerkSignIn />
+      ) : (
+        <DemoAuth mode="sign-in" />
+      )}
     </AuthLayout>
   );
 }
