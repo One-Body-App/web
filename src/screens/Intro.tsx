@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useEffect, useState, type ReactNode } from 'react';
 import { Compass, Search } from 'lucide-react';
 import { Logo } from '@/components/Logo';
-import { useAuth } from '@/auth/context';
+import { clerkConfigError, useAuth } from '@/auth/context';
 import { getCachedIntroAvatars, INTRO_AVATAR_COUNT } from '@/api/introAvatars';
 import './Intro.css';
 
@@ -210,7 +210,11 @@ export function Intro() {
             </button>
           </div>
 
-          {!clerkEnabled ? (
+          {clerkConfigError ? (
+            <p className="intro__note">
+              <strong>Authentication is temporarily unavailable.</strong> Please contact One Body support.
+            </p>
+          ) : !clerkEnabled ? (
             <p className="intro__note">
               <strong>Preview mode.</strong> Add <code>VITE_CLERK_PUBLISHABLE_KEY</code> to{' '}
               <code>web/.env.local</code> to enable real Clerk auth.

@@ -22,9 +22,13 @@ export interface AuthValue {
   demoSignIn?: () => void;
 }
 
-/** True when VITE_CLERK_PUBLISHABLE_KEY is set — drives real Clerk auth. */
-export const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY ?? '';
-export const clerkEnabled = Boolean(CLERK_PUBLISHABLE_KEY);
+/** True when VITE_CLERK_PUBLISHABLE_KEY is set to a browser-safe Clerk key. */
+export const CLERK_PUBLISHABLE_KEY = (import.meta.env.VITE_CLERK_PUBLISHABLE_KEY ?? '').trim();
+export const clerkConfigError =
+  CLERK_PUBLISHABLE_KEY && !CLERK_PUBLISHABLE_KEY.startsWith('pk_')
+    ? 'Authentication is temporarily unavailable. Please contact One Body support.'
+    : null;
+export const clerkEnabled = Boolean(CLERK_PUBLISHABLE_KEY && !clerkConfigError);
 
 /** Demo identity used when no Clerk key is configured, so the UI is previewable. */
 export const DEMO_USER: AppUser = {
