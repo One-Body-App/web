@@ -18,6 +18,8 @@ export interface AuthValue {
   signOut: () => void | Promise<void>;
   /** True when a real Clerk publishable key is configured. */
   clerkEnabled: boolean;
+  /** Present when auth is configured but unavailable at runtime. */
+  authError?: string | null;
   /** Demo-only: flips the local preview session to signed-in. */
   demoSignIn?: () => void;
 }
@@ -29,6 +31,8 @@ export const clerkConfigError =
     ? 'Authentication is temporarily unavailable. Please contact One Body support.'
     : null;
 export const clerkEnabled = Boolean(CLERK_PUBLISHABLE_KEY && !clerkConfigError);
+export const AUTH_UNAVAILABLE_MESSAGE =
+  'Authentication is temporarily unavailable. Please contact One Body support.';
 
 /** Demo identity used when no Clerk key is configured, so the UI is previewable. */
 export const DEMO_USER: AppUser = {
