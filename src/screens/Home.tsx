@@ -14,6 +14,9 @@ import {
   trackFeedEvent,
   type TelemetryFeedType,
 } from '@/telemetry/feedTelemetry';
+/* sponsored ad injection */
+import InlineAdCard from '@/components/ads/InlineAdCard';
+import { fetchInlineAds, interleaveAds, isInlineAdEntry, type InlineAd } from '@/api/ads';
 import './home.css';
 
 type TopTab = 'feed' | 'read' | 'pray' | 'watch';
@@ -275,6 +278,8 @@ export function Home() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [end, setEnd] = useState(false);
   const [fallback, setFallback] = useState(false);
+  /* sponsored ad injection */
+  const [inlineAds, setInlineAds] = useState<InlineAd[]>([]);
 
   const telemetryFeed: TelemetryFeedType =
     top === 'feed' ? (sub === 'connected' ? 'connected' : 'foryou') : top;
@@ -287,6 +292,17 @@ export function Home() {
       .getMyProfileMapped()
       .then((me) => active && setMeId(me?.id ?? ''))
       .catch(() => active && setMeId(''));
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  /* sponsored ad injection: fetch inline ads once on mount */
+  useEffect(() => {
+    let active = true;
+    fetchInlineAds().then((ads) => {
+      if (active) setInlineAds(ads);
+    });
     return () => {
       active = false;
     };
@@ -399,25 +415,30 @@ export function Home() {
         <FeedSkeleton />
       ) : items.length ? (
         <>
-          {items.map((item, i) => (
-            <TrackedFeedItem
-              key={feedItemKey(item)}
-              feedType={telemetryFeed}
-              postId={itemPostId(item)}
-              postType={itemPostType(item)}
-              rank={i}
-            >
-              {item.kind === 'article' ? (
-                <ArticleCard article={item.article} />
-              ) : item.kind === 'prayer' ? (
-                <PrayerCard prayer={item.prayer} meId={meId ?? ''} onChanged={reloadFeed} />
-              ) : item.kind === 'video' ? (
-                <FeedVideoCard video={item.video} />
-              ) : (
-                <PostCard post={item.post} />
-              )}
-            </TrackedFeedItem>
-          ))}
+          {/* sponsored ad injection: interleave an ad after every 6th feed item */}
+          {interleaveAds(items, inlineAds, 6).map((entry, i) =>
+            isInlineAdEntry(entry) ? (
+              <InlineAdCard key={`ad-${entry.adKey}`} ad={entry.ad} />
+            ) : (
+              <TrackedFeedItem
+                key={feedItemKey(entry)}
+                feedType={telemetryFeed}
+                postId={itemPostId(entry)}
+                postType={itemPostType(entry)}
+                rank={i}
+              >
+                {entry.kind === 'article' ? (
+                  <ArticleCard article={entry.article} />
+                ) : entry.kind === 'prayer' ? (
+                  <PrayerCard prayer={entry.prayer} meId={meId ?? ''} onChanged={reloadFeed} />
+                ) : entry.kind === 'video' ? (
+                  <FeedVideoCard video={entry.video} />
+                ) : (
+                  <PostCard post={entry.post} />
+                )}
+              </TrackedFeedItem>
+            )
+          )}
           {!end && !fallback ? <div ref={sentinelRef} aria-hidden style={{ height: 1 }} /> : null}
           {loadingMore ? (
             <div

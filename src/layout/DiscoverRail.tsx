@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Flame, HandHeart, Play, PlayCircle, Sparkles, TrendingUp } from 'lucide-react';
 import { Avatar } from '@/components/Avatar';
 import type { OBUser } from '@/data/mock';
+/* sponsored sidebar */
+import SidebarAd from '@/components/ads/SidebarAd';
 import { endpoints } from '@/api/endpoints';
 import { useApiQuery } from '@/api/useApi';
 import { prayerApi } from '@/api/prayer';
@@ -183,6 +185,9 @@ export function DiscoverRail() {
           </Link>
         </div>
       ) : null}
+
+      {/* sponsored sidebar: one small ad (web_sidebar zone) */}
+      <SidebarAd />
 
       <p className="rail-foot">
         One Body · Built with love for the global church.

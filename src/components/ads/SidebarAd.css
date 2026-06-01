@@ -1,0 +1,9 @@
+.sidebar-ad {
+  width: 100%;
+  max-width: 320px;
+}
+
+/* The card already carries its own border/background; keep the wrapper plain. */
+.sidebar-ad .inline-ad-card {
+  margin: 0;
+}
