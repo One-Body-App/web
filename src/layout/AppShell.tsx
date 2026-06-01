@@ -1,34 +1,45 @@
-import { useEffect, useState } from 'react';
+import { useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { Bell, Plus, X } from 'lucide-react';
+import { Bell, CircleHelp, LogOut, Plus, X } from 'lucide-react';
 import { Logo } from '@/components/Logo';
 import { Avatar } from '@/components/Avatar';
 import { ApiOfflineBanner } from '@/components/ApiOfflineBanner';
 import { useAuth } from '@/auth/context';
-import { NAV_ITEMS } from './navItems';
+import { NAV_ITEMS, SIDEBAR_NAV_ITEMS } from './navItems';
 import { DiscoverRail } from './DiscoverRail';
 import './AppShell.css';
 
+/** Hosted Tawk.to customer-service link; Help button hides when unset. */
+const TAWK_LINK = (import.meta.env.VITE_TAWK_LINK ?? '').trim();
+
 export function AppShell() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const pathname = location.pathname;
   const [menuOpen, setMenuOpen] = useState(false);
+  const lastPathnameRef = useRef(pathname);
+  if (lastPathnameRef.current !== pathname) {
+    lastPathnameRef.current = pathname;
+    if (menuOpen) setMenuOpen(false);
+  }
 
-  // Close the mobile drawer on navigation and on Escape.
-  useEffect(() => setMenuOpen(false), [pathname]);
-  useEffect(() => {
-    if (!menuOpen) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setMenuOpen(false);
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [menuOpen]);
+  async function handleSignOut() {
+    await signOut();
+    navigate('/', { replace: true });
+  }
+
+  function openHelp() {
+    window.open(TAWK_LINK, '_blank', 'noopener,noreferrer');
+  }
 
   return (
-    <div className="shell">
+    <div
+      className="shell"
+      onKeyDownCapture={(event) => {
+        if (menuOpen && event.key === 'Escape') setMenuOpen(false);
+      }}
+    >
       {/* ---------------- Desktop sidebar ---------------- */}
       <aside className="shell__sidebar">
         <NavLink to="/home" className="shell__brand" aria-label="One Body home">
@@ -36,7 +47,7 @@ export function AppShell() {
         </NavLink>
 
         <nav className="shell__nav">
-          {NAV_ITEMS.map(({ to, label, Icon }) => (
+          {SIDEBAR_NAV_ITEMS.map(({ to, label, Icon }) => (
             <NavLink
               key={to}
               to={to}
@@ -57,15 +68,27 @@ export function AppShell() {
           <span className="shell__post-label">Post</span>
         </button>
 
-        {user ? (
-          <NavLink to="/profile" className="shell__me">
-            <Avatar src={user.imageUrl} alt={user.fullName} size={40} />
-            <span className="shell__me-text">
-              <strong>{user.fullName}</strong>
-              <small>@{user.username}</small>
-            </span>
-          </NavLink>
-        ) : null}
+        <div className="shell__footer">
+          {TAWK_LINK ? (
+            <button type="button" className="shell__navlink" onClick={openHelp}>
+              <CircleHelp size={23} strokeWidth={2} />
+              <span>Help</span>
+            </button>
+          ) : null}
+          <button type="button" className="shell__navlink shell__logout" onClick={handleSignOut}>
+            <LogOut size={23} strokeWidth={2} />
+            <span>Logout</span>
+          </button>
+          {user ? (
+            <NavLink to="/profile" className="shell__me">
+              <Avatar src={user.imageUrl} alt={user.fullName} size={40} />
+              <span className="shell__me-text">
+                <strong>{user.fullName}</strong>
+                <small>@{user.username}</small>
+              </span>
+            </NavLink>
+          ) : null}
+        </div>
       </aside>
 
       {/* -------- Mobile top bar (matches the app: avatar · logo · bell) -------- */}
@@ -131,15 +154,41 @@ export function AppShell() {
           Post
         </button>
 
-        {user ? (
-          <NavLink to="/profile" className="shell__me">
-            <Avatar src={user.imageUrl} alt={user.fullName} size={40} />
-            <span className="shell__me-text">
-              <strong>{user.fullName}</strong>
-              <small>@{user.username}</small>
-            </span>
-          </NavLink>
-        ) : null}
+        <div className="shell__footer">
+          {TAWK_LINK ? (
+            <button
+              type="button"
+              className="shell__navlink"
+              onClick={() => {
+                setMenuOpen(false);
+                openHelp();
+              }}
+            >
+              <CircleHelp size={22} strokeWidth={2} />
+              <span>Help</span>
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className="shell__navlink shell__logout"
+            onClick={() => {
+              setMenuOpen(false);
+              void handleSignOut();
+            }}
+          >
+            <LogOut size={22} strokeWidth={2} />
+            <span>Logout</span>
+          </button>
+          {user ? (
+            <NavLink to="/profile" className="shell__me">
+              <Avatar src={user.imageUrl} alt={user.fullName} size={40} />
+              <span className="shell__me-text">
+                <strong>{user.fullName}</strong>
+                <small>@{user.username}</small>
+              </span>
+            </NavLink>
+          ) : null}
+        </div>
       </aside>
 
       {/* ---------------- Content ---------------- */}

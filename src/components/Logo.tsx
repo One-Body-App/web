@@ -1,4 +1,5 @@
 import { useId } from 'react';
+import './Logo.css';
 
 interface LogoProps {
   size?: number;
@@ -12,24 +13,37 @@ const OB_PATH_1 =
 const OB_PATH_2 =
   'M14.3979 -0.0654297H19.9455C23.3853 -0.0654297 25.8088 0.807053 27.4115 2.43373C28.5061 3.54468 29.1703 5.01238 29.1703 6.91695V6.99644C29.1703 10.2097 27.3727 12.1137 24.9492 13.1852C28.2712 14.2961 30.382 16.2001 30.382 19.9692V20.048C30.382 24.8091 26.5513 27.7051 20.0238 27.7051H14.3979V24.6642C14.3979 23.8292 14.725 23.0286 15.3065 22.4384C15.8879 21.8477 16.6767 21.5164 17.4994 21.5164H19.1642C21.4699 21.5164 22.7988 20.6038 22.7988 18.9771V18.8977C22.7988 17.6557 22.0025 16.7635 20.3007 16.4882V10.6333C21.1898 10.2511 21.6654 9.57063 21.6654 8.58305V8.50356C21.6654 6.99644 20.4931 6.12333 18.2256 6.12333H14.3979V-0.0654297Z';
 
+const SUPPORTED_LOGO_TEXT_SIZES = new Set([28, 30, 32, 52, 60]);
+
 export function Logo({ size = 32, tone = 'brand', withWordmark = false, className }: LogoProps) {
   // Unique per instance: multiple <Logo>s share the page (hidden sidebar +
   // mobile top bar + drawer). With a shared id, fill="url(#ob-grad-brand)"
   // resolved to a display:none gradient and rendered blank.
   const gradientId = `ob-grad-${tone}-${useId().replace(/:/g, '')}`;
   const fill = tone === 'white' ? '#ffffff' : tone === 'ink' ? '#032f3c' : `url(#${gradientId})`;
+  const sizeClass = SUPPORTED_LOGO_TEXT_SIZES.has(size)
+    ? `ob-logo--size-${size}`
+    : 'ob-logo--size-32';
+  const logoClassName = [
+    'ob-logo',
+    sizeClass,
+    withWordmark ? 'ob-logo--wordmark' : null,
+    tone === 'white' ? 'ob-logo--tone-white' : null,
+    className,
+  ]
+    .filter(Boolean)
+    .join(' ');
 
-  const mark = (
-    <svg
-      width={size}
-      height={(size * 28) / 31}
-      viewBox="0 0 31 28"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      aria-hidden={withWordmark ? 'true' : undefined}
-      role={withWordmark ? undefined : 'img'}
-      aria-label={withWordmark ? undefined : 'One Body'}
-    >
+  const baseSvgProps = {
+    width: size,
+    height: (size * 28) / 31,
+    viewBox: '0 0 31 28',
+    fill: 'none',
+    xmlns: 'http://www.w3.org/2000/svg',
+  } as const;
+
+  const paths = (
+    <>
       <defs>
         <linearGradient id={gradientId} x1="15" y1="0" x2="15" y2="28" gradientUnits="userSpaceOnUse">
           <stop stopColor="var(--logo-grad-1, #0e5469)" />
@@ -38,30 +52,27 @@ export function Logo({ size = 32, tone = 'brand', withWordmark = false, classNam
       </defs>
       <path d={OB_PATH_1} fill={fill} />
       <path d={OB_PATH_2} fill={fill} />
+    </>
+  );
+
+  const mark = withWordmark ? (
+    <svg {...baseSvgProps} aria-hidden="true">
+      {paths}
+    </svg>
+  ) : (
+    <svg {...baseSvgProps} role="img" aria-label="One Body">
+      {paths}
     </svg>
   );
 
   if (!withWordmark) {
-    return <span className={className}>{mark}</span>;
+    return <span className={logoClassName}>{mark}</span>;
   }
 
   return (
-    <span
-      className={className}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: size * 0.32 }}
-    >
+    <span className={logoClassName}>
       {mark}
-      <span
-        style={{
-          fontFamily: 'var(--font-display)',
-          fontWeight: 700,
-          fontSize: size * 0.62,
-          letterSpacing: '-0.02em',
-          color: tone === 'white' ? '#fff' : 'var(--brand)',
-        }}
-      >
-        One Body
-      </span>
+      <span className="ob-logo__wordmark">One Body</span>
     </span>
   );
 }

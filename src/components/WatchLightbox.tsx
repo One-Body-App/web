@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Heart, Loader2, MessageCircle, X } from 'lucide-react';
 import { Avatar } from './Avatar';
 import { HlsVideo } from './HlsVideo';
+import { useApiQuery } from '@/api/useApi';
 import { watchApi, type WatchVideo } from '@/api/watch';
 import { trackFeedEvent } from '@/telemetry/feedTelemetry';
 import './WatchLightbox.css';
@@ -14,28 +15,29 @@ function formatCount(n: number) {
 
 /** Full-size theater player. 16:9 plays wide; 9:16 plays tall (portrait). */
 export function WatchLightbox({ video, onClose }: { video: WatchVideo; onClose: () => void }) {
-  const [mediaUrl, setMediaUrl] = useState<string | null>(null);
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(video.reactions);
+  const dialogCleanupRef = useRef<(() => void) | null>(null);
   const portrait = video.aspectRatio < 1;
+  const fallbackMediaUrl = `https://stream.mux.com/${video.playbackId}.m3u8`;
+  const { data: mediaUrl } = useApiQuery(
+    () => watchApi.playback(video.playbackId).then((playback) => playback.mediaUrl),
+    { deps: [video.playbackId], fallback: fallbackMediaUrl },
+  );
 
-  useEffect(() => {
-    let cancelled = false;
-    watchApi
-      .playback(video.playbackId)
-      .then((pb) => !cancelled && setMediaUrl(pb.mediaUrl))
-      .catch(() => !cancelled && setMediaUrl(`https://stream.mux.com/${video.playbackId}.m3u8`));
-
+  const dialogRef = useCallback((node: HTMLDialogElement | null) => {
+    dialogCleanupRef.current?.();
+    dialogCleanupRef.current = null;
+    if (!node) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => {
-      cancelled = true;
+    dialogCleanupRef.current = () => {
       window.removeEventListener('keydown', onKey);
       document.body.style.overflow = prev;
     };
-  }, [video.playbackId, onClose]);
+  }, [onClose]);
 
   function track(eventType: string, canonicalEventName: string, metadata?: Record<string, unknown>) {
     trackFeedEvent({
@@ -61,7 +63,7 @@ export function WatchLightbox({ video, onClose }: { video: WatchVideo; onClose: 
   }
 
   return (
-    <dialog className="watch-lightbox" aria-label={video.title || 'Video'} open>
+    <dialog className="watch-lightbox" aria-label={video.title || 'Video'} open ref={dialogRef}>
       <button
         type="button"
         className="watch-lightbox__backdrop"

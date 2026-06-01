@@ -1,6 +1,8 @@
 import { useMemo, useState, type FormEvent } from 'react';
-import { Check, HandHeart, Plus, X } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Check, HandHeart, MessageCircle, PenLine, Plus, Repeat2, X } from 'lucide-react';
 import { Avatar } from '@/components/Avatar';
+import { ReactionRail } from '@/components/ReactionRail';
 import { TurnstileGate } from '@/components/TurnstileGate';
 import { EmptyState, PageHeader, Segmented } from '@/components/ui';
 
@@ -8,8 +10,12 @@ import { EmptyState, PageHeader, Segmented } from '@/components/ui';
 const PRAYER_TURNSTILE_ENABLED = Boolean(
   (import.meta.env.VITE_CLOUDFLARE_TURNSTILE_SITE_KEY ?? '').trim()
 );
-import { REACTIONS } from '@/data/mock';
 import { endpoints } from '@/api/endpoints';
+import {
+  getReactionTotal,
+  patchReactionCounts,
+  type FullReactionKind,
+} from '@/api/reactions';
 import { useApiMutation, useApiQuery } from '@/api/useApi';
 import {
   MOCK_PRAYERS,
@@ -41,6 +47,10 @@ const COMPOSE_CATEGORIES: { key: PrayerCategory; label: string }[] = [
   { key: 'exhortation', label: 'Exhortation' },
   { key: 'testimony', label: 'Testimony' },
 ];
+
+function rejectBlockedPrayerRepost() {
+  window.alert('Only public prayer requests, exhortations, or testimonies can be reposted.');
+}
 
 export function PrayerWall() {
   const [tab, setTab] = useState<Tab>('wall');
@@ -120,37 +130,124 @@ export function PrayerCard({
   prayer,
   meId,
   onChanged,
+  detail = false,
+  onCommentClick,
 }: {
   prayer: Prayer;
   meId: string;
   onChanged: () => void;
+  detail?: boolean;
+  onCommentClick?: () => void;
 }) {
-  const [myReaction, setMyReaction] = useState<PrayerReaction | null>(prayer.myReaction);
-  const [counts, setCounts] = useState(prayer.reactions);
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [reactionOverride, setReactionOverride] = useState<{
+    prayerId: string;
+    myReaction: PrayerReaction | null;
+    counts: Prayer['reactions'];
+  } | null>(null);
+  const [repostMenuOpen, setRepostMenuOpen] = useState(false);
+  const [repostDelta, setRepostDelta] = useState(0);
+  const [isReposting, setIsReposting] = useState(false);
   const [answerOpen, setAnswerOpen] = useState(false);
   const [testimony, setTestimony] = useState('');
   const track = useFeedTelemetry();
 
   const anonymous = prayer.isPrivate;
-  const total = counts.love + counts.pray + counts.rejoice;
+  const reactionState =
+    reactionOverride?.prayerId === prayer.id
+      ? reactionOverride
+      : { prayerId: prayer.id, myReaction: prayer.myReaction, counts: prayer.reactions };
+  const { myReaction, counts } = reactionState;
+  const total = getReactionTotal(counts);
   const isMine = Boolean(meId) && prayer.authorId === meId;
+  const repostCount = Math.max(0, prayer.reposts + repostDelta);
+  const canRepostPrayer =
+    !prayer.isPrivate &&
+    !prayer.answered &&
+    (prayer.category === 'request' || prayer.category === 'exhortation' || prayer.category === 'testimony');
 
   function react(kind: PrayerReaction) {
     const wasActive = myReaction === kind;
-    setCounts((prev) => {
-      const next = { ...prev };
-      if (myReaction) next[myReaction] -= 1;
-      if (myReaction !== kind) next[kind] += 1;
-      return next;
+    const previousCounts = counts;
+    const previousReaction = myReaction;
+    const nextReaction = wasActive ? null : kind;
+    setReactionOverride({
+      prayerId: prayer.id,
+      counts: patchReactionCounts(counts, previousReaction, nextReaction),
+      myReaction: nextReaction,
     });
-    setMyReaction((prev) => (prev === kind ? null : kind));
     const req = wasActive ? prayerApi.removeReaction(prayer.id) : prayerApi.react(prayer.id, kind);
-    req.catch(() => {});
+    req.catch(() => {
+      setReactionOverride({
+        prayerId: prayer.id,
+        counts: previousCounts,
+        myReaction: previousReaction,
+      });
+    });
     track(
       wasActive ? 'reaction_removed' : 'reaction',
       wasActive ? 'post_reaction_remove' : 'post_reaction_add',
       { reactionType: kind },
     );
+  }
+
+  function openComments() {
+    if (detail) {
+      onCommentClick?.();
+      return;
+    }
+    track('open_comments', 'post_comment_open', { postType: 'prayer' });
+    navigate(`/post/prayer/${prayer.id}`, { state: { prayer } });
+  }
+
+  function openRepostMenu() {
+    if (!canRepostPrayer) {
+      rejectBlockedPrayerRepost();
+      return;
+    }
+    setRepostMenuOpen((open) => !open);
+  }
+
+  function repostPrayer() {
+    if (!canRepostPrayer || isReposting) {
+      if (!canRepostPrayer) rejectBlockedPrayerRepost();
+      return;
+    }
+    setRepostMenuOpen(false);
+    setIsReposting(true);
+    setRepostDelta((count) => count + 1);
+    track('repost', 'post_repost', { repostType: 'repost', sourceType: 'prayer' });
+    endpoints.repost(prayer.id, 'prayer').catch(() => {
+      setRepostDelta((count) => Math.max(0, count - 1));
+      window.alert('Unable to repost right now. Please try again.');
+    }).finally(() => setIsReposting(false));
+  }
+
+  function quotePrayer() {
+    if (!canRepostPrayer) {
+      rejectBlockedPrayerRepost();
+      return;
+    }
+    setRepostMenuOpen(false);
+    track('quote', 'post_quote_create', { repostType: 'quote', sourceType: 'prayer' });
+    navigate('/post/new', {
+      state: {
+        backgroundLocation: location,
+        quote: {
+          sourceId: prayer.id,
+          sourceType: 'prayer',
+          author: prayer.authorName,
+          username: prayer.authorUsername ?? prayer.authorName.replace(/\s+/g, '').toLowerCase(),
+          avatar: prayer.authorAvatar,
+          body: prayer.content,
+        },
+      },
+    });
+  }
+
+  function toggleDefaultReaction() {
+    react(myReaction ?? 'love');
   }
 
   async function confirmAnswered() {
@@ -160,7 +257,7 @@ export function PrayerCard({
   }
 
   return (
-    <article className="prayer card">
+    <article className={detail ? 'prayer prayer--detail' : 'prayer card'}>
       <header className="prayer__head">
         <Avatar
           src={anonymous ? '/brand/avatar1.png' : prayer.authorAvatar}
@@ -186,25 +283,43 @@ export function PrayerCard({
       ) : null}
 
       <footer className="prayer__actions">
-        {REACTIONS.map((r) => {
-          const active = myReaction === r.kind;
-          return (
-            <button
-              type="button"
-              key={r.kind}
-              className={`prayer__react${active ? ' is-active' : ''}`}
-              style={active ? { color: r.color } : undefined}
-              onClick={() => react(r.kind)}
-              title={r.label}
-            >
-              <span aria-hidden>{r.emoji}</span>
-              {counts[r.kind] > 0 ? <small>{counts[r.kind]}</small> : null}
-            </button>
-          );
-        })}
-        <span className="prayer__total">
-          {total > 0 ? `${total} praying` : 'Be the first to pray'}
-        </span>
+        <ReactionRail
+          activeReaction={myReaction}
+          total={total}
+          onToggleDefault={toggleDefaultReaction}
+          onSelect={(kind: FullReactionKind) => react(kind)}
+          ariaLabel="React to prayer"
+        />
+        <button type="button" className="prayer__action" onClick={openComments} aria-label="Comments">
+          <MessageCircle size={22} />
+          {prayer.comments > 0 ? <span>{prayer.comments}</span> : null}
+        </button>
+        <div className="prayer__repost-wrap" onMouseLeave={() => setRepostMenuOpen(false)}>
+          <button
+            type="button"
+            className="prayer__action"
+            onClick={openRepostMenu}
+            aria-label="Repost"
+            aria-haspopup="menu"
+            aria-expanded={repostMenuOpen ? 'true' : 'false'}
+            disabled={isReposting}
+          >
+            <Repeat2 size={22} />
+            {repostCount > 0 ? <span>{repostCount}</span> : null}
+          </button>
+          {repostMenuOpen ? (
+            <div className="prayer__repost-menu glass" role="menu">
+              <button type="button" className="prayer__repost-item" role="menuitem" onClick={repostPrayer}>
+                <Repeat2 size={17} />
+                <span>Repost</span>
+              </button>
+              <button type="button" className="prayer__repost-item" role="menuitem" onClick={quotePrayer}>
+                <PenLine size={16} />
+                <span>Quote Post</span>
+              </button>
+            </div>
+          ) : null}
+        </div>
         {isMine && !prayer.answered ? (
           <button
             type="button"

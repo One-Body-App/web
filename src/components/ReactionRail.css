@@ -1,0 +1,107 @@
+.reaction-rail {
+  position: relative;
+  display: inline-flex;
+}
+
+.reaction-rail__trigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-6);
+  padding: 8px 10px;
+  border-radius: var(--r-pill);
+  color: var(--ink-3);
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s var(--ease-spring);
+}
+
+.reaction-rail__trigger:hover {
+  background: var(--surface-3);
+  color: var(--brand);
+}
+
+.reaction-rail__trigger:active {
+  transform: scale(0.92);
+}
+
+.reaction-rail__trigger.is-active {
+  color: var(--react-love);
+}
+
+.reaction-rail__trigger span {
+  font-size: var(--fs-2);
+  font-weight: 600;
+  color: inherit;
+}
+
+.reaction-rail__active-icon {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+
+.reaction-rail__picker {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  display: flex;
+  gap: 4px;
+  padding: 8px;
+  border-radius: var(--r-pill);
+  box-shadow: var(--shadow-lg);
+  z-index: 10;
+}
+
+.reaction-rail__picker::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 10px;
+}
+
+.reaction-rail__picker-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 9px;
+  border-radius: var(--r-base);
+  transition:
+    transform 0.16s var(--ease-spring),
+    background 0.16s ease;
+}
+
+.reaction-rail__picker-btn img {
+  width: 26px;
+  height: 26px;
+  display: block;
+}
+
+.reaction-rail__picker-btn small {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ink-3);
+}
+
+.reaction-rail__picker-btn:hover {
+  transform: translateY(-4px) scale(1.12);
+  background: var(--surface-3);
+}
+
+.reaction-rail--compact .reaction-rail__trigger {
+  padding: 4px;
+  gap: 6px;
+}
+
+.reaction-rail--compact .reaction-rail__trigger span {
+  font-size: var(--fs-1);
+}
+
+.reaction-rail--compact .reaction-rail__active-icon {
+  width: 16px;
+  height: 16px;
+}

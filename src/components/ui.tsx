@@ -45,7 +45,7 @@ export function Segmented<T extends string>({
           type="button"
           key={o.key}
           role="tab"
-          aria-selected={value === o.key ? 'true' : 'false'}
+          {...{ 'aria-selected': value === o.key ? 'true' : 'false' }}
           className={`segmented__item${value === o.key ? ' is-active' : ''}`}
           onClick={() => onChange(o.key)}
         >

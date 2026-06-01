@@ -1,7 +1,23 @@
 import { api } from './client';
 import { mapPrayer, type Prayer } from './prayer';
+import {
+  createReactionCounts,
+  getApiReactionType,
+  getReactionKindFromApi,
+  getReactionTotal,
+  type FullReactionKind,
+  type ReactionCounts,
+} from './reactions';
 import { mapVideo, type WatchVideo } from './watch';
-import type { ChatMessage, Conversation, OBNotification, OBPost, OBUser, ReactionKind } from '@/data/mock';
+import type {
+  ChatMessage,
+  Conversation,
+  OBNotification,
+  OBPost,
+  OBPostRepost,
+  OBUser,
+  ReactionKind,
+} from '@/data/mock';
 
 /* ----------------------------- Raw API shapes ----------------------------- */
 interface ApiUser {
@@ -13,6 +29,41 @@ interface ApiUser {
   bio?: string;
   profileImage?: string;
   accountType?: 'individual' | 'organization';
+  emailVerified?: boolean;
+  isProfileCompleted?: boolean | string;
+  profile?: {
+    dateOfBirth?: string;
+    churchType?: string;
+    churchAttendance?: string;
+    location?: {
+      address?: string;
+      coordinates?: {
+        lon?: number;
+        lat?: number;
+      };
+      point?: {
+        coordinates?: number[];
+      };
+    };
+    companyName?: string;
+    contactName?: string;
+    contactEmail?: string;
+    contactPhoneNumber?: string;
+    organizationCategory?: string;
+    organizationSubType?: string;
+    typeOfOrganization?: {
+      _id?: string;
+      id?: string;
+      name?: string;
+      organizationType?: string;
+      category?: string;
+    };
+  };
+  mfaConfig?: {
+    isMfaActive?: boolean | null;
+    defaultMethod?: MfaMethod;
+  };
+  interests?: Array<{ _id?: string; id?: string; name?: string } | string>;
   influencerProfile?: {
     influencerStatus?: string;
   };
@@ -23,7 +74,7 @@ interface ApiUser {
 
 interface ApiReaction {
   type?: string;
-  userId?: string;
+  userId?: string | { _id?: string; id?: string };
 }
 
 interface ApiComment {
@@ -61,6 +112,7 @@ interface ApiSocialPost {
   commentsCount?: number;
   commentNumber?: number;
   repostCount?: number;
+  scriptureShare?: OBPost['scriptureShare'];
   // The curated feed (OpenSearch) returns the author under `userData`; raw
   // social endpoints use `user`. Support both.
   user?: ApiUser;
@@ -69,6 +121,28 @@ interface ApiSocialPost {
   created?: string;
   date?: string;
   saved?: boolean;
+  repost?: ApiRepost;
+}
+
+interface ApiRepost {
+  sourceType?: string;
+  sourceId?: string;
+  sourceObjectType?: string;
+  sourceObjectId?: string;
+  sourceCommentId?: string;
+  sourceAuthorName?: string;
+  sourceAuthorUsername?: string;
+  sourceAuthorProfileImage?: string;
+  sourceCreatedAt?: string;
+  sourceTitle?: string;
+  sourceDescription?: string;
+  sourceContent?: string;
+  sourceContentSnippet?: string;
+  sourceLink?: string;
+  sourceImage?: string;
+  sourceImages?: unknown;
+  sourceCategory?: string;
+  repostType?: string;
 }
 
 /* ----------------------------- Reaction mapping ----------------------------- */
@@ -114,6 +188,37 @@ function resolveAvatar(profileImage?: string): string {
   return FALLBACK_AVATAR;
 }
 
+function idFromValue(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (value && typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    const id = record._id ?? record.id;
+    return typeof id === 'string' ? id : '';
+  }
+  return '';
+}
+
+function reactionUserId(reaction: ApiReaction): string {
+  return idFromValue(reaction.userId);
+}
+
+function mapReactionState(
+  reactionsArr: ApiReaction[] | undefined,
+  myUserId?: string,
+): { counts: ReactionCounts; myReaction: FullReactionKind | null; total: number } {
+  const counts = createReactionCounts();
+  let myReaction: FullReactionKind | null = null;
+  for (const reaction of reactionsArr ?? []) {
+    const kind = getReactionKindFromApi(reaction.type);
+    if (!kind) continue;
+    counts[kind] += 1;
+    if (myUserId && reactionUserId(reaction) === myUserId) {
+      myReaction = kind;
+    }
+  }
+  return { counts, myReaction, total: getReactionTotal(counts) };
+}
+
 export function mapUser(u?: ApiUser | null): OBUser {
   return {
     id: u?._id ?? u?.id ?? 'unknown',
@@ -133,7 +238,7 @@ function mapPost(p: ApiSocialPost, myUserId?: string): OBPost {
     const kind = r.type ? API_TO_KIND[r.type] : undefined;
     if (kind) {
       reactions[kind] += 1;
-      if (myUserId && r.userId === myUserId) myReaction = kind;
+      if (myUserId && reactionUserId(r) === myUserId) myReaction = kind;
     }
   }
   const image = (p.images ?? []).find(
@@ -149,12 +254,64 @@ function mapPost(p: ApiSocialPost, myUserId?: string): OBPost {
     image,
     scriptureMentions: (p as { scriptureMentions?: OBPost['scriptureMentions'] })
       .scriptureMentions,
+    scriptureShare: p.scriptureShare,
     reactions,
     myReaction,
     comments: p.commentsCount ?? p.commentNumber ?? p.commentCount ?? p.comments?.length ?? 0,
     reposts: p.repostCount ?? 0,
     saved: Boolean(p.saved),
     feeds: [],
+    repost: mapRepost(p.repost),
+  };
+}
+
+function toStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+}
+
+function normalizeSourceType(value?: string): OBPostRepost['sourceType'] | undefined {
+  if (value === 'social' || value === 'prayer' || value === 'rss' || value === 'watch' || value === 'comment') {
+    return value;
+  }
+  return undefined;
+}
+
+function normalizeSourceObjectType(value?: string): OBPostRepost['sourceObjectType'] | undefined {
+  if (value === 'social' || value === 'prayer' || value === 'rss' || value === 'watch') {
+    return value;
+  }
+  return undefined;
+}
+
+function normalizeRepostType(value?: string): OBPostRepost['repostType'] | undefined {
+  if (value === 'quote' || value === 'repost') return value;
+  return undefined;
+}
+
+function mapRepost(repost?: ApiRepost): OBPostRepost | undefined {
+  const sourceType = normalizeSourceType(repost?.sourceType);
+  const sourceId = repost?.sourceId?.trim();
+  if (!sourceType || !sourceId) return undefined;
+  return {
+    sourceType,
+    sourceId,
+    sourceObjectType: normalizeSourceObjectType(repost?.sourceObjectType),
+    sourceObjectId: repost?.sourceObjectId || undefined,
+    sourceCommentId: repost?.sourceCommentId || undefined,
+    sourceAuthorName: repost?.sourceAuthorName || undefined,
+    sourceAuthorUsername: repost?.sourceAuthorUsername || undefined,
+    sourceAuthorProfileImage: resolveAvatar(repost?.sourceAuthorProfileImage),
+    sourceCreatedAt: repost?.sourceCreatedAt ? timeAgo(repost.sourceCreatedAt) : undefined,
+    sourceTitle: repost?.sourceTitle || undefined,
+    sourceDescription: repost?.sourceDescription || undefined,
+    sourceContent: repost?.sourceContent || undefined,
+    sourceContentSnippet: repost?.sourceContentSnippet || undefined,
+    sourceLink: repost?.sourceLink || undefined,
+    sourceImage: repost?.sourceImage || undefined,
+    sourceImages: toStringArray(repost?.sourceImages),
+    sourceCategory: repost?.sourceCategory || undefined,
+    repostType: normalizeRepostType(repost?.repostType),
   };
 }
 
@@ -165,6 +322,8 @@ export interface OBComment {
   body: string;
   createdAt: string; // relative label
   reactions: number;
+  reactionCounts: ReactionCounts;
+  myReaction: FullReactionKind | null;
   reposts: number;
   replies: number;
   liked: boolean;
@@ -172,16 +331,18 @@ export interface OBComment {
 }
 
 function mapComment(c: ApiComment, myUserId?: string): OBComment {
-  const liked = (c.reactions ?? []).some((r) => myUserId != null && r.userId === myUserId);
+  const reactionState = mapReactionState(c.reactions, myUserId);
   return {
     id: c.commentId ?? c._id ?? c.id ?? Math.random().toString(36).slice(2),
     author: mapUser(c.userData ?? c.user),
     body: c.content ?? '',
     createdAt: timeAgo(c.created ?? c.createdAt ?? c.date),
-    reactions: c.reactionsCount ?? c.reactions?.length ?? 0,
+    reactions: c.reactionsCount ?? reactionState.total,
+    reactionCounts: reactionState.counts,
+    myReaction: reactionState.myReaction,
     reposts: c.repostCount ?? 0,
     replies: c.repliesCount ?? c.replyCount ?? c.response?.length ?? 0,
-    liked,
+    liked: Boolean(reactionState.myReaction),
     bookmarked: Boolean(c.bookmarkedByMe),
   };
 }
@@ -227,16 +388,23 @@ function articleTitle(t: ApiRssItem['title']): string {
   return '';
 }
 
+function normalizeArticleImage(image: ApiRssItem['image']): string | undefined {
+  const rawImage = typeof image === 'string' ? image : image?.url;
+  const trimmed = rawImage?.trim();
+  if (!trimmed || /no-image/i.test(trimmed)) return undefined;
+  return trimmed;
+}
+
 function mapArticle(item: ApiRssItem): OBArticle | null {
   const link = item.link;
   const title = articleTitle(item.title).trim();
   if (!link || !title) return null;
-  const image = typeof item.image === 'string' ? item.image : item.image?.url;
+  const image = normalizeArticleImage(item.image);
   return {
     id: item.id ?? item._id ?? link,
     title,
     summary: item.description?.replace(/<[^>]*>/g, '').trim() || undefined,
-    image: image || undefined,
+    image,
     link,
     sourceName: item.userData?.name ?? item.author ?? 'One Body',
     sourceAvatar: item.userData?.profileImage || FALLBACK_AVATAR,
@@ -304,24 +472,188 @@ export type ApiFeedType = 'connected' | 'foryou' | 'pray' | 'read' | 'watch';
 
 /** Content type for comments/reposts/saves (matches the API's object types). */
 export type SocialContentType = 'social' | 'prayer' | 'rss';
+export type CommentContentType = SocialContentType | 'watch';
+
+export type MfaMethod = 'passkey' | 'totp' | 'email' | 'backup';
+
+export interface MfaChallengeResponse {
+  mfaRequired: true;
+  enrollmentRequired: boolean;
+  mfaToken: string;
+  preferredMethod: MfaMethod;
+  availableMethods: MfaMethod[];
+  emailMasked: string;
+  reason: 'mandatory_mfa' | 'step_up';
+}
+
+export interface OrganizationType {
+  _id: string;
+  id?: string;
+  name?: string;
+  organizationType?: string;
+  category?: string;
+}
+
+export interface InterestTag {
+  _id: string;
+  id?: string;
+  name: string;
+}
+
+export interface ChurchType {
+  _id: string;
+  id?: string;
+  name: string;
+}
+
+export interface AuthApiTokens {
+  accessToken?: string;
+  refreshToken?: string;
+  expiresIn?: number;
+  refreshExpiresIn?: number;
+}
+
+export interface AuthApiResult {
+  user?: ApiUser;
+  tokens?: AuthApiTokens;
+  backupCodes?: string[];
+}
 
 export interface MyProfile {
   id: string;
   name: string;
   username: string;
   avatar: string;
+  email?: string;
+  emailVerified: boolean;
+  isProfileCompleted: boolean;
+  mfaConfig?: {
+    isMfaActive?: boolean | null;
+    defaultMethod?: MfaMethod;
+  };
   bio?: string;
   followers: number;
   following: number;
-  accountType?: string;
+  accountType?: 'individual' | 'organization' | string;
+  profile?: ApiUser['profile'];
+  interests: Array<{ id: string; name: string }>;
   influencerProfile?: {
     influencerStatus?: string;
   };
 }
 
+function resolveProfileCompleted(u: ApiUser): boolean {
+  if (u.isProfileCompleted === true) return true;
+  if (typeof u.isProfileCompleted === 'string') {
+    return u.isProfileCompleted.toLowerCase() === 'true';
+  }
+  return false;
+}
+
+function mapMyProfile(u: ApiUser): MyProfile {
+  return {
+    id: u._id ?? u.id ?? '',
+    name: u.name ?? u.username ?? 'One Body member',
+    username: u.username ?? 'member',
+    avatar: u.profileImage || FALLBACK_AVATAR,
+    email: u.email,
+    emailVerified: u.emailVerified === true,
+    isProfileCompleted: resolveProfileCompleted(u),
+    mfaConfig: u.mfaConfig,
+    bio: u.bio,
+    followers: Array.isArray(u.followers) ? u.followers.length : 0,
+    following: Array.isArray(u.following) ? u.following.length : 0,
+    accountType: u.accountType,
+    profile: u.profile,
+    interests: (u.interests ?? []).map((interest) =>
+      typeof interest === 'string'
+        ? { id: interest, name: interest }
+        : {
+            id: interest._id ?? interest.id ?? '',
+            name: interest.name ?? '',
+          },
+    ),
+    influencerProfile: u.influencerProfile,
+  };
+}
+
 export const endpoints = {
-  syncClerkUser: (body: { name?: string; username?: string; accountType?: string }) =>
-    api.post<{ user: ApiUser }>('auth/clerk/sync', body),
+  syncClerkUser: (
+    body: { name?: string; username?: string; accountType?: string },
+    signal?: AbortSignal,
+  ) => api.post<{ user: ApiUser }>('auth/clerk/sync', body, undefined, signal),
+
+  beginMfaOnboarding: () =>
+    api.post<MfaChallengeResponse | { mfaRequired: false }>('auth/mfa/onboarding/begin'),
+  beginPasskeyRegistration: (body: { mfaToken: string; deviceName?: string }) =>
+    api.post<PublicKeyCredentialCreationOptions>('auth/mfa/passkey/register/begin', body),
+  finishPasskeyRegistration: (body: { mfaToken: string; response: Record<string, unknown> }) =>
+    api.post<AuthApiResult>('auth/mfa/passkey/register/finish', body),
+  beginPasskeyLogin: (body: { mfaToken: string }) =>
+    api.post<PublicKeyCredentialRequestOptions>('auth/mfa/passkey/login/begin', body),
+  finishPasskeyLogin: (body: { mfaToken: string; response: Record<string, unknown> }) =>
+    api.post<AuthApiResult>('auth/mfa/passkey/login/finish', body),
+  beginTotpSetup: (body: { mfaToken: string }) =>
+    api.post<{ otpauth: string }>('auth/mfa/totp/setup/begin', body),
+  verifyTotpSetup: (body: { mfaToken: string; code: string }) =>
+    api.post<AuthApiResult>('auth/mfa/totp/setup/verify', body),
+  verifyTotpCode: (body: { mfaToken: string; code: string }) =>
+    api.post<AuthApiResult>('auth/mfa/totp/verify', body),
+  sendEmailMfaCode: (body: { mfaToken: string }) =>
+    api.post<{ sent: boolean }>('auth/mfa/email/send', body),
+  verifyEmailMfaCode: (body: { mfaToken: string; code: string }) =>
+    api.post<AuthApiResult>('auth/mfa/email/verify', body),
+  verifyBackupCode: (body: { mfaToken: string; code: string }) =>
+    api.post<AuthApiResult>('auth/mfa/backup/verify', body),
+
+  getInterestTags: async (): Promise<InterestTag[]> => {
+    const payload = await api.get('tags/interest');
+    return unwrapList(payload)
+      .map((item): InterestTag | null => {
+        const record = item as Record<string, unknown>;
+        const id = String(record._id ?? record.id ?? '').trim();
+        const name = String(record.name ?? record.title ?? '').trim();
+        return id && name ? { _id: id, id, name } : null;
+      })
+      .filter((item): item is InterestTag => item !== null);
+  },
+
+  // Mirrors mobile's GET global/church-type. Used by the (currently hidden)
+  // ChurchTypeStep — see src/screens/onboarding/OnboardingStepper.tsx HIDDEN_STEPS.
+  getChurchTypes: async (): Promise<ChurchType[]> => {
+    const payload = await api.get('global/church-type');
+    return unwrapList(payload)
+      .map((item): ChurchType | null => {
+        const record = item as Record<string, unknown>;
+        const id = String(record._id ?? record.id ?? '').trim();
+        const name = String(record.name ?? record.churchType ?? record.title ?? '').trim();
+        return id && name ? { _id: id, id, name } : null;
+      })
+      .filter((item): item is ChurchType => item !== null);
+  },
+
+  getOrganizationTypes: async (): Promise<OrganizationType[]> => {
+    const payload = await api.get('global/OrganizationType');
+    return unwrapList(payload)
+      .map((item): OrganizationType | null => {
+        const record = item as Record<string, unknown>;
+        const id = String(record._id ?? record.id ?? '').trim();
+        const label = String(record.organizationType ?? record.name ?? '').trim();
+        if (!id || !label) return null;
+        return {
+          _id: id,
+          id,
+          name: String(record.name ?? label),
+          organizationType: label,
+          category: typeof record.category === 'string' ? record.category : undefined,
+        };
+      })
+      .filter((item): item is OrganizationType => item !== null);
+  },
+
+  addInterests: (interests: string[]) => api.patch('user/add-interests', { interests }),
+  addFollowing: (following: string[]) => api.patch('user/add-following', { following }),
+  updateProfile: (body: Record<string, unknown> | FormData) => api.patch<ApiUser>('user/update-profile', body),
 
   /** Public pre-check (mirrors mobile): resolves if available, throws ApiError(409) if taken. */
   checkUsername: (username: string) => api.post<boolean>('user/validateUsername', { username }),
@@ -391,7 +723,18 @@ export const endpoints = {
 
   createPost: (
     content: string,
-    extra?: { gif?: unknown; location?: unknown; turnstileToken?: string }
+    extra?: {
+      gif?: unknown;
+      location?: unknown;
+      turnstileToken?: string;
+      scriptureShare?: {
+        book: string;
+        chapter: number;
+        verse: number;
+        verseEnd?: number;
+        translation?: string;
+      };
+    }
   ) => api.post('social/post', { content, ...extra }),
 
   /**
@@ -406,6 +749,13 @@ export const endpoints = {
     gif?: unknown;
     location?: { coordinates: number[]; name: string };
     turnstileToken?: string;
+    scriptureShare?: {
+      book: string;
+      chapter: number;
+      verse: number;
+      verseEnd?: number;
+      translation?: string;
+    };
   }) => {
     const form = new FormData();
     form.append('content', params.content);
@@ -415,6 +765,7 @@ export const endpoints = {
     if (params.gif) form.append('gif', JSON.stringify(params.gif));
     if (params.location) form.append('location', JSON.stringify(params.location));
     if (params.turnstileToken) form.append('turnstileToken', params.turnstileToken);
+    if (params.scriptureShare) form.append('scriptureShare', JSON.stringify(params.scriptureShare));
     params.images.forEach((file) => form.append('images', file, file.name));
     return api.post<{ postId?: string; _id?: string; id?: string; pendingReview?: boolean }>(
       'social/post',
@@ -425,7 +776,7 @@ export const endpoints = {
   /* --- Comments (GET list / POST add / reply) --- */
   async getComments(
     postId: string,
-    type: SocialContentType = 'social',
+    type: CommentContentType = 'social',
     page = 1,
     myUserId?: string,
   ): Promise<OBComment[]> {
@@ -439,7 +790,7 @@ export const endpoints = {
   async getCommentThread(
     postId: string,
     commentId: string,
-    type: SocialContentType = 'social',
+    type: CommentContentType = 'social',
     myUserId?: string,
   ): Promise<{ root: OBComment; replies: OBComment[] }> {
     const payload = await api.get<ApiComment>(`comments/${type}/${postId}/${commentId}`);
@@ -452,7 +803,7 @@ export const endpoints = {
   addComment: (
     postId: string,
     content: string,
-    type: SocialContentType = 'social',
+    type: CommentContentType = 'social',
     parentCommentId?: string,
   ) =>
     api
@@ -463,13 +814,25 @@ export const endpoints = {
       .then((c) => mapComment(c)),
 
   /* --- Per-comment interactions (like / bookmark) --- */
-  reactToComment: (postId: string, commentId: string, type: SocialContentType = 'social') =>
-    api.patch(`comments/${type}/${postId}/${commentId}/reaction`, { type: 'love' }),
-  removeCommentReaction: (postId: string, commentId: string, type: SocialContentType = 'social') =>
+  reactToComment: ({
+    postId,
+    commentId,
+    type = 'social',
+    reactionType = 'love',
+  }: {
+    postId: string;
+    commentId: string;
+    type?: CommentContentType;
+    reactionType?: FullReactionKind;
+  }) =>
+    api.patch(`comments/${type}/${postId}/${commentId}/reaction`, {
+      type: getApiReactionType(reactionType),
+    }),
+  removeCommentReaction: (postId: string, commentId: string, type: CommentContentType = 'social') =>
     api.del(`comments/${type}/${postId}/${commentId}/reaction`),
-  bookmarkComment: (postId: string, commentId: string, type: SocialContentType = 'social') =>
+  bookmarkComment: (postId: string, commentId: string, type: CommentContentType = 'social') =>
     api.patch(`comments/${type}/${postId}/${commentId}/bookmark`),
-  unbookmarkComment: (postId: string, commentId: string, type: SocialContentType = 'social') =>
+  unbookmarkComment: (postId: string, commentId: string, type: CommentContentType = 'social') =>
     api.del(`comments/${type}/${postId}/${commentId}/bookmark`),
 
   /* --- Repost (no un-repost). `quoteContent` turns it into a quote repost. --- */
@@ -497,21 +860,12 @@ export const endpoints = {
   unsavePost: (postId: string, type: SocialContentType = 'social') =>
     api.del('user/remove-saved-post', { id: postId, type }),
 
-  getMyProfile: () => api.get<ApiUser>('user/my-profile', { pullSavedData: false }),
+  getMyProfile: (signal?: AbortSignal) =>
+    api.get<ApiUser>('user/my-profile', { pullSavedData: false }, signal),
 
-  async getMyProfileMapped(): Promise<MyProfile> {
-    const u = await api.get<ApiUser>('user/my-profile', { pullSavedData: false });
-    return {
-      id: u._id ?? u.id ?? '',
-      name: u.name ?? u.username ?? 'One Body member',
-      username: u.username ?? 'member',
-      avatar: u.profileImage || FALLBACK_AVATAR,
-      bio: u.bio,
-      followers: Array.isArray(u.followers) ? u.followers.length : 0,
-      following: Array.isArray(u.following) ? u.following.length : 0,
-      accountType: u.accountType,
-      influencerProfile: u.influencerProfile,
-    };
+  async getMyProfileMapped(signal?: AbortSignal): Promise<MyProfile> {
+    const u = await api.get<ApiUser>('user/my-profile', { pullSavedData: false }, signal);
+    return mapMyProfile(u);
   },
 
   async getUserPosts(userId: string, page = 1, myUserId?: string): Promise<OBPost[]> {
@@ -531,8 +885,19 @@ export const endpoints = {
       .filter((item): item is OBSearchItem => item !== null);
   },
 
-  async getSuggestedUsers(): Promise<OBUser[]> {
-    const payload = await api.get('user/get-users-to-subscribe/1', { itemsPerPage: 10 });
+  async getSuggestedUsers(
+    interestIds: string[] = [],
+    page = 1,
+    itemsPerPage = 24,
+  ): Promise<OBUser[]> {
+    const interests = interestIds
+      .map((id) => id.trim())
+      .filter(Boolean)
+      .join(',');
+    const payload = await api.get(`user/get-users-to-subscribe/${page}`, {
+      itemsPerPage,
+      interests: interests || undefined,
+    });
     return unwrapList(payload).map((u) => mapUser(u as ApiUser));
   },
 

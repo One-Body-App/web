@@ -51,14 +51,29 @@ const GROUPS: { title: string; rows: Row[] }[] = [
 ];
 
 function Toggle({ on, onClick }: { on: boolean; onClick: () => void }) {
+  if (on) {
+    return (
+      <button
+        type="button"
+        className="toggle is-on"
+        onClick={onClick}
+        role="switch"
+        aria-checked="true"
+        aria-label="Disable setting"
+      >
+        <span className="toggle__knob" />
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
-      className={`toggle${on ? ' is-on' : ''}`}
+      className="toggle"
       onClick={onClick}
       role="switch"
-      aria-checked={on ? 'true' : 'false'}
-      aria-label={on ? 'Disable setting' : 'Enable setting'}
+      aria-checked="false"
+      aria-label="Enable setting"
     >
       <span className="toggle__knob" />
     </button>

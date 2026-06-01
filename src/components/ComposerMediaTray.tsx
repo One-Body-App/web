@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Film, GripVertical, ImageIcon, X } from 'lucide-react';
 import './ComposerMediaTray.css';
@@ -34,17 +34,13 @@ export function buildComposerMediaItem(file: File): ComposerMediaItem {
 
 export function ComposerMediaTray({ items, onChange, maxItems = DEFAULT_MAX }: ComposerMediaTrayProps) {
   const dragSourceRef = useRef<string | null>(null);
+  const itemsRef = useRef(items);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  itemsRef.current = items;
 
-  useEffect(() => {
-    return () => {
-      // Best-effort revoke when the tray unmounts. Items the parent kept will
-      // keep their URLs alive via re-creation.
-      items.forEach((item) => URL.revokeObjectURL(item.previewUrl));
-    };
-    // We intentionally do not include `items` in deps - revoke should fire once
-    // on unmount, not on every change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  const trayRef = useCallback((node: HTMLDivElement | null) => {
+    if (node) return;
+    itemsRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl));
   }, []);
 
   function remove(id: string) {
@@ -91,7 +87,7 @@ export function ComposerMediaTray({ items, onChange, maxItems = DEFAULT_MAX }: C
   }
 
   return (
-    <div className="cmt" role="list" aria-label="Selected media">
+    <div className="cmt" role="list" aria-label="Selected media" ref={trayRef}>
       <AnimatePresence initial={false}>
         {items.map((item, index) => (
           <motion.div
@@ -111,7 +107,7 @@ export function ComposerMediaTray({ items, onChange, maxItems = DEFAULT_MAX }: C
             onDropCapture={onDrop(item.id)}
             className={`cmt__item${dragOverId === item.id ? ' is-dropping' : ''}`}
           >
-            <div className="cmt__handle" aria-hidden>
+            <div className="cmt__handle" aria-hidden="true">
               <GripVertical size={14} />
             </div>
             {item.kind === 'video' ? (
@@ -119,11 +115,11 @@ export function ComposerMediaTray({ items, onChange, maxItems = DEFAULT_MAX }: C
             ) : (
               <img className="cmt__preview" src={item.previewUrl} alt="" />
             )}
-            <span className={`cmt__kind cmt__kind--${item.kind}`} aria-hidden>
+            <span className={`cmt__kind cmt__kind--${item.kind}`} aria-hidden="true">
               {item.kind === 'video' ? <Film size={11} /> : <ImageIcon size={11} />}
               <span>{item.kind === 'video' ? 'Video' : 'Photo'}</span>
             </span>
-            <span className="cmt__index" aria-hidden>
+            <span className="cmt__index" aria-hidden="true">
               {index + 1}
             </span>
             <button

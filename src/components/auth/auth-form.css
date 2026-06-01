@@ -66,6 +66,31 @@
   color: var(--sapphire);
   background: var(--sapphire-900);
 }
+.field__locate {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  color: var(--accent); /* #12d2d9 */
+  transition:
+    color 0.15s ease,
+    background 0.15s ease;
+}
+.field__locate:hover:not(:disabled) {
+  background: rgba(18, 210, 217, 0.16);
+}
+.field__locate:disabled {
+  cursor: default;
+}
+.field__locate .spinner {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--line-strong);
+  border-top-color: var(--accent);
+  animation: splash-spin 0.7s linear infinite;
+}
 .field__error {
   font-size: var(--fs-1);
   color: var(--error);

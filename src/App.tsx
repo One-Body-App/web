@@ -1,7 +1,9 @@
 import { lazy, Suspense, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useLocation, type Location } from 'react-router-dom';
 import { clerkEnabled, useAuth } from './auth/context';
-import { RequireAuth } from './auth/RequireAuth';
+import { AccountProfileProvider } from './auth/AccountProfileContext';
+import { RequireAccountReady } from './auth/RequireAccountReady';
+import { RequireGateStep } from './auth/RequireGateStep';
 import { AppShell } from './layout/AppShell';
 import { Splash } from './components/Splash';
 
@@ -38,6 +40,14 @@ const Profile = lazy(() => import('./screens/Profile').then((m) => ({ default: m
 const Settings = lazy(() => import('./screens/Settings').then((m) => ({ default: m.Settings })));
 const PostDetail = lazy(() => import('./screens/PostDetail').then((m) => ({ default: m.PostDetail })));
 const CreatePost = lazy(() => import('./screens/CreatePost').then((m) => ({ default: m.CreatePost })));
+// Post-email gate flow (passkey MFA + onboarding) — full-screen routes, lazily
+// loaded so their deps stay out of the initial bundle.
+const SecureAccountScreen = lazy(() =>
+  import('./auth/mfa/SecureAccountScreen').then((m) => ({ default: m.SecureAccountScreen })),
+);
+const OnboardingStepper = lazy(() =>
+  import('./screens/onboarding/OnboardingStepper').then((m) => ({ default: m.OnboardingStepper })),
+);
 
 /** Public landing — sends signed-in users straight to the feed. */
 function Root() {
@@ -73,19 +83,45 @@ export function App() {
     state?.backgroundLocation ?? (isModal ? { ...location, pathname: '/home' } : undefined);
 
   return (
-    <>
+    <AccountProfileProvider>
       <Routes location={backgroundLocation ?? location}>
         <Route path="/" element={<Root />} />
         <Route path="/sign-in/*" element={<SignInScreen />} />
         <Route path="/sign-up/*" element={<SignUpScreen />} />
         {clerkEnabled ? <Route path="/sso-callback" element={<SsoCallback />} /> : null}
 
+        {/* Post-email gate flow: full-screen passkey MFA + onboarding stepper. */}
+        <Route
+          path="/secure-account"
+          element={
+            <RequireGateStep gate="mfa">
+              {deferred('Secure account', <SecureAccountScreen />)}
+            </RequireGateStep>
+          }
+        />
+        <Route
+          path="/onboarding"
+          element={
+            <RequireGateStep gate="onboarding">
+              <Navigate to="/onboarding/intro" replace />
+            </RequireGateStep>
+          }
+        />
+        <Route
+          path="/onboarding/:step"
+          element={
+            <RequireGateStep gate="onboarding">
+              {deferred('Onboarding', <OnboardingStepper />)}
+            </RequireGateStep>
+          }
+        />
+
         {/* Authenticated app shell */}
         <Route
           element={
-            <RequireAuth>
+            <RequireAccountReady>
               <AppShell />
-            </RequireAuth>
+            </RequireAccountReady>
           }
         >
           <Route path="/home" element={deferred('Home', <Home />)} />
@@ -126,14 +162,14 @@ export function App() {
             element={
               deferred(
                 'Create Post',
-                <RequireAuth>
+                <RequireAccountReady>
                   <CreatePost />
-                </RequireAuth>,
+                </RequireAccountReady>,
               )
             }
           />
         </Routes>
       ) : null}
-    </>
+    </AccountProfileProvider>
   );
 }

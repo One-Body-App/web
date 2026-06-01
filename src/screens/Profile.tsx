@@ -27,6 +27,10 @@ export function Profile() {
     name: user?.fullName ?? 'One Body member',
     username: user?.username ?? 'member',
     avatar: user?.imageUrl ?? '/brand/avatar2.png',
+    email: user?.email,
+    emailVerified: true,
+    isProfileCompleted: true,
+    interests: [],
     bio: 'Daughter of the King 👑 · Worship & community · Pointing hearts to Jesus.',
     followers: 12400,
     following: 867,
@@ -109,8 +113,13 @@ export function Profile() {
       {tab === 'posts' ? (
         <>
           <div className="profile__grid">
-            {profilePosts.map((p) => (
-              <button type="button" key={p.id} className="profile__grid-item">
+            {profilePosts.map((p, i) => (
+              <button
+                type="button"
+                key={p.id}
+                className="profile__grid-item"
+                aria-label={`Open post ${i + 1}`}
+              >
                 <img src={p.image} alt="" loading="lazy" />
                 <span className="profile__grid-overlay">
                   <Grid3x3 size={18} />

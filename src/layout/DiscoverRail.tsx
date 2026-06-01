@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useMemo, useState, useSyncExternalStore, type CSSProperties } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Flame, HandHeart, Play, PlayCircle, Sparkles, TrendingUp } from 'lucide-react';
 import { Avatar } from '@/components/Avatar';
@@ -45,16 +45,15 @@ function getTopicTier(popularity: number, min: number, max: number): TopicTier {
 /** True at >=900px, where the rail is visible — gates its data fetches. */
 function useWideScreen(): boolean {
   const query = '(min-width: 900px)';
-  const [wide, setWide] = useState(
+  return useSyncExternalStore(
+    (onStoreChange) => {
+      const mql = window.matchMedia(query);
+      mql.addEventListener('change', onStoreChange);
+      return () => mql.removeEventListener('change', onStoreChange);
+    },
     () => typeof window !== 'undefined' && window.matchMedia(query).matches,
+    () => false,
   );
-  useEffect(() => {
-    const mql = window.matchMedia(query);
-    const onChange = () => setWide(mql.matches);
-    mql.addEventListener('change', onChange);
-    return () => mql.removeEventListener('change', onChange);
-  }, []);
-  return wide;
 }
 
 export function DiscoverRail() {

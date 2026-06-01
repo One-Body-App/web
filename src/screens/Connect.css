@@ -13,7 +13,6 @@
   overflow-x: auto;
   flex: 1;
   min-width: 0;
-  scrollbar-width: none;
 }
 .connect__chips::-webkit-scrollbar {
   display: none;
@@ -41,6 +40,16 @@
   background: var(--surface);
   color: var(--sapphire);
   box-shadow: var(--shadow-xs);
+}
+
+.connect__map-skeleton {
+  height: clamp(380px, 62vh, 620px);
+  border-radius: var(--r-card);
+}
+
+.connect__card-skeleton {
+  height: 240px;
+  border-radius: var(--r-card);
 }
 
 /* ---------------- Events grid ---------------- */

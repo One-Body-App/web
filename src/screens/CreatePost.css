@@ -442,6 +442,94 @@
 .compose__tool:active {
   transform: scale(0.96);
 }
+.compose__tool.is-on {
+  background: var(--sapphire-900);
+  color: var(--sapphire);
+}
+
+/* ---- Feeling picker (toolbar popover, opens upward) ---- */
+.compose__feeling-wrap {
+  position: relative;
+}
+.compose__feeling-menu {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  width: 288px;
+  padding: 8px;
+  border-radius: var(--r-base);
+  box-shadow: var(--shadow-md);
+  animation: compose-pop 180ms var(--ease-out) both;
+}
+.compose__feeling-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 64px;
+  padding: 8px 4px;
+  border-radius: var(--r-sm);
+  color: var(--ink-2);
+  background: transparent;
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+.compose__feeling-opt img {
+  width: 28px;
+  height: 28px;
+}
+.compose__feeling-opt small {
+  font-size: var(--fs-1);
+  font-weight: 600;
+}
+.compose__feeling-opt:hover {
+  background: var(--sapphire-900);
+  color: var(--brand);
+}
+.compose__feeling-opt.is-active {
+  background: var(--sapphire-900);
+  color: var(--sapphire);
+}
+
+/* ---- Feeling chip (shown in the author meta once chosen) ---- */
+.compose__feeling-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 4px 6px 4px 8px;
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+  color: var(--ink-2);
+  font-family: var(--font-body);
+  font-size: var(--fs-1);
+  font-weight: 600;
+}
+.compose__feeling-chip img {
+  width: 16px;
+  height: 16px;
+}
+.compose__feeling-chip-clear {
+  display: inline-grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: var(--ink-3);
+  transition:
+    background 0.15s ease,
+    color 0.15s ease;
+}
+.compose__feeling-chip-clear:hover {
+  background: var(--line);
+  color: var(--ink);
+}
 
 /* Subtle keyboard hint at the trailing edge of the toolbar. */
 .compose__hint {
@@ -648,6 +736,17 @@
   font-size: var(--fs-1);
   color: var(--muted);
 }
+.compose-preview__author .compose-preview__feeling {
+  font-family: var(--font-body);
+  font-weight: 400;
+  color: var(--ink-3);
+}
+.compose-preview__feeling img {
+  width: 14px;
+  height: 14px;
+  vertical-align: -2px;
+  margin-left: 3px;
+}
 .compose-preview__body {
   margin: 0;
   font-size: var(--fs-3);
@@ -655,6 +754,29 @@
   color: var(--ink);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+.compose-preview__scripture {
+  margin: 0;
+  padding: var(--sp-14);
+  border: 1px solid rgba(65, 137, 159, 0.25);
+  border-radius: var(--r-base);
+  background: rgba(65, 219, 225, 0.08);
+}
+.compose-preview__scripture p {
+  margin: 0;
+  color: var(--brand);
+  font-family: var(--font-display);
+  font-size: var(--fs-3);
+  font-style: italic;
+  line-height: 1.5;
+}
+.compose-preview__scripture cite {
+  display: block;
+  margin-top: var(--sp-8);
+  color: var(--sapphire);
+  font-size: var(--fs-2);
+  font-style: normal;
+  font-weight: 700;
 }
 .compose-preview__hero {
   position: relative;

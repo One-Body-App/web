@@ -44,13 +44,16 @@
   align-items: center;
   justify-content: center;
   gap: var(--sp-8);
-  background: rgba(244, 247, 248, 0.82);
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
   color: var(--ink-3);
   font-size: var(--fs-2);
   z-index: 2;
 }
 .cmap__empty svg {
   color: var(--sapphire);
+}
+.cmap__empty .btn {
+  margin-top: var(--sp-4);
 }
 
 /* Selected card */

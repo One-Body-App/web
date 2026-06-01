@@ -2,6 +2,10 @@
   display: flex;
   flex-direction: column;
 }
+.cdetail__skeleton {
+  height: 240px;
+  border-radius: var(--r-card);
+}
 .cdetail__back {
   display: inline-flex;
   align-items: center;

@@ -18,6 +18,7 @@ export interface OBUser {
 
 export interface ScriptureMention {
   reference: string;
+  key?: string;
   book: string;
   bookName: string;
   chapter: number;
@@ -25,6 +26,20 @@ export interface ScriptureMention {
   verseEnd: number;
   startIndex: number;
   endIndex: number;
+  shareCount?: number;
+}
+
+export interface ScriptureShare {
+  key: string;
+  reference: string;
+  translation: string;
+  book: string;
+  bookName: string;
+  chapter: number;
+  verse: number;
+  verseEnd: number;
+  text: string;
+  shareCount?: number;
 }
 
 export interface OBPost {
@@ -34,6 +49,7 @@ export interface OBPost {
   body: string;
   image?: string;
   verse?: { ref: string; text: string };
+  scriptureShare?: ScriptureShare;
   scriptureMentions?: ScriptureMention[];
   reactions: Record<ReactionKind, number>;
   myReaction?: ReactionKind | null;
@@ -41,6 +57,28 @@ export interface OBPost {
   reposts: number;
   saved?: boolean;
   feeds: FeedType[];
+  repost?: OBPostRepost;
+}
+
+export interface OBPostRepost {
+  sourceType: 'social' | 'prayer' | 'rss' | 'watch' | 'comment';
+  sourceId: string;
+  sourceObjectType?: 'social' | 'prayer' | 'rss' | 'watch';
+  sourceObjectId?: string;
+  sourceCommentId?: string;
+  sourceAuthorName?: string;
+  sourceAuthorUsername?: string;
+  sourceAuthorProfileImage?: string;
+  sourceCreatedAt?: string;
+  sourceTitle?: string;
+  sourceDescription?: string;
+  sourceContent?: string;
+  sourceContentSnippet?: string;
+  sourceLink?: string;
+  sourceImage?: string;
+  sourceImages?: string[];
+  sourceCategory?: string;
+  repostType?: 'repost' | 'quote';
 }
 
 export type FeedType = 'forYou' | 'connected' | 'read' | 'pray' | 'watch';

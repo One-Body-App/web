@@ -2,6 +2,11 @@
   padding: var(--sp-16);
   margin-bottom: var(--sp-12);
 }
+.prayer--detail {
+  margin-bottom: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
 .prayer__head {
   display: flex;
   align-items: center;
@@ -77,37 +82,86 @@
 .prayer__actions {
   display: flex;
   align-items: center;
+  justify-content: space-around;
   gap: var(--sp-8);
   margin-top: var(--sp-14);
-  flex-wrap: wrap;
+  padding-top: var(--sp-8);
+  border-top: 1px solid var(--line);
 }
-.prayer__react {
+.prayer__action {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 6px 12px;
+  gap: var(--sp-6);
+  padding: 8px 10px;
   border-radius: var(--r-pill);
-  background: var(--surface);
-  border: 1px solid var(--line);
   font-size: var(--fs-2);
   font-weight: 600;
   color: var(--ink-3);
-  transition: transform 0.14s var(--ease-spring), background 0.14s ease;
+  transition:
+    transform 0.14s var(--ease-spring),
+    background 0.14s ease,
+    color 0.14s ease;
 }
-.prayer__react:hover {
+.prayer__action:hover {
   background: var(--surface-3);
+  color: var(--brand);
 }
-.prayer__react:active {
+.prayer__action:active {
   transform: scale(0.92);
 }
-.prayer__react.is-active {
-  border-color: currentColor;
-  background: var(--surface-3);
+.prayer__action span {
+  font-size: var(--fs-2);
+  font-weight: 600;
+  color: inherit;
 }
-.prayer__total {
-  font-size: var(--fs-1);
+.prayer__repost-wrap {
+  position: relative;
+}
+.prayer__repost-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  min-width: 170px;
+  padding: 6px;
+  border-radius: var(--r-base);
+  box-shadow: var(--shadow-lg);
+  z-index: 10;
+}
+.prayer__repost-menu::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  height: 10px;
+}
+.prayer__repost-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+  padding: 9px 12px;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-2);
+  font-weight: 600;
+  color: var(--ink-2);
+  text-align: left;
+  transition:
+    background 0.14s ease,
+    color 0.14s ease;
+}
+.prayer__repost-item svg {
   color: var(--muted);
-  margin-left: auto;
+}
+.prayer__repost-item:hover {
+  background: var(--surface-3);
+  color: var(--sapphire);
+}
+.prayer__repost-item:hover svg {
+  color: var(--sapphire);
 }
 .prayer__answer-btn {
   display: inline-flex;

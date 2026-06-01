@@ -84,9 +84,12 @@ function safeJson(text: string): unknown {
 export const api = {
   get: <T>(path: string, query?: Query, signal?: AbortSignal) =>
     apiFetch<T>(path, { method: 'GET', query, signal }),
-  post: <T>(path: string, body?: unknown, query?: Query) =>
-    apiFetch<T>(path, { method: 'POST', body, query }),
-  patch: <T>(path: string, body?: unknown) => apiFetch<T>(path, { method: 'PATCH', body }),
-  put: <T>(path: string, body?: unknown) => apiFetch<T>(path, { method: 'PUT', body }),
-  del: <T>(path: string, body?: unknown) => apiFetch<T>(path, { method: 'DELETE', body }),
+  post: <T>(path: string, body?: unknown, query?: Query, signal?: AbortSignal) =>
+    apiFetch<T>(path, { method: 'POST', body, query, signal }),
+  patch: <T>(path: string, body?: unknown, signal?: AbortSignal) =>
+    apiFetch<T>(path, { method: 'PATCH', body, signal }),
+  put: <T>(path: string, body?: unknown, signal?: AbortSignal) =>
+    apiFetch<T>(path, { method: 'PUT', body, signal }),
+  del: <T>(path: string, body?: unknown, signal?: AbortSignal) =>
+    apiFetch<T>(path, { method: 'DELETE', body, signal }),
 };

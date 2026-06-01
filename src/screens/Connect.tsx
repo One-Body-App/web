@@ -237,36 +237,57 @@ export function Connect() {
           ))}
         </div>
         <div className="connect__viewtoggle" role="tablist" aria-label="View mode">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={view === 'list' ? 'true' : 'false'}
-            className={view === 'list' ? 'is-active' : ''}
-            onClick={() => setView('list')}
-            aria-label="List view"
-          >
-            <LayoutList size={17} />
-          </button>
-          <button
-            type="button"
-            role="tab"
-            aria-selected={view === 'map' ? 'true' : 'false'}
-            className={view === 'map' ? 'is-active' : ''}
-            onClick={() => setView('map')}
-            aria-label="Map view"
-          >
-            <MapIcon size={17} />
-          </button>
+          {view === 'list' ? (
+            <button
+              type="button"
+              role="tab"
+              aria-selected="true"
+              className="is-active"
+              onClick={() => setView('list')}
+              aria-label="List view"
+            >
+              <LayoutList size={17} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              role="tab"
+              aria-selected="false"
+              onClick={() => setView('list')}
+              aria-label="List view"
+            >
+              <LayoutList size={17} />
+            </button>
+          )}
+          {view === 'map' ? (
+            <button
+              type="button"
+              role="tab"
+              aria-selected="true"
+              className="is-active"
+              onClick={() => setView('map')}
+              aria-label="Map view"
+            >
+              <MapIcon size={17} />
+            </button>
+          ) : (
+            <button
+              type="button"
+              role="tab"
+              aria-selected="false"
+              onClick={() => setView('map')}
+              aria-label="Map view"
+            >
+              <MapIcon size={17} />
+            </button>
+          )}
         </div>
       </div>
 
       {view === 'map' ? (
         <Suspense
           fallback={
-            <div
-              className="skeleton"
-              style={{ height: 'clamp(380px, 62vh, 620px)', borderRadius: 'var(--r-card)' }}
-            />
+            <div className="skeleton connect__map-skeleton" />
           }
         >
           <ConnectMap items={mapItems} />
@@ -347,7 +368,7 @@ function Panel({
     return (
       <div className="connect-grid">
         {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="skeleton" style={{ height: 240, borderRadius: 'var(--r-card)' }} />
+          <div key={i} className="skeleton connect__card-skeleton" />
         ))}
       </div>
     );

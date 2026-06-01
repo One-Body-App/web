@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, CalendarDays, Check, ExternalLink, Globe, MapPin, Share2 } from 'lucide-react';
 import { useApiQuery } from '@/api/useApi';
@@ -20,10 +20,11 @@ export function EventDetail() {
   const event = data ?? fallback;
   const going = goingState?.eventId === event.id ? goingState.isGoing : event.isGoing === true;
   const attendeeCount = goingState?.eventId === event.id ? goingState.attendees : event.attendees;
-
-  useEffect(() => {
-    if (id) connectApi.trackEvent(id, 'detail_open');
-  }, [id]);
+  const trackedEventIdRef = useRef('');
+  if (id && trackedEventIdRef.current !== id) {
+    trackedEventIdRef.current = id;
+    connectApi.trackEvent(id, 'detail_open').catch(() => {});
+  }
 
   async function toggleGoing() {
     if (!event.id || savingGoing) return;
@@ -47,7 +48,7 @@ export function EventDetail() {
   if (loading && !data) {
     return (
       <div className="cdetail">
-        <div className="skeleton" style={{ height: 240, borderRadius: 'var(--r-card)' }} />
+        <div className="skeleton cdetail__skeleton" />
       </div>
     );
   }

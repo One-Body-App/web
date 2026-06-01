@@ -11,6 +11,9 @@
 
 html {
   -webkit-text-size-adjust: 100%;
+  -moz-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -117,6 +120,7 @@ ol {
     background 0.2s ease,
     opacity 0.2s ease;
   white-space: nowrap;
+  -webkit-user-select: none;
   user-select: none;
 }
 .btn:active {
@@ -217,12 +221,12 @@ ol {
   color: var(--sapphire);
 }
 .chip--active {
-  background: var(--brand);
+  background: var(--grad-brand);
   color: #fff;
   box-shadow: var(--shadow-sm);
 }
 .chip--active:hover {
-  background: var(--brand);
+  background: var(--grad-brand);
   color: #fff;
 }
 

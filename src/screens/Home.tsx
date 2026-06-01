@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDown, Inbox, Search } from 'lucide-react';
 import { PostCard } from '@/components/PostCard';
@@ -28,6 +28,9 @@ const OTHER_API: Record<Exclude<TopTab, 'feed'>, ApiFeedType> = {
   pray: 'pray',
   watch: 'watch',
 };
+
+const ariaSelected = (selected: boolean) =>
+  selected ? ({ 'aria-selected': 'true' } as const) : ({ 'aria-selected': 'false' } as const);
 
 /** A Home feed entry — a social post, a blog/news article, or a prayer. */
 type FeedEntry = OBFeedItem | { kind: 'prayer'; prayer: Prayer };
@@ -109,6 +112,161 @@ function mockForTab(top: TopTab, sub: SubType): FeedEntry[] {
   return entries;
 }
 
+type HomeSnapshot = {
+  top: TopTab;
+  sub: SubType;
+  meId: string | null;
+  items: FeedEntry[];
+  page: number;
+  loading: boolean;
+  loadingMore: boolean;
+  end: boolean;
+  fallback: boolean;
+  inlineAds: InlineAd[];
+};
+
+function createHomeStore() {
+  let started = false;
+  let requestId = 0;
+  let snapshot: HomeSnapshot = {
+    top: 'feed',
+    sub: 'forYou',
+    meId: null,
+    items: [],
+    page: 1,
+    loading: true,
+    loadingMore: false,
+    end: false,
+    fallback: false,
+    inlineAds: [],
+  };
+  const listeners = new Set<() => void>();
+
+  const emit = () => {
+    listeners.forEach((listener) => listener());
+  };
+
+  const update = (patch: Partial<HomeSnapshot>) => {
+    snapshot = { ...snapshot, ...patch };
+    emit();
+  };
+
+  const loadFeed = (
+    page: number,
+    top: TopTab,
+    sub: SubType,
+    meId: string,
+    activeRequestId: number,
+  ) => {
+    const isFirstPage = page === 1;
+    update({
+      page,
+      loading: isFirstPage,
+      loadingMore: !isFirstPage,
+      ...(isFirstPage ? { items: [], end: false, fallback: false } : null),
+    });
+
+    fetchFeedPage(top, sub, page, meId)
+      .then((batch) => {
+        if (activeRequestId !== requestId) return;
+        const seen = new Set(snapshot.items.map(feedItemKey));
+        update({
+          fallback: false,
+          end: batch.length === 0,
+          items: isFirstPage
+            ? batch
+            : [...snapshot.items, ...batch.filter((item) => !seen.has(feedItemKey(item)))],
+          loading: false,
+          loadingMore: false,
+        });
+      })
+      .catch(() => {
+        if (activeRequestId !== requestId) return;
+        update({
+          items: isFirstPage ? mockForTab(top, sub) : snapshot.items,
+          fallback: isFirstPage || snapshot.fallback,
+          end: true,
+          loading: false,
+          loadingMore: false,
+        });
+      });
+  };
+
+  const resetAndLoad = (top: TopTab, sub: SubType) => {
+    requestId += 1;
+    update({
+      top,
+      sub,
+      items: [],
+      page: 1,
+      loading: true,
+      loadingMore: false,
+      end: false,
+      fallback: false,
+    });
+    if (snapshot.meId !== null) {
+      loadFeed(1, top, sub, snapshot.meId, requestId);
+    }
+  };
+
+  const start = () => {
+    if (started) return;
+    started = true;
+
+    endpoints
+      .getMyProfileMapped()
+      .then((me) => {
+        update({ meId: me?.id ?? '' });
+        resetAndLoad(snapshot.top, snapshot.sub);
+      })
+      .catch(() => {
+        update({ meId: '' });
+        resetAndLoad(snapshot.top, snapshot.sub);
+      });
+
+    fetchInlineAds()
+      .then((ads) => update({ inlineAds: ads }))
+      .catch(() => update({ inlineAds: [] }));
+  };
+
+  return {
+    getSnapshot: () => snapshot,
+    loadNextPage: () => {
+      if (
+        snapshot.meId === null ||
+        snapshot.loading ||
+        snapshot.loadingMore ||
+        snapshot.end ||
+        snapshot.fallback
+      ) {
+        return;
+      }
+      loadFeed(snapshot.page + 1, snapshot.top, snapshot.sub, snapshot.meId, requestId);
+    },
+    reloadFeed: () => resetAndLoad(snapshot.top, snapshot.sub),
+    setTop: (top: TopTab) => {
+      if (top === snapshot.top) return;
+      resetAndLoad(top, snapshot.sub);
+    },
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      start();
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    toggleFeedSub: () => {
+      if (snapshot.top !== 'feed') {
+        resetAndLoad('feed', snapshot.sub);
+        return;
+      }
+      resetAndLoad('feed', snapshot.sub === 'forYou' ? 'connected' : 'forYou');
+    },
+  };
+}
+
+const homeStore = createHomeStore();
+
 /** Search bar that replaces the "Home" title (desktop/tablet). Submits to Explore. */
 function HomeSearch() {
   const [q, setQ] = useState('');
@@ -151,12 +309,12 @@ function TrackedFeedItem({
   rank: number;
   children: ReactNode;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
+  const cleanupRef = useRef<(() => void) | null>(null);
 
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || !postId) return;
-
+  const setTrackedNode = useCallback((node: HTMLDivElement | null) => {
+    cleanupRef.current?.();
+    cleanupRef.current = null;
+    if (!node || !postId) return;
     let seen = false;
     let qualified = false;
     let visibleSince: number | null = null;
@@ -209,9 +367,9 @@ function TrackedFeedItem({
       },
       { threshold: [0, 0.5, 1] },
     );
-    observer.observe(el);
+    observer.observe(node);
 
-    return () => {
+    cleanupRef.current = () => {
       observer.disconnect();
       if (qualifyTimer != null) clearTimeout(qualifyTimer);
       fireDwell();
@@ -220,7 +378,7 @@ function TrackedFeedItem({
 
   return (
     <FeedTelemetryProvider feedType={feedType} postId={postId} postType={postType} rank={rank}>
-      <div ref={ref}>{children}</div>
+      <div ref={setTrackedNode}>{children}</div>
     </FeedTelemetryProvider>
   );
 }
@@ -249,17 +407,17 @@ function FeedSkeleton() {
   return (
     <>
       {[0, 1, 2].map((i) => (
-        <div key={i} className="card" style={{ padding: 'var(--sp-16)', marginBottom: 'var(--sp-16)' }}>
-          <div style={{ display: 'flex', gap: 'var(--sp-12)', alignItems: 'center' }}>
-            <div className="skeleton" style={{ width: 46, height: 46, borderRadius: '50%' }} />
-            <div style={{ flex: 1 }}>
-              <div className="skeleton" style={{ width: '40%', height: 12, marginBottom: 8 }} />
-              <div className="skeleton" style={{ width: '25%', height: 10 }} />
+        <div key={i} className="card home-skeleton-card">
+          <div className="home-skeleton-card__header">
+            <div className="skeleton home-skeleton-card__avatar" />
+            <div className="home-skeleton-card__meta">
+              <div className="skeleton home-skeleton-card__title" />
+              <div className="skeleton home-skeleton-card__subtitle" />
             </div>
           </div>
-          <div className="skeleton" style={{ width: '100%', height: 12, marginTop: 16 }} />
-          <div className="skeleton" style={{ width: '80%', height: 12, marginTop: 8 }} />
-          <div className="skeleton" style={{ width: '100%', height: 200, marginTop: 14, borderRadius: 12 }} />
+          <div className="skeleton home-skeleton-card__line" />
+          <div className="skeleton home-skeleton-card__line home-skeleton-card__line--short" />
+          <div className="skeleton home-skeleton-card__media" />
         </div>
       ))}
     </>
@@ -267,131 +425,51 @@ function FeedSkeleton() {
 }
 
 export function Home() {
-  const [top, setTop] = useState<TopTab>('feed');
-  const [sub, setSub] = useState<SubType>('forYou');
-  const [meId, setMeId] = useState<string | null>(null);
-
-  const [items, setItems] = useState<FeedEntry[]>([]);
-  const [page, setPage] = useState(1);
-  const [reloadKey, setReloadKey] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [end, setEnd] = useState(false);
-  const [fallback, setFallback] = useState(false);
-  /* sponsored ad injection */
-  const [inlineAds, setInlineAds] = useState<InlineAd[]>([]);
+  const { end, fallback, inlineAds, items, loading, loadingMore, meId, sub, top } =
+    useSyncExternalStore(homeStore.subscribe, homeStore.getSnapshot, homeStore.getSnapshot);
 
   const telemetryFeed: TelemetryFeedType =
     top === 'feed' ? (sub === 'connected' ? 'connected' : 'foryou') : top;
-  const reloadFeed = () => setReloadKey((k) => k + 1);
-
-  // Resolve the signed-in user's id once (used to highlight my own reactions).
-  useEffect(() => {
-    let active = true;
-    endpoints
-      .getMyProfileMapped()
-      .then((me) => active && setMeId(me?.id ?? ''))
-      .catch(() => active && setMeId(''));
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  /* sponsored ad injection: fetch inline ads once on mount */
-  useEffect(() => {
-    let active = true;
-    fetchInlineAds().then((ads) => {
-      if (active) setInlineAds(ads);
-    });
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  // Reset the list when the active feed changes (or a reload is requested).
-  useEffect(() => {
-    setItems([]);
-    setPage(1);
-    setEnd(false);
-    setLoading(true);
-  }, [top, sub, reloadKey]);
-
-  // Fetch the current page (waits until the profile lookup settles).
-  useEffect(() => {
-    if (meId === null) return;
-    let active = true;
-    const isFirstPage = page === 1;
-    if (isFirstPage) setLoading(true);
-    else setLoadingMore(true);
-
-    fetchFeedPage(top, sub, page, meId)
-      .then((batch) => {
-        if (!active) return;
-        setFallback(false);
-        setEnd(batch.length === 0);
-        setItems((prev) => {
-          if (isFirstPage) return batch;
-          const seen = new Set(prev.map(feedItemKey));
-          return [...prev, ...batch.filter((b) => !seen.has(feedItemKey(b)))];
-        });
-      })
-      .catch(() => {
-        if (!active) return;
-        if (isFirstPage) {
-          setItems(mockForTab(top, sub));
-          setFallback(true);
-        }
-        setEnd(true);
-      })
-      .finally(() => {
-        if (!active) return;
-        setLoading(false);
-        setLoadingMore(false);
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [top, sub, page, meId, reloadKey]);
 
   // Infinite scroll: load the next page as the sentinel nears the viewport.
-  const sentinelRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el || end || fallback) return;
+  const sentinelObserverRef = useRef<IntersectionObserver | null>(null);
+  const setSentinelNode = useCallback((node: HTMLDivElement | null) => {
+    sentinelObserverRef.current?.disconnect();
+    sentinelObserverRef.current = null;
+    if (!node || end || fallback) return;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting && !loading && !loadingMore) {
-          setPage((p) => p + 1);
+          homeStore.loadNextPage();
         }
       },
       { rootMargin: '600px' },
     );
-    observer.observe(el);
-    return () => observer.disconnect();
+    observer.observe(node);
+    sentinelObserverRef.current = observer;
   }, [end, fallback, loading, loadingMore]);
 
   return (
     <div>
       <HomeSearch />
 
-      <div style={{ marginBottom: 'var(--sp-16)' }}>
+      <div className="home-tabs">
         <div className="segmented" role="tablist">
           <button
             type="button"
             role="tab"
-            aria-selected={top === 'feed' ? 'true' : 'false'}
+            {...ariaSelected(top === 'feed')}
             className={`segmented__item${top === 'feed' ? ' is-active' : ''}`}
             onClick={() =>
               top === 'feed'
-                ? setSub((s) => (s === 'forYou' ? 'connected' : 'forYou'))
-                : setTop('feed')
+                ? homeStore.toggleFeedSub()
+                : homeStore.setTop('feed')
             }
             title={top === 'feed' ? 'Tap to switch For You / Connected' : undefined}
           >
             {top === 'feed' ? (sub === 'connected' ? 'Connected' : 'For You') : 'Feed'}
             {top === 'feed' ? (
-              <ChevronDown size={13} style={{ marginLeft: 3, marginBottom: -2 }} aria-hidden />
+              <ChevronDown size={13} className="home-tabs__chevron" aria-hidden />
             ) : null}
           </button>
           {(['read', 'pray', 'watch'] as const).map((t) => (
@@ -399,9 +477,9 @@ export function Home() {
               type="button"
               key={t}
               role="tab"
-              aria-selected={top === t ? 'true' : 'false'}
+              {...ariaSelected(top === t)}
               className={`segmented__item${top === t ? ' is-active' : ''}`}
-              onClick={() => setTop(t)}
+              onClick={() => homeStore.setTop(t)}
             >
               {t === 'read' ? 'Read' : t === 'pray' ? 'Pray' : 'Watch'}
             </button>
@@ -430,7 +508,7 @@ export function Home() {
                 {entry.kind === 'article' ? (
                   <ArticleCard article={entry.article} />
                 ) : entry.kind === 'prayer' ? (
-                  <PrayerCard prayer={entry.prayer} meId={meId ?? ''} onChanged={reloadFeed} />
+                  <PrayerCard prayer={entry.prayer} meId={meId ?? ''} onChanged={homeStore.reloadFeed} />
                 ) : entry.kind === 'video' ? (
                   <FeedVideoCard video={entry.video} />
                 ) : (
@@ -439,16 +517,9 @@ export function Home() {
               </TrackedFeedItem>
             )
           )}
-          {!end && !fallback ? <div ref={sentinelRef} aria-hidden style={{ height: 1 }} /> : null}
+          {!end && !fallback ? <div ref={setSentinelNode} className="home-sentinel" aria-hidden /> : null}
           {loadingMore ? (
-            <div
-              style={{
-                textAlign: 'center',
-                padding: 'var(--sp-16)',
-                color: 'var(--muted)',
-                fontSize: 'var(--fs-2)',
-              }}
-            >
+            <div className="home-loading-more">
               Loading more…
             </div>
           ) : null}

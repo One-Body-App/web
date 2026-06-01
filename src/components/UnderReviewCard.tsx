@@ -111,7 +111,7 @@ export function UnderReviewCard({
             type="button"
             className="review-card__action"
             onClick={handleViewClick}
-            aria-expanded={expanded ? 'true' : 'false'}
+            {...{ 'aria-expanded': expanded ? 'true' : 'false' }}
           >
             <Eye size={15} strokeWidth={2.25} />
             <span>{expanded ? 'Hide details' : 'View what was flagged'}</span>

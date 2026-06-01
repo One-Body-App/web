@@ -76,6 +76,14 @@
   gap: 6px;
   padding: 9px 18px;
 }
+.postdetail__notice {
+  padding: var(--sp-12) var(--sp-16);
+  border-bottom: 1px solid var(--line);
+  background: rgba(22, 163, 74, 0.08);
+  color: #15803d;
+  font-size: var(--fs-2);
+  font-weight: 600;
+}
 
 /* Flat reply list. */
 .postdetail__replies {

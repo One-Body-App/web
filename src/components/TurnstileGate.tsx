@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useId, useRef, useState } from 'react';
 import { AlertTriangle, Shield } from 'lucide-react';
 import { TURNSTILE_SITE_KEY } from './turnstile';
 import './TurnstileGate.css';
@@ -114,9 +114,9 @@ export function TurnstileGate({
   className,
 }: TurnstileGateProps) {
   const reactId = useId();
-  const containerRef = useRef<HTMLDivElement | null>(null);
   const widgetIdRef = useRef<string | null>(null);
   const apiRef = useRef<TurnstileApi | null>(null);
+  const cleanupRef = useRef<(() => void) | null>(null);
 
   const [status, setStatus] = useState<WidgetStatus>('idle');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -131,21 +131,20 @@ export function TurnstileGate({
 
   const resolvedSiteKey = (siteKey ?? TURNSTILE_SITE_KEY).trim();
 
-  useEffect(() => {
-    if (!resolvedSiteKey) {
-      // No key configured: render the dev/preview notice; do not load script.
-      return;
-    }
+  const containerRef = useCallback((node: HTMLDivElement | null) => {
+    cleanupRef.current?.();
+    cleanupRef.current = null;
+    if (!node || !resolvedSiteKey) return;
     let cancelled = false;
     setStatus('loading');
     setErrorMessage(null);
 
     loadTurnstile()
       .then((api) => {
-        if (cancelled || !containerRef.current) return;
+        if (cancelled) return;
         apiRef.current = api;
         try {
-          const widgetId = api.render(containerRef.current, {
+          const widgetId = api.render(node, {
             sitekey: resolvedSiteKey,
             theme,
             size,
@@ -193,7 +192,7 @@ export function TurnstileGate({
         onErrorRef.current?.(err.message);
       });
 
-    return () => {
+    cleanupRef.current = () => {
       cancelled = true;
       if (apiRef.current && widgetIdRef.current) {
         try {
@@ -212,7 +211,7 @@ export function TurnstileGate({
         className={`turnstile turnstile--preview${className ? ` ${className}` : ''}`}
         role="status"
       >
-        <Shield size={16} aria-hidden />
+        <Shield size={16} aria-hidden="true" />
         <div>
           <strong>Turnstile preview mode.</strong>
           <p>
@@ -235,7 +234,7 @@ export function TurnstileGate({
       />
       {errorMessage ? (
         <p className="turnstile__error" role="alert">
-          <AlertTriangle size={14} aria-hidden /> {errorMessage}
+          <AlertTriangle size={14} aria-hidden="true" /> {errorMessage}
         </p>
       ) : null}
     </div>

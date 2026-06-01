@@ -336,6 +336,64 @@ export async function geocodeAddress(address: string): Promise<[number, number] 
   return undefined;
 }
 
+/** Build a "City, State" label from separate place + region parts. */
+function placeLabel(place?: string, region?: string): string | undefined {
+  const parts = [place, region].map((p) => p?.trim()).filter(Boolean);
+  return parts.length ? parts.join(', ') : undefined;
+}
+
+async function reverseGeocodeWithMapbox(lng: number, lat: number): Promise<string | undefined> {
+  if (!MAPBOX_PUBLIC_TOKEN) return undefined;
+  try {
+    const params = new URLSearchParams({
+      longitude: String(lng),
+      latitude: String(lat),
+      limit: '1',
+      types: 'place,region',
+      access_token: MAPBOX_PUBLIC_TOKEN,
+    });
+    const res = await fetch(`https://api.mapbox.com/search/geocode/v6/reverse?${params.toString()}`, {
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) return undefined;
+    const data = (await res.json()) as {
+      features?: Array<{ properties?: { name?: string; context?: Record<string, { name?: string }> } }>;
+    };
+    const props = data.features?.[0]?.properties;
+    const place = props?.context?.place?.name ?? props?.name;
+    const region = props?.context?.region?.name;
+    return placeLabel(place, region);
+  } catch {
+    /* fall through to Nominatim */
+  }
+  return undefined;
+}
+
+/** Reverse-geocode coordinates to a "City, State" label via Mapbox, then OSM Nominatim. */
+export async function reverseGeocode(lng: number, lat: number): Promise<string | undefined> {
+  if (!Number.isFinite(lng) || !Number.isFinite(lat)) return undefined;
+  const mapboxLabel = await reverseGeocodeWithMapbox(lng, lat);
+  if (mapboxLabel) return mapboxLabel;
+
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lon=${encodeURIComponent(
+        String(lng),
+      )}&lat=${encodeURIComponent(String(lat))}`,
+      { headers: { Accept: 'application/json' } },
+    );
+    const data = (await res.json()) as {
+      address?: { city?: string; town?: string; village?: string; state?: string };
+    };
+    const addr = data.address;
+    const place = addr?.city ?? addr?.town ?? addr?.village;
+    return placeLabel(place, addr?.state);
+  } catch {
+    /* ignore — caller handles missing label */
+  }
+  return undefined;
+}
+
 /* ============================ Endpoints ============================ */
 export type EventGoingResponse = {
   event: ConnectEvent | null;

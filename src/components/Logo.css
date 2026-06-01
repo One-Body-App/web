@@ -1,0 +1,41 @@
+.ob-logo {
+  display: inline-flex;
+  align-items: center;
+  color: var(--brand);
+}
+
+.ob-logo--wordmark {
+  gap: 0.32em;
+}
+
+.ob-logo--tone-white {
+  color: #fff;
+}
+
+.ob-logo--size-28 {
+  font-size: 28px;
+}
+
+.ob-logo--size-30 {
+  font-size: 30px;
+}
+
+.ob-logo--size-32 {
+  font-size: 32px;
+}
+
+.ob-logo--size-52 {
+  font-size: 52px;
+}
+
+.ob-logo--size-60 {
+  font-size: 60px;
+}
+
+.ob-logo__wordmark {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.62em;
+  letter-spacing: -0.02em;
+  color: currentColor;
+}

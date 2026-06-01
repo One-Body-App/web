@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSignUp } from '@clerk/clerk-react';
 import { Check } from 'lucide-react';
@@ -22,6 +22,16 @@ import { TurnstileGate } from '@/components/TurnstileGate';
 import { useTurnstileVerification } from '@/auth/useTurnstileVerification';
 
 type Step = 'type' | 'details' | 'verify';
+type UsernameAvailability = {
+  username: string;
+  available: boolean;
+} | null;
+type MissingRequirementsUpdate = {
+  firstName?: string;
+  lastName?: string;
+  username?: string;
+  legalAccepted?: boolean;
+};
 
 const normalizeUsername = (value: string) => value.toLowerCase().replace(/[^a-z0-9._-]/g, '');
 const normalizeClerkUsername = (value: string) =>
@@ -65,6 +75,20 @@ const missingRequirementsMessage = (fields: string[]) => {
   return `Clerk needs ${fieldList} before continuing. Please go back and complete sign up again.`;
 };
 
+function unpatchedMissingFields(
+  missingFields: string[],
+  update: MissingRequirementsUpdate
+) {
+  return missingFields.filter((field) => {
+    const normalized = normalizeMissingField(field);
+    if (normalized === 'first_name') return !update.firstName;
+    if (normalized === 'last_name') return !update.lastName;
+    if (normalized === 'username') return !update.username;
+    if (normalized === 'legal_accepted') return update.legalAccepted !== true;
+    return true;
+  });
+}
+
 function suggestUsernames(base: string, name: string): string[] {
   const rand = () => Math.floor(Math.random() * 900 + 100);
   const fromName = normalizeUsername(name).slice(0, 14);
@@ -86,9 +110,10 @@ export function ClerkSignUp() {
 
   const [username, setUsername] = useState('');
   const [usernameError, setUsernameError] = useState('');
-  const [checkingUsername, setCheckingUsername] = useState(false);
-  const [usernameOk, setUsernameOk] = useState(false);
+  const [checkingUsername, setCheckingUsername] = useState<string | null>(null);
+  const [usernameAvailability, setUsernameAvailability] = useState<UsernameAvailability>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const usernameCheckId = useRef(0);
 
   const [organizationName, setOrganizationName] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -110,6 +135,10 @@ export function ClerkSignUp() {
     : [trimmedFirstName, trimmedLastName].filter(Boolean).join(' ');
   const confirmError =
     confirmPassword && confirmPassword !== password ? 'Passwords must match.' : '';
+  const normalizedUsername = normalizeUsername(username);
+  const usernameAvailable =
+    usernameAvailability?.available === true && usernameAvailability.username === normalizedUsername;
+  const checkingCurrentUsername = checkingUsername === normalizedUsername;
 
   function buildMissingRequirementsUpdate(missingFields: string[]) {
     const requestedFields = new Set(
@@ -117,12 +146,7 @@ export function ClerkSignUp() {
         normalizeMissingField
       )
     );
-    const update: {
-      firstName?: string;
-      lastName?: string;
-      username?: string;
-      legalAccepted?: boolean;
-    } = {};
+    const update: MissingRequirementsUpdate = {};
 
     if (requestedFields.has('first_name') && trimmedFirstName) {
       update.firstName = trimmedFirstName;
@@ -139,20 +163,6 @@ export function ClerkSignUp() {
     }
 
     return update;
-  }
-
-  function unpatchedMissingFields(
-    missingFields: string[],
-    update: ReturnType<typeof buildMissingRequirementsUpdate>
-  ) {
-    return missingFields.filter((field) => {
-      const normalized = normalizeMissingField(field);
-      if (normalized === 'first_name') return !update.firstName;
-      if (normalized === 'last_name') return !update.lastName;
-      if (normalized === 'username') return !update.username;
-      if (normalized === 'legal_accepted') return update.legalAccepted !== true;
-      return true;
-    });
   }
 
   async function activateCompletedSignup(resource: any) {
@@ -207,28 +217,42 @@ export function ClerkSignUp() {
     );
   }
 
-  async function checkUsername(raw: string) {
+  async function checkUsername(raw: string): Promise<boolean> {
     const normalized = normalizeUsername(raw);
-    setUsernameOk(false);
+    const requestId = usernameCheckId.current + 1;
+    usernameCheckId.current = requestId;
+    setUsernameAvailability(null);
     setSuggestions([]);
-    if (!normalized) return;
+    if (!normalized) {
+      setUsernameError('');
+      setCheckingUsername(null);
+      return false;
+    }
     if (normalized.length < 3) {
       setUsernameError('Usernames must be at least 3 characters.');
-      return;
+      setCheckingUsername(null);
+      return false;
     }
-    setCheckingUsername(true);
+    setCheckingUsername(normalized);
     setUsernameError('');
     try {
       await endpoints.checkUsername(normalized);
-      setUsernameOk(true);
+      if (usernameCheckId.current !== requestId) return false;
+      setUsernameAvailability({ username: normalized, available: true });
+      return true;
     } catch (err) {
+      if (usernameCheckId.current !== requestId) return false;
       if (err instanceof ApiError && err.status === 409) {
         setUsernameError('This username is already in use. If it belongs to you, please sign in.');
         setSuggestions(suggestUsernames(normalized, profileName));
+      } else {
+        setUsernameError('Unable to check this username. Please try again.');
       }
-      // Network/CORS errors: skip the pre-check; Clerk validates uniqueness on submit.
+      return false;
     } finally {
-      setCheckingUsername(false);
+      if (usernameCheckId.current === requestId) {
+        setCheckingUsername(null);
+      }
     }
   }
 
@@ -250,9 +274,13 @@ export function ClerkSignUp() {
   async function submitDetails(e: FormEvent) {
     e.preventDefault();
     if (!isLoaded || busy) return;
-    if (username.length < 3) {
+    if (normalizedUsername.length < 3) {
       setUsernameError('Usernames must be at least 3 characters.');
       return;
+    }
+    if (!usernameAvailable) {
+      const available = await checkUsername(normalizedUsername);
+      if (!available) return;
     }
     if (usernameError) return;
     if (confirmError) return;
@@ -270,17 +298,16 @@ export function ClerkSignUp() {
       await signUp.create({
         emailAddress: email.trim().toLowerCase(),
         password,
-        username: normalizeClerkUsername(username),
+        username: normalizeClerkUsername(normalizedUsername),
         firstName: trimmedFirstName,
         lastName: trimmedLastName,
         legalAccepted: true,
-        unsafeMetadata: accountType
-          ? {
-              accountType,
-              name: profileName,
-              ...(isOrg ? { organizationName: trimmedOrganizationName } : {}),
-            }
-          : undefined,
+        unsafeMetadata: {
+          username: normalizedUsername,
+          ...(accountType ? { accountType } : {}),
+          name: profileName,
+          ...(isOrg ? { organizationName: trimmedOrganizationName } : {}),
+        },
       });
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
       setStep('verify');
@@ -356,8 +383,10 @@ export function ClerkSignUp() {
 
   /* ----- Step 2: details ----- */
   const canSubmit =
-    username.length >= 3 &&
+    normalizedUsername.length >= 3 &&
     !usernameError &&
+    usernameAvailable &&
+    !checkingCurrentUsername &&
     Boolean(trimmedFirstName && trimmedLastName && profileName && email && password) &&
     !confirmError &&
     turnstile.passed;
@@ -385,16 +414,18 @@ export function ClerkSignUp() {
           value={username}
           error={usernameError}
           onChange={(e) => {
+            usernameCheckId.current += 1;
             setUsername(normalizeUsername(e.target.value));
             setUsernameError('');
-            setUsernameOk(false);
+            setUsernameAvailability(null);
+            setCheckingUsername(null);
             setSuggestions([]);
           }}
           onBlur={() => checkUsername(username)}
           rightSlot={
-            checkingUsername ? (
+            checkingCurrentUsername ? (
               <span className="field__spinner" />
-            ) : usernameOk ? (
+            ) : usernameAvailable ? (
               <span className="field__ok">
                 <Check size={18} />
               </span>

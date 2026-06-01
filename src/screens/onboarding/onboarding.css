@@ -1,0 +1,249 @@
+/*
+ * Full-screen step flow shared by passkey MFA + onboarding. Reuses the chip /
+ * people / select primitives defined in AccountGate.css (imported below) so the
+ * step UI matches the existing gate aesthetic without re-authoring those rules.
+ */
+@import '../../auth/AccountGate.css';
+
+.step-screen {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--sp-24) var(--sp-16);
+  background: var(--grad-hero);
+}
+
+.step-screen__panel {
+  width: min(100%, 680px);
+  max-height: calc(100dvh - 48px);
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card-lg);
+  box-shadow: var(--shadow-lg);
+  padding: var(--sp-32);
+  overflow: hidden;
+}
+
+/* ---------------- Progress ---------------- */
+.step-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-12);
+  margin-bottom: var(--sp-24);
+}
+
+.step-progress__track {
+  flex: 1;
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: var(--line);
+  overflow: hidden;
+}
+
+.step-progress__fill {
+  display: block;
+  height: 100%;
+  border-radius: var(--r-pill);
+  background: var(--grad-sapphire);
+  transition: width 0.35s var(--ease-out);
+}
+
+.step-progress__label {
+  flex: none;
+  font-family: var(--font-display);
+  font-size: var(--fs-1);
+  font-weight: 600;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* ---------------- Header ---------------- */
+.step-screen__head {
+  margin-bottom: var(--sp-20);
+}
+
+.step-screen__mark {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-base);
+  color: #fff;
+  background: var(--grad-sapphire);
+  box-shadow: var(--shadow-brand);
+  margin-bottom: var(--sp-16);
+}
+
+.step-screen__eyebrow {
+  display: block;
+  font-family: var(--font-display);
+  font-size: var(--fs-1);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--sapphire);
+  margin-bottom: var(--sp-6);
+}
+
+.step-screen__head h1 {
+  font-family: var(--font-display);
+  font-size: var(--fs-8);
+  line-height: 1.15;
+  margin-bottom: var(--sp-8);
+}
+
+.step-screen__subtitle {
+  color: var(--ink-3);
+  font-size: var(--fs-4);
+  line-height: 1.5;
+}
+
+/* ---------------- Body (scrolls) ---------------- */
+.step-screen__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-16);
+  /* room so the sticky footer never clips the last row */
+  padding-bottom: var(--sp-4);
+}
+
+/* ---------------- Footer ---------------- */
+.step-screen__footer {
+  display: flex;
+  gap: var(--sp-10);
+  padding-top: var(--sp-20);
+  margin-top: var(--sp-16);
+  border-top: 1px solid var(--line);
+}
+
+.step-screen__footer .btn {
+  flex: 1;
+  min-height: 48px;
+}
+
+.step-screen__footer .step-screen__back {
+  flex: 0 0 auto;
+  min-width: 110px;
+}
+
+/* ---------------- Intro step ---------------- */
+.onboarding-intro {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: var(--sp-16);
+  padding: var(--sp-12) 0;
+}
+
+.onboarding-intro__art {
+  width: 96px;
+  height: 96px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-pill);
+  color: #fff;
+  background: var(--grad-aqua);
+  box-shadow: var(--shadow-accent);
+}
+
+.onboarding-intro__lead {
+  color: var(--ink-3);
+  font-size: var(--fs-4);
+  line-height: 1.5;
+  max-width: 38ch;
+}
+
+/* ---------------- Attendance radio list (hidden step, but styled) ---------------- */
+.onboarding-radios {
+  display: grid;
+  gap: var(--sp-8);
+}
+
+.onboarding-radio {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-12);
+  min-height: 52px;
+  padding: var(--sp-12) var(--sp-16);
+  border-radius: var(--r-base);
+  border: 1.5px solid var(--line-strong);
+  background: var(--surface);
+  color: var(--ink-2);
+  font-weight: 600;
+  text-align: left;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease;
+}
+
+.onboarding-radio:hover {
+  border-color: var(--sapphire);
+  background: var(--surface-2);
+}
+
+.onboarding-radio.is-selected {
+  border-color: var(--sapphire);
+  background: var(--sapphire-900);
+  color: var(--brand);
+}
+
+.onboarding-radio__dot {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  border-radius: 50%;
+  border: 2px solid var(--line-strong);
+  display: grid;
+  place-items: center;
+}
+
+.onboarding-radio.is-selected .onboarding-radio__dot {
+  border-color: var(--sapphire);
+}
+
+.onboarding-radio.is-selected .onboarding-radio__dot::after {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--sapphire);
+}
+
+/* ---------------- Step helper text ---------------- */
+.onboarding-hint {
+  font-size: var(--fs-2);
+  color: var(--ink-3);
+}
+
+.onboarding-people-shell {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: var(--sp-4);
+}
+
+.onboarding-people__status {
+  margin-top: var(--sp-12);
+  text-align: center;
+}
+
+@media (max-width: 520px) {
+  .step-screen__panel {
+    padding: var(--sp-24);
+  }
+
+  .step-screen__head h1 {
+    font-size: var(--fs-7);
+  }
+
+  .step-screen__footer {
+    flex-wrap: wrap;
+  }
+}

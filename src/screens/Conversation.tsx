@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useRef, useState, type FormEvent } from 'react';
 import { Link, useLocation, useParams } from 'react-router-dom';
 import { ArrowLeft, Lock, Send } from 'lucide-react';
 import { Avatar } from '@/components/Avatar';
@@ -71,10 +71,15 @@ export function Conversation() {
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState<string | null>(null);
   const myIdRef = useRef<string>('');
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const historyCleanupRef = useRef<(() => void) | null>(null);
+  const socketCleanupRef = useRef<(() => void) | null>(null);
 
   // ---- Load + decrypt history ----
-  useEffect(() => {
+  const loadHistoryRef = useCallback((node: HTMLDivElement | null) => {
+    historyCleanupRef.current?.();
+    historyCleanupRef.current = null;
+    if (!node) return;
     let active = true;
     setLoading(true);
     (async () => {
@@ -105,7 +110,10 @@ export function Conversation() {
           }
         }
         mapped.sort((a, b) => a.time.localeCompare(b.time));
-        if (active) setMessages(mapped);
+        if (active) {
+          setMessages(mapped);
+          scrollToLatest();
+        }
         chatApi.markConversationRead(peerUserId).catch(() => {});
       } catch {
         if (active) setMessages([]);
@@ -113,13 +121,16 @@ export function Conversation() {
         if (active) setLoading(false);
       }
     })();
-    return () => {
+    historyCleanupRef.current = () => {
       active = false;
     };
   }, [groupId, isGroup, peerUserId]);
 
   // ---- Realtime listeners ----
-  useEffect(() => {
+  const realtimeRef = useCallback((node: HTMLElement | null) => {
+    socketCleanupRef.current?.();
+    socketCleanupRef.current = null;
+    if (!node) return;
     if (!socket) return;
 
     const onDirect = async (payload: RawChatMessage) => {
@@ -133,6 +144,7 @@ export function Conversation() {
         peerUserId,
       });
       setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
+      scrollToLatest();
       if (payload._id) socket.emit('chat:message_read', { messageId: payload._id });
     };
 
@@ -140,6 +152,7 @@ export function Conversation() {
       if (!isGroup || payload.groupId !== groupId) return;
       const msg = groupToMsg(payload, myIdRef.current);
       setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
+      scrollToLatest();
     };
 
     const onStatus = (payload: { messageId: string; status: ChatMsg['status'] }) => {
@@ -151,7 +164,7 @@ export function Conversation() {
     socket.on('chat:new_message', onDirect);
     socket.on('chat:new_group_message', onGroup);
     socket.on('chat:message_status', onStatus);
-    return () => {
+    socketCleanupRef.current = () => {
       socket.off('chat:new_message', onDirect);
       socket.off('chat:new_group_message', onGroup);
       socket.off('chat:message_status', onStatus);
@@ -159,9 +172,10 @@ export function Conversation() {
   }, [groupId, isGroup, peerUserId, socket]);
 
   // Keep scrolled to newest.
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
-  }, [messages]);
+  const setScrollNode = useCallback((node: HTMLDivElement | null) => {
+    scrollRef.current = node;
+    node?.scrollTo({ top: node.scrollHeight });
+  }, []);
 
   async function send(e: FormEvent) {
     e.preventDefault();
@@ -171,6 +185,7 @@ export function Conversation() {
     setDraft('');
     setNotice(null);
     setMessages((prev) => [...prev, { id: clientMessageId, clientMessageId, fromMe: true, text, time: 'now', pending: true }]);
+    scrollToLatest();
 
     try {
       let ack: SendAck;
@@ -264,9 +279,16 @@ export function Conversation() {
     );
   }
 
+  function scrollToLatest() {
+    window.requestAnimationFrame(() => {
+      const node = scrollRef.current;
+      node?.scrollTo({ top: node.scrollHeight });
+    });
+  }
+
   return (
-    <div className="thread">
-      <header className="thread__head glass">
+    <div className="thread" ref={loadHistoryRef}>
+      <header className="thread__head glass" ref={realtimeRef}>
         <Link to="/messages" className="iconbtn thread__back" aria-label="Back">
           <ArrowLeft size={22} />
         </Link>
@@ -280,7 +302,7 @@ export function Conversation() {
         <Lock size={16} className="thread__lock" />
       </header>
 
-      <div className="thread__scroll" ref={scrollRef}>
+      <div className="thread__scroll" ref={setScrollNode}>
         {loading ? (
           <div className="thread__day">Loading…</div>
         ) : messages.length ? (

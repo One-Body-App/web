@@ -211,8 +211,13 @@
   .shell__post {
     margin: var(--sp-16) var(--sp-4) 0;
   }
-  .shell__me {
+  .shell__footer {
     margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .shell__me {
     display: flex;
     align-items: center;
     gap: var(--sp-12);
@@ -265,7 +270,9 @@
   .shell__navlink {
     justify-content: center;
     gap: 0;
-    padding: 12px 0;
+    width: 46px;
+    height: 46px;
+    padding: 0;
   }
   .shell__navlink > span {
     display: none;
@@ -280,6 +287,9 @@
   }
   .shell__post-label {
     display: none;
+  }
+  .shell__footer {
+    align-items: center;
   }
   .shell__me {
     justify-content: center;
@@ -576,8 +586,20 @@
 .shell__drawer .shell__post {
   margin: var(--sp-16) var(--sp-4) 0;
 }
-.shell__drawer .shell__me {
+.shell__drawer .shell__footer {
   margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.shell__logout {
+  color: var(--ink-3);
+}
+.shell__logout:hover {
+  color: var(--error);
+  background: var(--surface-3);
+}
+.shell__drawer .shell__me {
   display: flex;
   align-items: center;
   gap: var(--sp-12);

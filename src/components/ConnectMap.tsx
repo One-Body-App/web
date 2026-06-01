@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import type {
   Map as MapboxMap,
@@ -31,6 +31,9 @@ type MapMarker = MapboxMarker | MapLibreMarker;
 const MAPBOX_PUBLIC_TOKEN = (import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN ?? '').trim();
 const MAPLIBRE_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
 const DEFAULT_CENTER: Coordinate = [-98.5, 39.8];
+// If a provider neither fires `load` nor `error` within this window, treat it as
+// failed so the map never hangs on "Loading map...".
+const MAP_LOAD_TIMEOUT_MS = 8000;
 
 function getPreferredDarkMode(): boolean {
   return (
@@ -215,7 +218,6 @@ function createMarkerElement(item: MapItem, onSelect: (event: MouseEvent) => voi
 }
 
 export function ConnectMap({ items }: { items: MapItem[] }) {
-  const containerRef = useRef<HTMLDivElement>(null);
   const mapboxLibRef = useRef<MapboxLib | null>(null);
   const maplibreLibRef = useRef<MapLibreLib | null>(null);
   const mapboxMapRef = useRef<MapboxMap | null>(null);
@@ -223,10 +225,25 @@ export function ConnectMap({ items }: { items: MapItem[] }) {
   const providerRef = useRef<MapProvider | null>(null);
   const markersRef = useRef<MapMarker[]>([]);
   const styleModeRef = useRef<boolean | null>(null);
+  const mapCleanupRef = useRef<(() => void) | null>(null);
+  const markerCleanupRef = useRef<(() => void) | null>(null);
   const [selected, setSelected] = useState<MapItem | null>(null);
   const [mapReady, setMapReady] = useState(false);
+  const [error, setError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
 
-  useEffect(() => {
+  const handleRetry = () => {
+    providerRef.current = null;
+    setError(false);
+    setMapReady(false);
+    setReloadKey((key) => key + 1);
+  };
+
+  const canvasRef = useCallback((container: HTMLDivElement | null) => {
+    mapCleanupRef.current?.();
+    mapCleanupRef.current = null;
+    if (!container || providerRef.current) return;
+    const mapContainer = container;
     if (typeof window === 'undefined') return undefined;
     const media = window.matchMedia('(prefers-color-scheme: dark)');
     const onColorSchemeChange = (event: MediaQueryListEvent) => {
@@ -239,57 +256,57 @@ export function ConnectMap({ items }: { items: MapItem[] }) {
       styleModeRef.current = nextDarkMode;
     };
     media.addEventListener('change', onColorSchemeChange);
-    return () => media.removeEventListener('change', onColorSchemeChange);
-  }, []);
-
-  // Initialize the map once. Mapbox is preferred, but preview environments
-  // without a public token keep the existing token-free OpenFreeMap fallback.
-  useEffect(() => {
-    if (!containerRef.current || providerRef.current) return;
 
     const onMapClick = () => setSelected(null);
     const initialDarkMode = getPreferredDarkMode();
     let cancelled = false;
-    let cleanup: (() => void) | undefined;
+    let settled = false;
+    let watchdog: ReturnType<typeof setTimeout> | undefined;
+    let providerCleanup: (() => void) | undefined;
 
-    async function initMap() {
-      let provider: MapProvider = 'maplibre';
-      let initializedMapboxMap: MapboxMap | null = null;
-      let initializedMapLibreMap: MapLibreMap | null = null;
-
-      if (MAPBOX_PUBLIC_TOKEN) {
-        try {
-          const mapboxgl = (await import('mapbox-gl')).default;
-          if (cancelled || !containerRef.current) return;
-          mapboxLibRef.current = mapboxgl;
-          mapboxgl.accessToken = MAPBOX_PUBLIC_TOKEN;
-          const map = new mapboxgl.Map({
-            container: containerRef.current,
-            style: createConnectMapStyle(initialDarkMode),
-            center: DEFAULT_CENTER,
-            zoom: 3.2,
-            attributionControl: true,
-            dragRotate: false,
-            touchPitch: false,
-          });
-          map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
-          map.on('click', onMapClick);
-          initializedMapboxMap = map;
-          mapboxMapRef.current = map;
-          provider = 'mapbox';
-          styleModeRef.current = initialDarkMode;
-        } catch {
-          mapboxMapRef.current = null;
-          mapboxLibRef.current = null;
-        }
+    const clearWatchdog = () => {
+      if (watchdog) {
+        clearTimeout(watchdog);
+        watchdog = undefined;
       }
+    };
 
-      if (provider !== 'mapbox') {
+    const markReady = () => {
+      if (cancelled || settled) return;
+      settled = true;
+      clearWatchdog();
+      setMapReady(true);
+    };
+
+    const markError = (reason: unknown) => {
+      if (cancelled || settled) return;
+      settled = true;
+      clearWatchdog();
+      console.warn('[ConnectMap] map failed to load', reason);
+      setError(true);
+    };
+
+    const teardownMapbox = () => {
+      const map = mapboxMapRef.current;
+      if (map) {
+        map.off('click', onMapClick);
+        map.remove();
+      }
+      mapboxMapRef.current = null;
+      mapboxLibRef.current = null;
+      if (providerRef.current === 'mapbox') providerRef.current = null;
+      styleModeRef.current = null;
+    };
+
+    // Token-free fallback. Wrapped in try/catch so a constructor/import failure
+    // surfaces an error state instead of leaving the map stuck loading.
+    async function tryMapLibre() {
+      try {
         const maplibregl = await import('maplibre-gl');
-        if (cancelled || !containerRef.current) return;
+        if (cancelled) return;
         maplibreLibRef.current = maplibregl;
         const map = new maplibregl.Map({
-          container: containerRef.current,
+          container: mapContainer,
           style: MAPLIBRE_STYLE_URL,
           center: DEFAULT_CENTER,
           zoom: 3.2,
@@ -299,39 +316,105 @@ export function ConnectMap({ items }: { items: MapItem[] }) {
         });
         map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-right');
         map.on('click', onMapClick);
-        initializedMapLibreMap = map;
+        map.on('load', markReady);
+        map.on('error', (event) => console.warn('[ConnectMap] maplibre error', event.error));
         maplibreMapRef.current = map;
-      }
-
-      providerRef.current = provider;
-      setMapReady(true);
-      cleanup = () => {
-        if (provider === 'mapbox') {
-          initializedMapboxMap?.off('click', onMapClick);
-          initializedMapboxMap?.remove();
-          mapboxMapRef.current = null;
-          mapboxLibRef.current = null;
-        } else {
-          initializedMapLibreMap?.off('click', onMapClick);
-          initializedMapLibreMap?.remove();
+        providerRef.current = 'maplibre';
+        providerCleanup = () => {
+          map.off('click', onMapClick);
+          map.remove();
           maplibreMapRef.current = null;
           maplibreLibRef.current = null;
-        }
-        providerRef.current = null;
-        styleModeRef.current = null;
-      };
+          if (providerRef.current === 'maplibre') providerRef.current = null;
+        };
+      } catch (reason) {
+        markError(reason);
+      }
+    }
+
+    // Returns true when Mapbox took ownership of init (success path is resolved
+    // asynchronously via its `load`/`error` handlers), false when the caller
+    // should fall back to MapLibre.
+    async function tryMapbox(): Promise<boolean> {
+      if (!MAPBOX_PUBLIC_TOKEN) return false;
+      try {
+        const mapboxgl = (await import('mapbox-gl')).default;
+        if (cancelled) return true;
+        mapboxLibRef.current = mapboxgl;
+        mapboxgl.accessToken = MAPBOX_PUBLIC_TOKEN;
+        const map = new mapboxgl.Map({
+          container: mapContainer,
+          style: createConnectMapStyle(initialDarkMode),
+          center: DEFAULT_CENTER,
+          zoom: 3.2,
+          attributionControl: true,
+          dragRotate: false,
+          touchPitch: false,
+        });
+        map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
+        map.on('click', onMapClick);
+        map.on('load', () => {
+          styleModeRef.current = initialDarkMode;
+          markReady();
+        });
+        // Invalid / origin-restricted tokens fire an async error (no throw) before
+        // `load`. Tear Mapbox down and fall back to MapLibre rather than showing a
+        // blank base map. Errors after a successful load (e.g. a single tile) are
+        // ignored via the `settled` guard.
+        map.on('error', (event) => {
+          if (settled || cancelled) return;
+          console.warn('[ConnectMap] mapbox error, falling back to MapLibre', event.error);
+          teardownMapbox();
+          void tryMapLibre();
+        });
+        mapboxMapRef.current = map;
+        providerRef.current = 'mapbox';
+        providerCleanup = () => teardownMapbox();
+        return true;
+      } catch (reason) {
+        console.warn('[ConnectMap] mapbox init threw, falling back to MapLibre', reason);
+        teardownMapbox();
+        return false;
+      }
+    }
+
+    const onWatchdog = () => {
+      if (settled || cancelled) return;
+      if (providerRef.current === 'mapbox') {
+        console.warn('[ConnectMap] mapbox load timed out, falling back to MapLibre');
+        teardownMapbox();
+        watchdog = setTimeout(() => markError('maplibre load timeout'), MAP_LOAD_TIMEOUT_MS);
+        void tryMapLibre();
+      } else {
+        markError('map load timeout');
+      }
+    };
+
+    async function initMap() {
+      watchdog = setTimeout(onWatchdog, MAP_LOAD_TIMEOUT_MS);
+      const usedMapbox = await tryMapbox();
+      if (cancelled || settled) return;
+      if (!usedMapbox) await tryMapLibre();
     }
 
     void initMap();
 
-    return () => {
+    mapCleanupRef.current = () => {
       cancelled = true;
-      cleanup?.();
+      clearWatchdog();
+      media.removeEventListener('change', onColorSchemeChange);
+      const previousMarkers = markersRef.current;
+      markersRef.current = [];
+      previousMarkers.forEach((marker) => marker.remove());
+      providerCleanup?.();
     };
   }, []);
 
   // Sync markers whenever items change.
-  useEffect(() => {
+  const syncMarkersRef = useCallback((node: HTMLDivElement | null) => {
+    markerCleanupRef.current?.();
+    markerCleanupRef.current = null;
+    if (!node) return;
     const provider = providerRef.current;
     if (!provider || !mapReady) return;
 
@@ -396,7 +479,7 @@ export function ConnectMap({ items }: { items: MapItem[] }) {
 
     markersRef.current = nextMarkers;
 
-    return () => {
+    markerCleanupRef.current = () => {
       cleanups.forEach((cleanup) => cleanup());
       nextMarkers.forEach((marker) => marker.remove());
       markersRef.current = [];
@@ -404,10 +487,18 @@ export function ConnectMap({ items }: { items: MapItem[] }) {
   }, [items, mapReady]);
 
   return (
-    <div className="cmap">
-      <div ref={containerRef} className="cmap__canvas" />
+    <div className="cmap" ref={syncMarkersRef}>
+      <div key={reloadKey} ref={canvasRef} className="cmap__canvas" />
 
-      {!mapReady ? (
+      {error ? (
+        <div className="cmap__empty">
+          <MapPin size={22} />
+          <span>Map couldn&rsquo;t load.</span>
+          <button type="button" className="btn btn--outline btn--sm" onClick={handleRetry}>
+            Retry
+          </button>
+        </div>
+      ) : !mapReady ? (
         <div className="cmap__empty">
           <MapPin size={22} />
           <span>Loading map&hellip;</span>

@@ -1,13 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   bibleAppUrl,
   DEFAULT_TRANSLATION,
+  buildScriptureKey,
+  fetchScriptureShareCounts,
   fetchTranslations,
   fetchVerse,
   type BibleTranslation,
   type ScriptureMention,
   type VerseResult,
 } from '../../api/scripture';
+import { useApiQuery } from '../../api/useApi';
 import './scripture.css';
 
 /**
@@ -29,52 +32,38 @@ export function ScriptureModal({
   onClose: () => void;
 }) {
   const [translation, setTranslation] = useState(posterTranslation);
-  const [verse, setVerse] = useState<VerseResult | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [translations, setTranslations] = useState<BibleTranslation[]>([]);
-  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const dialogCleanupRef = useRef<(() => void) | null>(null);
+  const verseQuery = useApiQuery<VerseResult>(
+    () => fetchVerse(mention, translation),
+    {
+      deps: [
+        mention.reference,
+        mention.book,
+        mention.chapter,
+        mention.verse,
+        mention.verseEnd,
+        translation,
+      ],
+    },
+  );
+  const translationsQuery = useApiQuery<BibleTranslation[]>(() => fetchTranslations(), { fallback: [] });
+  const shareKey =
+    mention.key ?? buildScriptureKey(mention.book, mention.chapter, mention.verse, mention.verseEnd);
+  const shareCountQuery = useApiQuery<Record<string, number>>(
+    () => fetchScriptureShareCounts([shareKey]),
+    { deps: [shareKey], enabled: shareKey.length > 0, fallback: {} },
+  );
 
-  // Load the verse whenever the chosen translation changes.
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setError(false);
-    fetchVerse(mention, translation)
-      .then((v) => {
-        if (active) {
-          setVerse(v);
-          setLoading(false);
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setError(true);
-          setLoading(false);
-        }
-      });
-    return () => {
-      active = false;
-    };
-  }, [mention, translation]);
-
-  // Populate the version dropdown once.
-  useEffect(() => {
-    let active = true;
-    fetchTranslations().then((list) => active && setTranslations(list));
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  // Close on Escape; focus the dialog for accessibility.
-  useEffect(() => {
-    dialogRef.current?.focus();
+  const dialogRef = useCallback((node: HTMLDivElement | null) => {
+    dialogCleanupRef.current?.();
+    dialogCleanupRef.current = null;
+    if (!node) return;
+    node.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    dialogCleanupRef.current = () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
   // Open the OS share sheet (the native "picker") with the reference + a
@@ -95,6 +84,10 @@ export function ScriptureModal({
     }
   };
 
+  const verse = verseQuery.data ?? null;
+  const loading = verseQuery.loading && !verse;
+  const error = Boolean(verseQuery.error);
+  const translations = translationsQuery.data ?? [];
   const options: BibleTranslation[] = translations.length
     ? translations
     : [
@@ -102,6 +95,7 @@ export function ScriptureModal({
         { id: 'engKJV', name: 'King James Version', englishName: 'KJV', language: 'eng' },
         { id: 'WEB', name: 'World English Bible', englishName: 'WEB', language: 'eng' },
       ];
+  const shareCount = mention.shareCount ?? shareCountQuery.data?.[shareKey] ?? 0;
 
   return (
     <div className="scripture-modal__scrim" onClick={onClose} role="presentation">
@@ -154,13 +148,18 @@ export function ScriptureModal({
           )}
 
           {!loading && !error ? (
-            <button
-              type="button"
-              className="scripture-modal__open"
-              onClick={openInBibleApp}
-            >
-              Open in Bible app →
-            </button>
+            <div className="scripture-modal__foot">
+              <span className="scripture-modal__count">
+                {shareCount.toLocaleString()} shares
+              </span>
+              <button
+                type="button"
+                className="scripture-modal__open"
+                onClick={openInBibleApp}
+              >
+                Open in Bible app →
+              </button>
+            </div>
           ) : null}
         </div>
       </div>

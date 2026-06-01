@@ -1,18 +1,15 @@
 import { api } from './client';
+import {
+  createReactionCounts,
+  getApiReactionType,
+  getReactionKindFromApi,
+  type FullReactionKind,
+  type ReactionCounts,
+} from './reactions';
 
 /* Mirrors api/src/modules/prayer (PrayerPost + PrayerWallCategory). */
 export type PrayerCategory = 'request' | 'exhortation' | 'testimony' | 'answer' | 'myPrayers';
-export type PrayerReaction = 'love' | 'pray' | 'rejoice';
-
-// UI kind -> API ReactionType, and back (shared with the social feed mapping).
-const KIND_TO_API: Record<PrayerReaction, string> = { love: 'love', pray: 'praying', rejoice: 'praise' };
-const API_TO_KIND: Record<string, PrayerReaction> = {
-  love: 'love',
-  like: 'love',
-  praying: 'pray',
-  praise: 'rejoice',
-  happy: 'rejoice',
-};
+export type PrayerReaction = FullReactionKind;
 const FALLBACK_AVATAR = '/brand/avatar1.png';
 
 function timeAgo(iso?: string): string {
@@ -41,9 +38,10 @@ export interface Prayer {
   category: PrayerCategory;
   answered: boolean;
   testimony?: string;
-  reactions: Record<PrayerReaction, number>;
+  reactions: ReactionCounts;
   myReaction: PrayerReaction | null;
   comments: number;
+  reposts: number;
   time: string;
 }
 
@@ -60,16 +58,26 @@ function unwrap(payload: unknown): Raw[] {
   return [];
 }
 
+function idFromValue(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (value && typeof value === 'object') {
+    const record = value as Raw;
+    const id = record._id ?? record.id;
+    return typeof id === 'string' ? id : '';
+  }
+  return '';
+}
+
 export function mapPrayer(raw: Raw, myUserId?: string): Prayer {
   const userData = (raw.userData ?? raw.user ?? {}) as Raw;
   const reactionsArr = Array.isArray(raw.reactions) ? (raw.reactions as Raw[]) : [];
-  const reactions: Record<PrayerReaction, number> = { love: 0, pray: 0, rejoice: 0 };
+  const reactions = createReactionCounts();
   let myReaction: PrayerReaction | null = null;
   for (const r of reactionsArr) {
-    const kind = typeof r.type === 'string' ? API_TO_KIND[r.type] : undefined;
+    const kind = typeof r.type === 'string' ? getReactionKindFromApi(r.type) : undefined;
     if (kind) {
       reactions[kind] += 1;
-      if (myUserId && r.userId === myUserId) myReaction = kind;
+      if (myUserId && idFromValue(r.userId) === myUserId) myReaction = kind;
     }
   }
   const testimony = raw.testimony as Raw | undefined;
@@ -92,6 +100,7 @@ export function mapPrayer(raw: Raw, myUserId?: string): Prayer {
     reactions,
     myReaction,
     comments,
+    reposts: typeof raw.repostCount === 'number' ? raw.repostCount : 0,
     time: timeAgo(String(raw.created ?? raw.createdAt ?? raw.date ?? '')),
   };
 }
@@ -113,7 +122,7 @@ export const prayerApi = {
     turnstileToken?: string;
   }) => api.post('prayer', body),
   react: (postId: string, kind: PrayerReaction) =>
-    api.patch('prayer/react', { postId, type: KIND_TO_API[kind] }),
+    api.patch('prayer/react', { postId, type: getApiReactionType(kind) }),
   removeReaction: (postId: string) => api.patch('prayer/remove-reaction', { postId }),
   markAnswered: (id: string, testimony: string) =>
     api.patch(`prayer/answered/${id}`, { testimony, reactions: [] }),
@@ -132,9 +141,10 @@ export const MOCK_PRAYERS: Prayer[] = [
     content: 'Please pray for my dad’s surgery tomorrow morning. Believing for a steady hand on the surgeon and complete healing. 🙏',
     category: 'request',
     answered: false,
-    reactions: { love: 24, pray: 188, rejoice: 6 },
+    reactions: { ...createReactionCounts(), love: 24, pray: 188, praise: 6 },
     myReaction: 'pray',
     comments: 31,
+    reposts: 8,
     time: '2h',
   },
   {
@@ -146,9 +156,10 @@ export const MOCK_PRAYERS: Prayer[] = [
     content: 'Struggling with anxiety about a big decision. Praying for peace and clarity.',
     category: 'request',
     answered: false,
-    reactions: { love: 10, pray: 64, rejoice: 2 },
+    reactions: { ...createReactionCounts(), love: 10, pray: 64, praise: 2 },
     myReaction: null,
     comments: 8,
+    reposts: 0,
     time: '5h',
   },
   {
@@ -162,9 +173,10 @@ export const MOCK_PRAYERS: Prayer[] = [
     category: 'answer',
     answered: true,
     testimony: 'God moved through this community in a way we could never have planned. Thank you for praying with us.',
-    reactions: { love: 210, pray: 40, rejoice: 162 },
-    myReaction: 'rejoice',
+    reactions: { ...createReactionCounts(), love: 210, pray: 40, praise: 162 },
+    myReaction: 'praise',
     comments: 47,
+    reposts: 14,
     time: '1d',
   },
 ];

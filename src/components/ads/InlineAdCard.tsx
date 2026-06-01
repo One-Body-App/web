@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   ADVERTISER_PORTAL_URL,
   getInlineAdId,
@@ -23,11 +23,12 @@ import './InlineAdCard.css';
 export function InlineAdCard({ ad, variant }: { ad: InlineAd; variant?: AdFormat }) {
   const adId = getInlineAdId(ad);
   const format: AdFormat = variant ?? ad?.format ?? 'square';
-  const cardRef = useRef<HTMLDivElement | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const observerCleanupRef = useRef<(() => void) | null>(null);
 
-  useEffect(() => {
-    const node = cardRef.current;
+  const cardRef = useCallback((node: HTMLDivElement | null) => {
+    observerCleanupRef.current?.();
+    observerCleanupRef.current = null;
     if (!node || !adId) return;
     const observer = new IntersectionObserver(
       (entries) => {
@@ -42,7 +43,7 @@ export function InlineAdCard({ ad, variant }: { ad: InlineAd; variant?: AdFormat
       { threshold: [0.5] },
     );
     observer.observe(node);
-    return () => observer.disconnect();
+    observerCleanupRef.current = () => observer.disconnect();
   }, [adId]);
 
   if (!ad || (!ad.imageUrl && !ad.title)) {
@@ -63,6 +64,17 @@ export function InlineAdCard({ ad, variant }: { ad: InlineAd; variant?: AdFormat
     window.alert('Thanks for reporting. Our team will review this ad.');
   };
 
+  const adBodyContent = (
+    <>
+      {format !== 'banner' && ad.title ? (
+        <p className="inline-ad-card__title">{ad.title}</p>
+      ) : null}
+      {ad.imageUrl ? (
+        <img className="inline-ad-card__image" src={ad.imageUrl} alt={ad.title || 'Sponsored'} />
+      ) : null}
+    </>
+  );
+
   return (
     <div className={`inline-ad-card inline-ad-card--${format}`} ref={cardRef}>
       <div className="inline-ad-card__meta">
@@ -77,24 +89,30 @@ export function InlineAdCard({ ad, variant }: { ad: InlineAd; variant?: AdFormat
         </a>
       </div>
 
-      <button
-        type="button"
-        className="inline-ad-card__body"
-        onClick={() => setMenuOpen((open) => !open)}
-        aria-haspopup="menu"
-        aria-expanded={menuOpen}
-        aria-label={ad.title ? `Sponsored: ${ad.title}` : 'Sponsored'}
-      >
-        {format !== 'banner' && ad.title ? (
-          <p className="inline-ad-card__title">{ad.title}</p>
-        ) : null}
-        {ad.imageUrl ? (
-          <img className="inline-ad-card__image" src={ad.imageUrl} alt={ad.title || 'Sponsored'} />
-        ) : null}
-      </button>
+      {menuOpen ? (
+        <button
+          type="button"
+          className="inline-ad-card__body"
+          onClick={() => setMenuOpen(false)}
+          aria-expanded="true"
+          aria-label={ad.title ? `Sponsored: ${ad.title}` : 'Sponsored'}
+        >
+          {adBodyContent}
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="inline-ad-card__body"
+          onClick={() => setMenuOpen(true)}
+          aria-expanded="false"
+          aria-label={ad.title ? `Sponsored: ${ad.title}` : 'Sponsored'}
+        >
+          {adBodyContent}
+        </button>
+      )}
 
       {menuOpen ? (
-        <div className="inline-ad-card__menu" role="menu">
+        <div className="inline-ad-card__menu">
           <button type="button" className="inline-ad-card__menu-item" onClick={openSite}>
             View site
           </button>

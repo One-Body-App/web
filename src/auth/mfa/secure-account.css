@@ -1,0 +1,97 @@
+/*
+ * Passkey-first MFA screen. The method buttons / TOTP QR / backup-code grid
+ * reuse the .mfa-* rules from AccountGate.css (loaded via the StepLayout's
+ * onboarding.css import). Only the passkey hero + fallback disclosure are new.
+ */
+
+.secure-account__passkey {
+  display: grid;
+  gap: var(--sp-16);
+  justify-items: stretch;
+}
+
+.secure-account__passkey-art {
+  width: 88px;
+  height: 88px;
+  justify-self: center;
+  display: grid;
+  place-items: center;
+  border-radius: var(--r-pill);
+  color: #fff;
+  background: var(--grad-aqua);
+  box-shadow: var(--shadow-accent);
+}
+
+.secure-account__device-note {
+  color: var(--ink-3);
+  font-size: var(--fs-3);
+  line-height: 1.5;
+  text-align: center;
+}
+
+.secure-account__passkey-btn {
+  min-height: 54px;
+  font-size: var(--fs-4);
+}
+
+.secure-account__passkey-btn svg {
+  margin-right: var(--sp-8);
+}
+
+/* ---------------- Fallback disclosure ---------------- */
+.secure-account__fallback-toggle {
+  align-self: center;
+  background: none;
+  border: none;
+  color: var(--ink-3);
+  font-weight: 600;
+  font-size: var(--fs-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  padding: var(--sp-4);
+}
+
+.secure-account__fallback-toggle:hover {
+  color: var(--sapphire);
+}
+
+.secure-account__fallback {
+  display: grid;
+  gap: var(--sp-16);
+  margin-top: var(--sp-8);
+  padding-top: var(--sp-16);
+  border-top: 1px dashed var(--line-strong);
+}
+
+.secure-account__fallback-head {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--fs-3);
+  color: var(--ink);
+}
+
+/* ---------------- Backup codes ---------------- */
+.secure-account__backup-intro {
+  color: var(--ink-3);
+  font-size: var(--fs-3);
+  line-height: 1.5;
+}
+
+.secure-account__copy-all {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-6);
+  align-self: start;
+  background: none;
+  border: none;
+  color: var(--sapphire);
+  font-weight: 700;
+  font-size: var(--fs-2);
+  cursor: pointer;
+  padding: var(--sp-4) 0;
+}
+
+.secure-account__copy-all:hover {
+  color: var(--brand);
+}

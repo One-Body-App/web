@@ -1,5 +1,15 @@
 # Agent guidance — One Body web app
 
+## Do not use React useEffect
+
+Do not import or call `useEffect` / `React.useEffect` anywhere in the web app.
+Prefer derived state, event handlers, external stores with `useSyncExternalStore`,
+callback refs for DOM subscriptions/observers, and existing project hooks or
+helpers that are already approved for lifecycle work.
+
+When editing a file that already imports `useEffect`, remove it as part of the
+change instead of adding more effect-based logic.
+
 ## ARIA boolean attributes must be string literals, not booleans
 
 React/TypeScript happily accepts `aria-expanded={someBool}`, but axe/aria

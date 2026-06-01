@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { ClerkProvider, useAuth as useClerkAuth, useClerk, useUser } from '@clerk/clerk-react';
 import {
   AuthContext,
@@ -10,10 +10,61 @@ import {
   type AuthValue,
 } from './context';
 import { setTokenGetter } from '@/api/token';
-import { endpoints } from '@/api/endpoints';
 
 const DEMO_KEY = 'ob_demo_session';
 const CLERK_LOAD_TIMEOUT_MS = 8000;
+
+function metadataString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+function createLoadTimeoutStore() {
+  let loaded = true;
+  let timedOut = false;
+  let timeout: number | undefined;
+  const listeners = new Set<() => void>();
+
+  const emit = () => listeners.forEach((listener) => listener());
+  const clear = () => {
+    if (timeout !== undefined) {
+      window.clearTimeout(timeout);
+      timeout = undefined;
+    }
+  };
+  const schedule = () => {
+    if (loaded || timeout !== undefined || typeof window === 'undefined') return;
+    timeout = window.setTimeout(() => {
+      timeout = undefined;
+      if (!loaded) {
+        timedOut = true;
+        emit();
+      }
+    }, CLERK_LOAD_TIMEOUT_MS);
+  };
+
+  return {
+    getSnapshot: () => !loaded && timedOut,
+    subscribe: (listener: () => void) => {
+      listeners.add(listener);
+      schedule();
+      return () => {
+        listeners.delete(listener);
+        if (listeners.size === 0) clear();
+      };
+    },
+    setLoaded: (nextLoaded: boolean) => {
+      if (loaded === nextLoaded) return;
+      loaded = nextLoaded;
+      if (loaded) {
+        clear();
+        timedOut = false;
+      } else {
+        timedOut = false;
+        schedule();
+      }
+    },
+  };
+}
 
 /**
  * Maps Clerk's user/session hooks onto our app-wide AuthContext so the rest
@@ -23,60 +74,47 @@ function ClerkAuthBridge({ children }: { children: ReactNode }) {
   const { isLoaded, isSignedIn, user } = useUser();
   const { signOut } = useClerk();
   const { getToken } = useClerkAuth();
-  const syncedRef = useRef(false);
-  const [loadTimedOut, setLoadTimedOut] = useState(false);
+  const timeoutStoreRef = useRef<ReturnType<typeof createLoadTimeoutStore>>();
+  if (!timeoutStoreRef.current) timeoutStoreRef.current = createLoadTimeoutStore();
+
+  const clerkReady = isLoaded && (!isSignedIn || Boolean(user));
 
   // Expose Clerk's session token to the (non-React) API client.
-  useEffect(() => {
-    setTokenGetter(() => getToken());
-    return () => setTokenGetter(null);
-  }, [getToken]);
-
-  // Ensure a Mongo user exists/linked for this Clerk session (once per sign-in).
-  useEffect(() => {
-    if (isSignedIn && user && !syncedRef.current) {
-      syncedRef.current = true;
-      endpoints
-        .syncClerkUser({
-          name: user.fullName ?? undefined,
-          username: user.username ?? undefined,
-          accountType: (user.unsafeMetadata?.accountType as string) || undefined,
-        })
-        .catch(() => {
-          // Best-effort: ignore (e.g. CORS in local dev); retried next sign-in.
-        });
-    }
-    if (!isSignedIn) syncedRef.current = false;
-  }, [isSignedIn, user]);
-
-  useEffect(() => {
-    if (isLoaded) {
-      setLoadTimedOut(false);
-      return;
-    }
-    const timeout = window.setTimeout(() => setLoadTimedOut(true), CLERK_LOAD_TIMEOUT_MS);
-    return () => window.clearTimeout(timeout);
-  }, [isLoaded]);
+  setTokenGetter(() => getToken());
+  timeoutStoreRef.current.setLoaded(clerkReady);
+  const loadTimedOut = useSyncExternalStore(
+    timeoutStoreRef.current.subscribe,
+    timeoutStoreRef.current.getSnapshot,
+    timeoutStoreRef.current.getSnapshot,
+  );
 
   const value = useMemo<AuthValue>(
     () => ({
-      isLoaded: isLoaded || loadTimedOut,
-      isSignedIn: loadTimedOut ? false : Boolean(isSignedIn),
+      isLoaded: clerkReady || loadTimedOut,
+      isSignedIn: loadTimedOut ? false : Boolean(isSignedIn && user),
       clerkEnabled: true,
       authError: loadTimedOut ? AUTH_UNAVAILABLE_MESSAGE : null,
       signOut: () => signOut(),
       user: user && !loadTimedOut
         ? {
             id: user.id,
-            fullName: user.fullName ?? user.username ?? 'Friend',
-            firstName: user.firstName ?? user.username ?? 'Friend',
-            username: user.username ?? user.primaryEmailAddress?.emailAddress?.split('@')[0] ?? 'me',
+            fullName:
+              user.fullName ?? metadataString(user.unsafeMetadata?.username) ?? user.username ?? 'Friend',
+            firstName:
+              user.firstName ?? metadataString(user.unsafeMetadata?.username) ?? user.username ?? 'Friend',
+            username:
+              metadataString(user.unsafeMetadata?.username) ??
+              user.username ??
+              user.primaryEmailAddress?.emailAddress?.split('@')[0] ??
+              'me',
             imageUrl: user.imageUrl,
             email: user.primaryEmailAddress?.emailAddress,
+            accountType:
+              user.unsafeMetadata?.accountType === 'organization' ? 'organization' : 'individual',
           }
         : null,
     }),
-    [isLoaded, isSignedIn, loadTimedOut, user, signOut]
+    [clerkReady, isSignedIn, loadTimedOut, user, signOut]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

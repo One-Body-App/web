@@ -1,10 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Compass, Search } from 'lucide-react';
 import { Logo } from '@/components/Logo';
 import { clerkConfigError, useAuth } from '@/auth/context';
 import { getCachedIntroAvatars, INTRO_AVATAR_COUNT } from '@/api/introAvatars';
+import { useApiQuery } from '@/api/useApi';
 import './Intro.css';
 
 const SPIN = 44; // seconds per full revolution
@@ -59,28 +60,26 @@ export function Intro() {
   // 4 slots that mirror the mobile intro avatars exactly. CDN URLs from the
   // backend get loaded into these; if a slot is null OR its image errors out,
   // the matching bundled face stays visible.
-  const [remoteAvatars, setRemoteAvatars] = useState<(string | null)[]>(() =>
-    Array(INTRO_AVATAR_COUNT).fill(null)
-  );
-  const [avatarLoadErrored, setAvatarLoadErrored] = useState<boolean[]>(() =>
-    Array(INTRO_AVATAR_COUNT).fill(false)
-  );
-
-  useEffect(() => {
-    let active = true;
-    getCachedIntroAvatars()
-      .then((urls) => {
-        if (!active) return;
-        setRemoteAvatars(urls);
-        setAvatarLoadErrored(Array(INTRO_AVATAR_COUNT).fill(false));
-      })
-      .catch(() => {
-        // Network silently fell over - we keep the bundled fallbacks.
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  const fallbackAvatarSlots = Array(INTRO_AVATAR_COUNT).fill(null) as (string | null)[];
+  const { data: remoteAvatarData } = useApiQuery(() => getCachedIntroAvatars(), {
+    fallback: fallbackAvatarSlots,
+  });
+  const remoteAvatars = remoteAvatarData ?? fallbackAvatarSlots;
+  const avatarKey = remoteAvatars.join('|');
+  const [avatarErrorState, setAvatarErrorState] = useState(() => ({
+    key: avatarKey,
+    values: Array(INTRO_AVATAR_COUNT).fill(false) as boolean[],
+  }));
+  if (avatarErrorState.key !== avatarKey) {
+    setAvatarErrorState({
+      key: avatarKey,
+      values: Array(INTRO_AVATAR_COUNT).fill(false) as boolean[],
+    });
+  }
+  const avatarLoadErrored =
+    avatarErrorState.key === avatarKey
+      ? avatarErrorState.values
+      : (Array(INTRO_AVATAR_COUNT).fill(false) as boolean[]);
 
   function avatarSrcForSlot(slot: number): string {
     const remote = remoteAvatars[slot];
@@ -89,11 +88,11 @@ export function Intro() {
   }
 
   function handleAvatarError(slot: number) {
-    setAvatarLoadErrored((current) => {
-      if (current[slot]) return current;
-      const next = current.slice();
+    setAvatarErrorState((current) => {
+      if (current.key !== avatarKey || current.values[slot]) return current;
+      const next = current.values.slice();
       next[slot] = true;
-      return next;
+      return { key: current.key, values: next };
     });
   }
 

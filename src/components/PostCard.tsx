@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bookmark, Heart, MessageCircle, MoreHorizontal, PenLine, Repeat2, Send } from 'lucide-react';
+import { Bookmark, Eye, Heart, MessageCircle, MoreHorizontal, PenLine, Repeat2, Send } from 'lucide-react';
 import { Avatar } from './Avatar';
 import { ScriptureText } from './scripture/ScriptureText';
-import { REACTIONS, type OBPost, type ReactionKind } from '@/data/mock';
+import { REACTIONS, type OBPost, type OBPostRepost, type ReactionKind } from '@/data/mock';
 import { endpoints } from '@/api/endpoints';
 import { useFeedTelemetry } from '@/telemetry/feedTelemetry';
 import './PostCard.css';
@@ -14,6 +14,28 @@ const SHARE_BASE = 'https://app.onebodyapp.com';
 function formatCount(n: number) {
   if (n >= 1000) return `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k`;
   return `${n}`;
+}
+
+function sourceRoute(repost: OBPostRepost): string | null {
+  if (repost.sourceType === 'comment') {
+    const objectType = repost.sourceObjectType ?? 'social';
+    const objectId = repost.sourceObjectId;
+    const commentId = repost.sourceCommentId ?? repost.sourceId;
+    return objectId && commentId ? `/post/${objectType}/${objectId}/c/${commentId}` : null;
+  }
+  const objectType = repost.sourceObjectType ?? repost.sourceType;
+  const objectId = repost.sourceObjectId ?? repost.sourceId;
+  if (!objectId) return null;
+  return `/post/${objectType}/${objectId}`;
+}
+
+function sourceLabel(repost: OBPostRepost): string {
+  const type = repost.sourceObjectType ?? repost.sourceType;
+  if (type === 'prayer') return 'Prayer';
+  if (type === 'rss') return 'Article';
+  if (type === 'watch') return 'Watch';
+  if (repost.sourceType === 'comment') return 'Comment';
+  return 'Post';
 }
 
 interface PostCardProps {
@@ -27,33 +49,51 @@ interface PostCardProps {
 export function PostCard({ post, detail = false, onCommentClick }: PostCardProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const [myReaction, setMyReaction] = useState<ReactionKind | null>(post.myReaction ?? null);
-  const [counts, setCounts] = useState(post.reactions);
-  const [saved, setSaved] = useState(Boolean(post.saved));
-  const [repostCount, setRepostCount] = useState(post.reposts);
-  const [reposted, setReposted] = useState(false);
+  const [reactionOverride, setReactionOverride] = useState<{
+    postId: string;
+    myReaction: ReactionKind | null;
+    counts: OBPost['reactions'];
+  } | null>(null);
+  const [saveOverride, setSaveOverride] = useState<{ postId: string; saved: boolean } | null>(null);
+  const [repostOverride, setRepostOverride] = useState<{
+    postId: string;
+    count: number;
+    reposted: boolean;
+  } | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [repostMenuOpen, setRepostMenuOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const copiedTimer = useRef<number | undefined>(undefined);
   const track = useFeedTelemetry();
 
+  const reactionState =
+    reactionOverride?.postId === post.id
+      ? reactionOverride
+      : { postId: post.id, myReaction: post.myReaction ?? null, counts: post.reactions };
+  const { myReaction, counts } = reactionState;
+  const saved = saveOverride?.postId === post.id ? saveOverride.saved : Boolean(post.saved);
+  const repostState =
+    repostOverride?.postId === post.id
+      ? repostOverride
+      : { postId: post.id, count: post.reposts, reposted: false };
+  const repostCount = repostState.count;
+  const reposted = repostState.reposted;
   const totalReactions = counts.love + counts.pray + counts.rejoice;
   const active = REACTIONS.find((r) => r.kind === myReaction);
+  const reactionClassName = active
+    ? `post__action is-active post__action--reaction-${active.kind}`
+    : 'post__action';
 
   function react(kind: ReactionKind) {
     const wasActive = myReaction === kind;
-    setCounts((prev) => {
-      const next = { ...prev };
-      if (myReaction) next[myReaction] -= 1;
-      if (myReaction !== kind) next[kind] += 1;
-      return next;
-    });
-    setMyReaction((prev) => (prev === kind ? null : kind));
+    const nextReaction = wasActive ? null : kind;
+    const nextCounts = { ...counts };
+    if (myReaction) nextCounts[myReaction] = Math.max(0, nextCounts[myReaction] - 1);
+    if (nextReaction) nextCounts[nextReaction] += 1;
+    setReactionOverride({ postId: post.id, myReaction: nextReaction, counts: nextCounts });
     setPickerOpen(false);
-    // Persist (optimistic): best-effort, ignore failures (e.g. offline/CORS).
     const request = wasActive ? endpoints.removeReaction(post.id) : endpoints.reactToPost(post.id, kind);
-    request.catch(() => {});
+    request.catch(() => setReactionOverride({ postId: post.id, myReaction, counts }));
     track(
       wasActive ? 'reaction_removed' : 'reaction',
       wasActive ? 'post_reaction_remove' : 'post_reaction_add',
@@ -63,22 +103,20 @@ export function PostCard({ post, detail = false, onCommentClick }: PostCardProps
 
   function toggleSave() {
     const next = !saved;
-    setSaved(next);
+    setSaveOverride({ postId: post.id, saved: next });
     track(next ? 'save' : 'unsave', next ? 'post_save_add' : 'post_save_remove', { postType: 'social' });
     const request = next
       ? endpoints.savePost({ postId: post.id, type: 'social', image: post.image, userId: post.author.id })
       : endpoints.unsavePost(post.id);
-    request.catch(() => setSaved(!next)); // roll back if the write fails
+    request.catch(() => setSaveOverride({ postId: post.id, saved }));
   }
 
   function doRepost() {
     setRepostMenuOpen(false);
-    setReposted(true);
-    setRepostCount((c) => c + 1);
+    setRepostOverride({ postId: post.id, count: repostCount + 1, reposted: true });
     track('repost', 'post_repost', { repostType: 'repost', sourceType: 'social' });
     endpoints.repost(post.id).catch(() => {
-      setReposted(false);
-      setRepostCount((c) => Math.max(0, c - 1));
+      setRepostOverride({ postId: post.id, count: repostCount, reposted: false });
     });
   }
 
@@ -133,7 +171,8 @@ export function PostCard({ post, detail = false, onCommentClick }: PostCardProps
   }
 
   // In the feed, the body/media open the post; in detail mode they're inert.
-  const openProps = detail ? {} : { onClick: openDetail, style: { cursor: 'pointer' } };
+  const mediaClassName = detail ? 'post__media' : 'post__media post__media--clickable';
+  const openProps = detail ? {} : { onClick: openDetail };
 
   return (
     <motion.article
@@ -172,8 +211,12 @@ export function PostCard({ post, detail = false, onCommentClick }: PostCardProps
         </blockquote>
       ) : null}
 
+      {post.scriptureShare ? <ScriptureShareCard share={post.scriptureShare} /> : null}
+
+      {post.repost ? <RepostPreview repost={post.repost} onOpen={(path) => navigate(path)} /> : null}
+
       {post.image ? (
-        <div className="post__media" {...openProps}>
+        <div className={mediaClassName} {...openProps}>
           <img src={post.image} alt="" loading="lazy" />
         </div>
       ) : null}
@@ -187,8 +230,7 @@ export function PostCard({ post, detail = false, onCommentClick }: PostCardProps
         >
           <button
             type="button"
-            className={`post__action${myReaction ? ' is-active' : ''}`}
-            style={active ? { color: active.color } : undefined}
+            className={reactionClassName}
             onClick={() => react(myReaction ?? 'love')}
             aria-label={active ? active.label : 'React'}
           >
@@ -236,37 +278,52 @@ export function PostCard({ post, detail = false, onCommentClick }: PostCardProps
           ) : null}
         </button>
 
-        {/* Repost — menu with Repost / Quote (mobile parity) */}
+        {/* Repost — popup with Repost / Quote (mobile parity) */}
         <div className="post__repost-wrap" onMouseLeave={() => setRepostMenuOpen(false)}>
-          <button
-            type="button"
-            className={`post__action${reposted ? ' is-reposted' : ''}`}
-            onClick={() => setRepostMenuOpen((o) => !o)}
-            aria-label="Repost"
-            aria-haspopup="menu"
-            aria-expanded={repostMenuOpen ? 'true' : 'false'}
-          >
-            <Repeat2 size={22} />
-            {repostCount > 0 ? (
-              <span className="post__action-count">{formatCount(repostCount)}</span>
-            ) : null}
-          </button>
+          {repostMenuOpen ? (
+            <button
+              type="button"
+              className={`post__action${reposted ? ' is-reposted' : ''}`}
+              onClick={() => setRepostMenuOpen((o) => !o)}
+              aria-label="Repost"
+              aria-haspopup="true"
+              aria-expanded="true"
+            >
+              <Repeat2 size={22} />
+              {repostCount > 0 ? (
+                <span className="post__action-count">{formatCount(repostCount)}</span>
+              ) : null}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={`post__action${reposted ? ' is-reposted' : ''}`}
+              onClick={() => setRepostMenuOpen((o) => !o)}
+              aria-label="Repost"
+              aria-haspopup="true"
+              aria-expanded="false"
+            >
+              <Repeat2 size={22} />
+              {repostCount > 0 ? (
+                <span className="post__action-count">{formatCount(repostCount)}</span>
+              ) : null}
+            </button>
+          )}
 
           <AnimatePresence>
             {repostMenuOpen ? (
               <motion.div
                 className="post__repost-menu glass"
-                role="menu"
                 initial={{ opacity: 0, y: 8, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: 8, scale: 0.95 }}
                 transition={{ duration: 0.16 }}
               >
-                <button type="button" className="post__repost-item" role="menuitem" onClick={doRepost}>
+                <button type="button" className="post__repost-item" onClick={doRepost}>
                   <Repeat2 size={17} />
                   <span>Repost</span>
                 </button>
-                <button type="button" className="post__repost-item" role="menuitem" onClick={quotePost}>
+                <button type="button" className="post__repost-item" onClick={quotePost}>
                   <PenLine size={16} />
                   <span>Quote</span>
                 </button>
@@ -308,5 +365,85 @@ export function PostCard({ post, detail = false, onCommentClick }: PostCardProps
         </button>
       </footer>
     </motion.article>
+  );
+}
+
+function ScriptureShareCard({ share }: { share: NonNullable<OBPost['scriptureShare']> }) {
+  const [expanded, setExpanded] = useState(false);
+  const isLong = share.text.length > 220;
+  const text = !isLong || expanded ? share.text : `${share.text.slice(0, 220).trimEnd()}...`;
+  const count = Math.max(0, Number(share.shareCount ?? 0));
+
+  return (
+    <button
+      type="button"
+      className={`post__scripture-card${expanded ? ' is-expanded' : ''}`}
+      onClick={() => setExpanded((value) => !value)}
+      aria-expanded={expanded ? 'true' : 'false'}
+    >
+      <blockquote>
+        <span className="post__verse-mark">“</span>
+        <p>{text}</p>
+        <cite>{share.reference}</cite>
+      </blockquote>
+      <span className="post__scripture-count">
+        <Eye size={14} />
+        {formatCount(count)} shares
+      </span>
+    </button>
+  );
+}
+
+function RepostPreview({
+  repost,
+  onOpen,
+}: {
+  repost: OBPostRepost;
+  onOpen: (path: string) => void;
+}) {
+  const route = sourceRoute(repost);
+  const previewText =
+    repost.sourceContentSnippet ||
+    repost.sourceContent ||
+    repost.sourceDescription ||
+    repost.sourceTitle ||
+    '';
+  const previewImage = repost.sourceImage || repost.sourceImages?.[0];
+  const label = sourceLabel(repost);
+  const body = (
+    <>
+      <header className="post__source-head">
+        <Avatar
+          src={repost.sourceAuthorProfileImage || '/brand/avatar1.png'}
+          alt={repost.sourceAuthorName || 'One Body member'}
+          size={30}
+        />
+        <div className="post__source-id">
+          <strong>{repost.sourceAuthorName || 'One Body member'}</strong>
+          <span>
+            {repost.sourceAuthorUsername ? `@${repost.sourceAuthorUsername}` : label}
+            {repost.sourceCreatedAt ? ` · ${repost.sourceCreatedAt}` : ''}
+          </span>
+        </div>
+        <span className="post__source-type">{label}</span>
+      </header>
+      {repost.sourceTitle ? <strong className="post__source-title">{repost.sourceTitle}</strong> : null}
+      {previewText ? <p className="post__source-body">{previewText}</p> : null}
+      {previewImage ? (
+        <div className="post__source-media">
+          <img src={previewImage} alt="" loading="lazy" />
+        </div>
+      ) : null}
+    </>
+  );
+
+  if (!route) {
+    return <aside className="post__source">{body}</aside>;
+  }
+
+  return (
+    <button type="button" className="post__source post__source--button" onClick={() => onOpen(route)}>
+      {body}
+    </button>
   );
 }

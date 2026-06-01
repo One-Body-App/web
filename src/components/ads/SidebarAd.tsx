@@ -1,4 +1,4 @@
-import {useEffect, useState} from 'react';
+import { useApiQuery } from '@/api/useApi';
 import {fetchSidebarAds, type InlineAd} from '../../api/ads';
 import InlineAdCard from './InlineAdCard';
 import './SidebarAd.css';
@@ -8,23 +8,8 @@ import './SidebarAd.css';
  * Renders nothing if no ad is available, so it's safe to always mount.
  */
 export default function SidebarAd() {
-  const [ad, setAd] = useState<InlineAd | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    fetchSidebarAds()
-      .then(ads => {
-        if (active && ads.length > 0) {
-          setAd(ads[0]);
-        }
-      })
-      .catch(() => {
-        // Best-effort: no sidebar ad on failure.
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+  const { data } = useApiQuery<InlineAd[]>(() => fetchSidebarAds(), { fallback: [] });
+  const ad = data?.[0] ?? null;
 
   if (!ad) {
     return null;
