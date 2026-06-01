@@ -1,0 +1,217 @@
+/* Scripture hyperlinks + verse modal + composer chip.
+   Strict brand colors per spec (these are the existing theme tokens):
+     hyperlink  #41dbe1  (--accent-200)
+     surface    #e6eaec  (--line)
+     header     #41899f  (--sapphire-200)
+     text       #032f3c  (--brand, light theme)
+   Scoped to scripture-* classes so nothing else in the app is affected. */
+
+/* ---- In-feed hyperlink ---- */
+.scripture-link {
+  color: #41dbe1;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  border-bottom: 1px solid rgba(65, 219, 225, 0.4);
+  transition: border-color 0.15s ease, opacity 0.15s ease;
+}
+.scripture-link:hover {
+  border-bottom-color: #41dbe1;
+  opacity: 0.9;
+}
+
+/* ---- Verse modal ---- */
+.scripture-modal__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(3, 47, 60, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+.scripture-modal {
+  width: 100%;
+  max-width: 420px;
+  background: #e6eaec; /* surface */
+  border-radius: 18px;
+  box-shadow: 0 18px 48px rgba(3, 47, 60, 0.28);
+  overflow: hidden;
+  outline: none;
+}
+.scripture-modal__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  background: #41899f; /* header / primary base */
+}
+.scripture-modal__ref {
+  flex: 1;
+  font-family: 'Rubik', system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  color: #ffffff;
+}
+.scripture-modal__version {
+  font-size: 12px;
+  font-weight: 600;
+  color: #032f3c;
+  background: #ffffff;
+  border: none;
+  border-radius: 999px;
+  padding: 5px 10px;
+  cursor: pointer;
+}
+.scripture-modal__close {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  border-radius: 50%;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.scripture-modal__close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+.scripture-modal__body {
+  padding: 20px 18px 22px;
+}
+.scripture-modal__text {
+  margin: 0;
+  font-family: 'Open Sans', system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  color: #032f3c; /* text */
+}
+.scripture-modal__error {
+  margin: 0;
+  color: #032f3c;
+  opacity: 0.7;
+  font-size: 14px;
+}
+/* loading skeleton */
+.scripture-modal__skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.scripture-modal__skeleton span {
+  height: 14px;
+  border-radius: 6px;
+  background: linear-gradient(
+    90deg,
+    rgba(3, 47, 60, 0.08) 25%,
+    rgba(3, 47, 60, 0.16) 37%,
+    rgba(3, 47, 60, 0.08) 63%
+  );
+  background-size: 400% 100%;
+  animation: scripture-shimmer 1.3s ease infinite;
+}
+.scripture-modal__skeleton span:nth-child(2) {
+  width: 92%;
+}
+.scripture-modal__skeleton span:nth-child(3) {
+  width: 70%;
+}
+@keyframes scripture-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0 50%;
+  }
+}
+
+/* ---- Composer detection chip (spell-check / "rewrite with AI" style) ---- */
+.scripture-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Rubik', system-ui, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  color: #41899f;
+  background: #ffffff;
+  border: 1px solid rgba(65, 137, 159, 0.35);
+  border-radius: 999px;
+  padding: 5px 10px 5px 8px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  animation: scripture-chip-in 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.scripture-chip:hover {
+  background: #f2fbfb;
+  border-color: #41dbe1;
+}
+.scripture-chip__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #41dbe1;
+}
+.scripture-chip--active {
+  background: #e7fbfb;
+  border-color: #41dbe1;
+}
+.scripture-chip__count {
+  color: #ffffff;
+  background: #41899f;
+  border-radius: 999px;
+  font-size: 10px;
+  padding: 1px 6px;
+}
+.scripture-chip__dismiss {
+  border: none;
+  background: none;
+  color: #41899f;
+  opacity: 0.6;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 0 0 0 2px;
+}
+.scripture-chip__dismiss:hover {
+  opacity: 1;
+}
+@keyframes scripture-chip-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Composer chip row spacing (web). */
+.compose__scripture-chip-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+}
+
+/* "Open in Bible app" link inside the verse modal. */
+.scripture-modal__open {
+  display: inline-block;
+  margin-top: 16px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: #41899f;
+  font-family: 'Rubik', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.scripture-modal__open:hover {
+  text-decoration: underline;
+}

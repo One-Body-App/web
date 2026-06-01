@@ -147,6 +147,8 @@ function mapPost(p: ApiSocialPost, myUserId?: string): OBPost {
     createdAt: timeAgo(p.created ?? p.createdAt ?? p.date),
     body: p.content ?? '',
     image,
+    scriptureMentions: (p as { scriptureMentions?: OBPost['scriptureMentions'] })
+      .scriptureMentions,
     reactions,
     myReaction,
     comments: p.commentsCount ?? p.commentNumber ?? p.commentCount ?? p.comments?.length ?? 0,

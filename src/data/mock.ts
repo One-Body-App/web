@@ -16,6 +16,17 @@ export interface OBUser {
   bio?: string;
 }
 
+export interface ScriptureMention {
+  reference: string;
+  book: string;
+  bookName: string;
+  chapter: number;
+  verse: number;
+  verseEnd: number;
+  startIndex: number;
+  endIndex: number;
+}
+
 export interface OBPost {
   id: string;
   author: OBUser;
@@ -23,6 +34,7 @@ export interface OBPost {
   body: string;
   image?: string;
   verse?: { ref: string; text: string };
+  scriptureMentions?: ScriptureMention[];
   reactions: Record<ReactionKind, number>;
   myReaction?: ReactionKind | null;
   comments: number;

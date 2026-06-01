@@ -23,6 +23,8 @@ import { useAuth } from '@/auth/context';
 import { endpoints, type SocialContentType } from '@/api/endpoints';
 import { ComposerMediaTray, type ComposerMediaItem } from '@/components/ComposerMediaTray';
 import { TurnstileGate } from '@/components/TurnstileGate';
+import { hasLikelyScripture } from '@/api/scripture';
+import '@/components/scripture/scripture.css';
 import './CreatePost.css';
 
 // Standalone Turnstile only enforces when a site key is configured. In
@@ -70,6 +72,11 @@ export function CreatePost() {
   const hasBackground = Boolean(routerState?.backgroundLocation);
 
   const [text, setText] = useState('');
+  // Scripture detection chip: debounced, dismissable. Surfaces when the draft
+  // looks like it contains a verse reference (e.g. "John 3:16"). The server
+  // does the authoritative parse on submit — this is just a live affordance.
+  const [scriptureDetected, setScriptureDetected] = useState(false);
+  const [scriptureChipDismissed, setScriptureChipDismissed] = useState(false);
   const [audience, setAudience] = useState<AudienceKey>('everyone');
   const [audienceOpen, setAudienceOpen] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -85,6 +92,17 @@ export function CreatePost() {
   // When quoting, an empty body is still a valid (plain) repost.
   const trimmed = text.trim();
   const overLimit = text.length > MAX_LEN;
+
+  // Debounced scripture detection (250ms) — lightweight regex, no network.
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      const found = hasLikelyScripture(text);
+      setScriptureDetected(found);
+      if (!found) setScriptureChipDismissed(false); // reset once it's gone
+    }, 250);
+    return () => clearTimeout(handle);
+  }, [text]);
+  const showScriptureChip = scriptureDetected && !scriptureChipDismissed;
   const hasMedia = media.length > 0;
   const turnstilePassed = !TURNSTILE_ENABLED || Boolean(turnstileToken);
   const canPost =
@@ -310,6 +328,33 @@ export function CreatePost() {
             rows={1}
             maxLength={MAX_LEN + 60 /* allow brief overshoot so the warning ring can show */}
           />
+
+          {/* Scripture detection chip — spell-check / "rewrite with AI" style. */}
+          {showScriptureChip ? (
+            <div className="compose__scripture-chip-row">
+              <button
+                type="button"
+                className="scripture-chip"
+                onClick={() => {
+                  // Lookahead/autocomplete is a stubbed future feature; for now
+                  // tapping the chip just returns focus to the draft.
+                  textareaRef.current?.focus();
+                }}
+                title="Scripture reference detected — it'll become a tappable link"
+              >
+                <BookOpen size={13} strokeWidth={2.4} />
+                Scripture detected
+              </button>
+              <button
+                type="button"
+                className="scripture-chip__dismiss"
+                aria-label="Dismiss"
+                onClick={() => setScriptureChipDismissed(true)}
+              >
+                ×
+              </button>
+            </div>
+          ) : null}
 
           {quote ? (
             <article className="compose__quote">

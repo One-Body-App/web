@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bookmark, Heart, MessageCircle, MoreHorizontal, PenLine, Repeat2, Send } from 'lucide-react';
 import { Avatar } from './Avatar';
+import { ScriptureText } from './scripture/ScriptureText';
 import { REACTIONS, type OBPost, type ReactionKind } from '@/data/mock';
 import { endpoints } from '@/api/endpoints';
 import { useFeedTelemetry } from '@/telemetry/feedTelemetry';
@@ -155,9 +156,12 @@ export function PostCard({ post, detail = false, onCommentClick }: PostCardProps
       </header>
 
       {post.body ? (
-        <p className="post__body" {...openProps}>
-          {post.body}
-        </p>
+        <ScriptureText
+          className="post__body"
+          text={post.body}
+          mentions={post.scriptureMentions}
+          onTextClick={detail ? undefined : openDetail}
+        />
       ) : null}
 
       {post.verse ? (
