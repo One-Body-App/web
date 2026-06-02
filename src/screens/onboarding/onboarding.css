@@ -113,6 +113,26 @@
   padding-bottom: var(--sp-4);
 }
 
+/* "Why are we asking this?" help trigger (opens InfoModal). */
+.step-screen__reason {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: var(--sp-6);
+  padding: var(--sp-4) 0;
+  background: none;
+  border: none;
+  color: var(--sapphire);
+  font-weight: 600;
+  font-size: var(--fs-2);
+  cursor: pointer;
+  transition: color 0.16s ease;
+}
+
+.step-screen__reason:hover {
+  color: var(--brand);
+}
+
 /* ---------------- Footer ---------------- */
 .step-screen__footer {
   display: flex;
@@ -232,6 +252,11 @@
 .onboarding-people__status {
   margin-top: var(--sp-12);
   text-align: center;
+}
+
+/* Infinite-scroll trigger watched by the IntersectionObserver in FollowStep. */
+.onboarding-people__sentinel {
+  height: 1px;
 }
 
 @media (max-width: 520px) {

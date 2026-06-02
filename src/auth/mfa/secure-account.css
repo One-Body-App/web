@@ -71,6 +71,79 @@
   color: var(--ink);
 }
 
+/* ---------------- Method rows (Verify another way) ----------------
+ * Scoped to this screen so the shared .mfa-method pills used elsewhere
+ * stay untouched. Full-width selectable rows: icon tile + text + chevron. */
+.mfa-method-list {
+  display: grid;
+  gap: var(--sp-8);
+}
+
+.mfa-method-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: var(--sp-12);
+  width: 100%;
+  padding: var(--sp-12);
+  border-radius: var(--r-base);
+  border: 1.5px solid var(--line-strong);
+  background: var(--surface);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease;
+}
+
+.mfa-method-row:hover {
+  border-color: var(--sapphire);
+  background: var(--surface-2);
+}
+
+.mfa-method-row.is-selected {
+  border-color: var(--sapphire);
+  background: var(--sapphire-900);
+}
+
+.mfa-method-row:disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.mfa-method-row__icon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-base);
+  color: #fff;
+  background: var(--grad-aqua);
+  box-shadow: var(--shadow-accent);
+}
+
+.mfa-method-row__text {
+  display: grid;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.mfa-method-row__text strong {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--fs-3);
+  color: var(--ink);
+}
+
+.mfa-method-row__text span {
+  font-size: var(--fs-2);
+  color: var(--ink-3);
+}
+
+.mfa-method-row__chevron {
+  color: var(--ink-3);
+}
+
 /* ---------------- Backup codes ---------------- */
 .secure-account__backup-intro {
   color: var(--ink-3);

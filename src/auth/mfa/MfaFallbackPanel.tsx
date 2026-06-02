@@ -1,9 +1,15 @@
-import { Copy, ExternalLink, KeyRound, Mail, Smartphone } from 'lucide-react';
+import { ChevronRight, Copy, ExternalLink, KeyRound, Mail, Smartphone } from 'lucide-react';
 import { AuthSuccess, CodeInput, SubmitButton } from '@/components/auth/AuthControls';
 import type { MfaMethod } from '@/api/endpoints';
 import { mfaMethodLabel, type MfaChallengeController } from './useMfaChallenge';
 
-function MfaMethodButton({
+function methodHint(method: MfaMethod): string {
+  if (method === 'totp') return 'Use a code from your authenticator app';
+  if (method === 'email') return 'Send a code to your verified email';
+  return 'Use your device passkey';
+}
+
+function MfaMethodRow({
   disabled,
   method,
   onClick,
@@ -18,13 +24,19 @@ function MfaMethodButton({
   return (
     <button
       type="button"
-      className={`mfa-method${selected ? ' is-selected' : ''}`}
+      className={`mfa-method-row${selected ? ' is-selected' : ''}`}
       disabled={disabled}
       onClick={onClick}
       {...{ 'aria-pressed': selected ? 'true' : 'false' }}
     >
-      <Icon size={18} />
-      {mfaMethodLabel(method)}
+      <span className="mfa-method-row__icon" aria-hidden>
+        <Icon size={20} />
+      </span>
+      <span className="mfa-method-row__text">
+        <strong>{mfaMethodLabel(method)}</strong>
+        <span>{methodHint(method)}</span>
+      </span>
+      <ChevronRight size={18} className="mfa-method-row__chevron" aria-hidden />
     </button>
   );
 }
@@ -74,9 +86,9 @@ export function MfaFallbackPanel({ controller }: { controller: MfaChallengeContr
 
       {success ? <AuthSuccess>{success}</AuthSuccess> : null}
 
-      <div className="mfa-methods">
+      <div className="mfa-method-list">
         {fallbackMethods.map((method) => (
-          <MfaMethodButton
+          <MfaMethodRow
             key={method}
             method={method}
             selected={selectedMethod === method}

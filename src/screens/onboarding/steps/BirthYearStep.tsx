@@ -8,6 +8,7 @@ export function BirthYearStep() {
       <span className="field__label">Birth year</span>
       <span className="field__box">
         <select value={year} onChange={(event) => setYear(event.target.value)}>
+          <option value="">Select your birth year</option>
           {years.map((item) => (
             <option key={item} value={item}>
               {item}

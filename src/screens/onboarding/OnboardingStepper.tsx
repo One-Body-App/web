@@ -1,4 +1,4 @@
-import { type ComponentType } from 'react';
+import { type ComponentType, type ReactNode } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { Splash } from '@/components/Splash';
 import { SubmitButton } from '@/components/auth/AuthControls';
@@ -41,7 +41,18 @@ interface StepConfig {
   continueLabel?: string;
   /** Steps that read interests / suggested users / org types need options loaded. */
   needsOptions?: boolean;
+  /** "Why are we asking this?" explanation, shown via the StepLayout help modal. */
+  reason?: ReactNode;
 }
+
+// Org Type and Org Subtype share the same explanation on mobile.
+const ORG_TYPE_REASON = (
+  <p>
+    We ask for your Organization Type to better foster connection. This allows us to recommend
+    meaningful content to you and, for Organizations, ensures you are accurately represented to the
+    community. Rest assured, you control who sees this information via your Profile Settings.
+  </p>
+);
 
 const STEP_CONFIG: Record<StepId, StepConfig> = {
   intro: {
@@ -55,23 +66,62 @@ const STEP_CONFIG: Record<StepId, StepConfig> = {
     title: 'What type of church do you attend?',
     Component: ChurchTypeStep,
     optional: true,
+    reason: (
+      <p>
+        Denomination info helps us to understand the type of content you would be most interested in
+        seeing to enhance your One Body experience.
+        <br />
+        <br />
+        You can decide if you want this info to be Public or Private in your Profile settings.
+      </p>
+    ),
   },
   attendance: {
     title: 'How often do you attend Church?',
     subtitle: 'Select the rate at which you go to church.',
     Component: ChurchAttendanceStep,
     optional: true,
+    reason: (
+      <p>
+        Your frequency of church attendance helps us to understand the type of content you would be
+        most interested in seeing to enhance your One Body experience. We do{' '}
+        <strong>NOT</strong> publicly display this information.
+      </p>
+    ),
   },
   // --- Active individual steps ---
   'birth-year': {
     title: "What's your birth year?",
     Component: BirthYearStep,
+    // Optional/skippable (mirrors mobile); isComplete flips the footer label from
+    // "Skip" to "Continue" once a year is picked, and never blocks Continue.
+    optional: true,
+    isComplete: (ctx) => Boolean(ctx.year),
+    reason: (
+      <p>
+        We use this to recommend relevant groups and fellowship opportunities. Your age is{' '}
+        <strong>private</strong> and will never be displayed on your profile.
+      </p>
+    ),
   },
   location: {
     title: 'Where do you call home?',
     subtitle: 'To connect you with your local community, we just need your city.',
     Component: LocationStep,
     optional: true,
+    // Optional, so Continue is never blocked; isComplete only flips the footer
+    // label from "Skip" to "Continue" once a city has been entered.
+    isComplete: (ctx) => Boolean(ctx.city.trim()),
+    reason: (
+      <p>
+        We use your city to help you find churches, events, and fellowship opportunities nearby in
+        the Connect Portal.
+        <br />
+        <br />
+        Your privacy is our priority. You can choose to make this info Public or Private anytime in
+        your Profile settings.
+      </p>
+    ),
   },
   interests: {
     title: 'Choose your interests',
@@ -93,12 +143,14 @@ const STEP_CONFIG: Record<StepId, StepConfig> = {
     Component: OrgTypeStep,
     isComplete: (ctx) => Boolean(ctx.selectedCategory),
     needsOptions: true,
+    reason: ORG_TYPE_REASON,
   },
   'org-subtype': {
     title: 'Select your organization subtype',
     Component: OrgSubtypeStep,
     isComplete: (ctx) => Boolean(ctx.selectedSubtype),
     needsOptions: true,
+    reason: ORG_TYPE_REASON,
   },
   'org-info': {
     title: 'Tell us about your organization',
@@ -243,6 +295,7 @@ function OnboardingFlow() {
       subtitle={config.subtitle}
       error={ctx.submitError}
       footer={footer}
+      reason={config.reason}
     >
       <Body />
     </StepLayout>

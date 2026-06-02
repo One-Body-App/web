@@ -8,7 +8,12 @@ import {
   type ReactNode,
 } from 'react';
 import { ApiError } from '@/api/client';
-import { endpoints, type InterestTag, type OrganizationType } from '@/api/endpoints';
+import {
+  endpoints,
+  hasRealAvatar,
+  type InterestTag,
+  type OrganizationType,
+} from '@/api/endpoints';
 import { geocodeAddress } from '@/api/connect';
 import {
   buildOrganizationCategoryGroups,
@@ -23,6 +28,7 @@ interface SuggestedUser {
   name: string;
   username: string;
   avatar: string;
+  verified: boolean;
 }
 
 interface OnboardingContextValue {
@@ -115,6 +121,7 @@ function mapSuggestedUser(item: OBUser): SuggestedUser {
     name: item.name,
     username: item.username,
     avatar: item.avatar,
+    verified: Boolean(item.verified),
   };
 }
 
@@ -129,7 +136,9 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
   const isOrganization = profile?.accountType === 'organization';
   const years = useMemo(currentYearOptions, []);
 
-  const [year, setYear] = useState(years[11] ?? years[0] ?? '');
+  // Start unset so birth-year is genuinely skippable (mirrors mobile): the
+  // footer reads "Skip" until the user picks a year, then "Continue".
+  const [year, setYear] = useState('');
   const [city, setCity] = useState(profile?.profile?.location?.address ?? '');
   const [churchTypeId, setChurchTypeId] = useState(profile?.profile?.churchType ?? '');
   const [attendance, setAttendance] = useState(profile?.profile?.churchAttendance ?? '');
@@ -217,7 +226,11 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
       if (requestId !== suggestionsRequestIdRef.current) {
         return;
       }
-      const mappedUsers = nextSuggestedUsers.map(mapSuggestedUser);
+      // Only surface accounts with a real profile picture; keep "has more" on the
+      // raw page size so paging continues even when a page filters down to few.
+      const mappedUsers = nextSuggestedUsers
+        .filter((item) => hasRealAvatar(item.avatar))
+        .map(mapSuggestedUser);
       suggestedUserIdsRef.current = new Set(mappedUsers.map((item) => item.id));
       suggestionsPageRef.current = 1;
       loadedSuggestionsKeyRef.current = requestKey;
@@ -261,7 +274,9 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
       if (requestId !== suggestionsRequestIdRef.current) {
         return;
       }
-      const mappedUsers = nextSuggestedUsers.map(mapSuggestedUser);
+      const mappedUsers = nextSuggestedUsers
+        .filter((item) => hasRealAvatar(item.avatar))
+        .map(mapSuggestedUser);
       setSuggestedUsers((previous) => {
         const merged = [...previous];
         const nextIds = new Set(suggestedUserIdsRef.current);
@@ -361,7 +376,7 @@ export function OnboardingProvider({ children }: { children: ReactNode }) {
           body.contactPhoneNumber = contactPhone.trim();
         }
       } else {
-        body.dateOfBirth = year;
+        if (year) body.dateOfBirth = year;
         // Hidden steps: only sent if those steps get re-enabled and populated.
         if (churchTypeId) body.churchType = churchTypeId;
         if (attendance) body.churchAttendance = attendance;

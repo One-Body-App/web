@@ -1,0 +1,79 @@
+/* "Why are we asking this?"-style explanatory popup. Centered card, brand
+ * tokens, matching the scrim/elevation conventions of ScriptureModal. */
+.info-modal__scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(3, 47, 60, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-16);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+}
+
+.info-modal {
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-lg);
+  outline: none;
+  overflow: hidden;
+}
+
+.info-modal__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-12);
+  padding: var(--sp-20) var(--sp-20) var(--sp-12);
+}
+
+.info-modal__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--fs-6);
+  color: var(--brand);
+}
+
+.info-modal__close {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--r-base);
+  background: none;
+  color: var(--ink-3);
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease;
+}
+
+.info-modal__close:hover {
+  background: var(--surface-2);
+  color: var(--brand);
+}
+
+.info-modal__body {
+  padding: 0 var(--sp-20) var(--sp-20);
+  color: var(--ink-2);
+  font-size: var(--fs-3);
+  line-height: 1.55;
+}
+
+.info-modal__body p {
+  margin: 0 0 var(--sp-12);
+}
+
+.info-modal__body p:last-child {
+  margin-bottom: 0;
+}
+
+.info-modal__body strong {
+  color: var(--brand);
+  font-weight: 700;
+}

@@ -1,4 +1,4 @@
-import { BadgeCheck, User } from 'lucide-react';
+import { BadgeCheck, UserRound } from 'lucide-react';
 
 interface AvatarProps {
   src: string;
@@ -10,27 +10,13 @@ interface AvatarProps {
 
 // `/brand/avatar1.png` is only ever used as the "no avatar" fallback sentinel
 // (never a real avatar), so treat it — along with blanks and the API's
-// no-image.png — as "no image" and draw an initials placeholder instead.
+// no-image.png — as "no image" and draw the silhouette placeholder instead.
 const FALLBACK_SRC = '/brand/avatar1.png';
 
-// Generational suffixes shouldn't count toward initials ("Carl Murray Jr." -> "CM").
-const NAME_SUFFIX = /^(jr|sr|ii|iii|iv|v)\.?$/i;
-function initialsOf(name: string): string {
-  const parts = (name ?? '')
-    .trim()
-    .split(/\s+/)
-    .filter((w) => w && !NAME_SUFFIX.test(w));
-  if (parts.length === 0) return '';
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-}
-
-// Stable, muted hue per name so different users read as distinct without rainbow noise.
-function hueFromString(value: string): number {
-  let hash = 0;
-  for (let i = 0; i < value.length; i += 1) hash = (hash * 31 + value.charCodeAt(i)) % 360;
-  return hash;
-}
+// Mirrors the mobile app's FeedAvatar/ProfileFill fallback so web and mobile
+// read the same: a teal person silhouette on a light circle with a teal ring.
+const FALLBACK_BG = '#f6f6f7';
+const FALLBACK_INK = '#126b87';
 
 export function Avatar({ src, alt, size = 44, ring = false, verified = false }: AvatarProps) {
   const safeAlt = alt == null ? '' : String(alt);
@@ -39,7 +25,6 @@ export function Avatar({ src, alt, size = 44, ring = false, verified = false }: 
   const ringStyle = ring
     ? { boxShadow: '0 0 0 2px #fff, 0 0 0 4px var(--accent)' }
     : null;
-  const initials = initialsOf(safeAlt);
 
   return (
     <span
@@ -63,6 +48,7 @@ export function Avatar({ src, alt, size = 44, ring = false, verified = false }: 
         />
       ) : (
         <span
+          role="img"
           aria-label={safeAlt}
           style={{
             display: 'grid',
@@ -70,17 +56,13 @@ export function Avatar({ src, alt, size = 44, ring = false, verified = false }: 
             width: size,
             height: size,
             borderRadius: '50%',
-            background: `hsl(${hueFromString(safeAlt || 'one body')}, 30%, 47%)`,
-            color: '#fff',
-            fontFamily: 'var(--font-display)',
-            fontWeight: 600,
-            fontSize: Math.max(10, Math.round(size * 0.4)),
-            lineHeight: 1,
-            userSelect: 'none',
+            background: FALLBACK_BG,
+            border: `1px solid ${FALLBACK_INK}`,
+            color: FALLBACK_INK,
             ...(ringStyle ?? {}),
           }}
         >
-          {initials || <User size={Math.round(size * 0.55)} strokeWidth={2} />}
+          <UserRound size={Math.round(size * 0.48)} strokeWidth={2} />
         </span>
       )}
       {verified ? (

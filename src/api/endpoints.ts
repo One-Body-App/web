@@ -212,6 +212,16 @@ function resolveAvatar(profileImage?: string): string {
   return FALLBACK_AVATAR;
 }
 
+/**
+ * True when `avatar` is a real uploaded picture (not blank, the API's no-image
+ * placeholder, or our local fallback). Use to gate UI that should only show
+ * accounts with a profile photo.
+ */
+export function hasRealAvatar(avatar?: string): boolean {
+  const v = avatar?.trim();
+  return Boolean(v && v !== FALLBACK_AVATAR && !/no-image/i.test(v));
+}
+
 function idFromValue(value: unknown): string {
   if (typeof value === 'string') return value;
   if (value && typeof value === 'object') {

@@ -1,5 +1,7 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import { CircleHelp } from 'lucide-react';
 import { AuthError } from '@/components/auth/AuthControls';
+import { InfoModal } from '@/components/InfoModal';
 import { ProgressIndicator } from './ProgressIndicator';
 import './onboarding.css';
 
@@ -18,6 +20,11 @@ interface StepLayoutProps {
   children: ReactNode;
   /** Sticky footer content (typically Back / Continue actions). */
   footer?: ReactNode;
+  /**
+   * Optional "Why are we asking this?" explanation. When set, a sapphire help
+   * button renders under the body and opens an InfoModal with this content.
+   */
+  reason?: ReactNode;
 }
 
 /**
@@ -35,8 +42,10 @@ export function StepLayout({
   error,
   children,
   footer,
+  reason,
 }: StepLayoutProps) {
   const showProgress = typeof current === 'number' && typeof total === 'number';
+  const [showReason, setShowReason] = useState(false);
 
   return (
     <div className="step-screen">
@@ -52,10 +61,27 @@ export function StepLayout({
 
         {error ? <AuthError message={error} /> : null}
 
-        <div className="step-screen__body">{children}</div>
+        <div className="step-screen__body">
+          {children}
+          {reason ? (
+            <button
+              type="button"
+              className="step-screen__reason"
+              aria-haspopup="dialog"
+              onClick={() => setShowReason(true)}
+            >
+              <CircleHelp size={16} />
+              Why are we asking this?
+            </button>
+          ) : null}
+        </div>
 
         {footer ? <footer className="step-screen__footer">{footer}</footer> : null}
       </main>
+
+      {reason && showReason ? (
+        <InfoModal onClose={() => setShowReason(false)}>{reason}</InfoModal>
+      ) : null}
     </div>
   );
 }
