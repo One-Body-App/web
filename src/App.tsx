@@ -29,6 +29,9 @@ const JobApplications = lazy(() =>
   import('./screens/connect/JobApplications').then((m) => ({ default: m.JobApplications })),
 );
 const Messages = lazy(() => import('./screens/Messages').then((m) => ({ default: m.Messages })));
+const NewMessage = lazy(() =>
+  import('./screens/NewMessage').then((m) => ({ default: m.NewMessage })),
+);
 const Conversation = lazy(() =>
   import('./screens/Conversation').then((m) => ({ default: m.Conversation })),
 );
@@ -37,6 +40,7 @@ const Notifications = lazy(() =>
 );
 const Saved = lazy(() => import('./screens/Saved').then((m) => ({ default: m.Saved })));
 const Profile = lazy(() => import('./screens/Profile').then((m) => ({ default: m.Profile })));
+const EditProfile = lazy(() => import('./screens/EditProfile').then((m) => ({ default: m.EditProfile })));
 const Settings = lazy(() => import('./screens/Settings').then((m) => ({ default: m.Settings })));
 const PostDetail = lazy(() => import('./screens/PostDetail').then((m) => ({ default: m.PostDetail })));
 const CreatePost = lazy(() => import('./screens/CreatePost').then((m) => ({ default: m.CreatePost })));
@@ -140,10 +144,12 @@ export function App() {
             element={deferred('Applications', <JobApplications />)}
           />
           <Route path="/messages" element={deferred('Messages', <Messages />)} />
+          <Route path="/messages/new" element={deferred('New message', <NewMessage />)} />
           <Route path="/messages/:id" element={deferred('Conversation', <Conversation />)} />
           <Route path="/notifications" element={deferred('Notifications', <Notifications />)} />
           <Route path="/saved" element={deferred('Saved', <Saved />)} />
           <Route path="/profile" element={deferred('Profile', <Profile />)} />
+          <Route path="/profile/edit" element={deferred('Edit Profile', <EditProfile />)} />
           <Route path="/settings" element={deferred('Settings', <Settings />)} />
           {/* X-style post / comment detail (focused item + flat replies). */}
           <Route path="/post/:type/:id" element={deferred('Post', <PostDetail />)} />

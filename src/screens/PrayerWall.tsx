@@ -295,18 +295,33 @@ export function PrayerCard({
           {prayer.comments > 0 ? <span>{prayer.comments}</span> : null}
         </button>
         <div className="prayer__repost-wrap" onMouseLeave={() => setRepostMenuOpen(false)}>
-          <button
-            type="button"
-            className="prayer__action"
-            onClick={openRepostMenu}
-            aria-label="Repost"
-            aria-haspopup="menu"
-            aria-expanded={repostMenuOpen ? 'true' : 'false'}
-            disabled={isReposting}
-          >
-            <Repeat2 size={22} />
-            {repostCount > 0 ? <span>{repostCount}</span> : null}
-          </button>
+          {repostMenuOpen ? (
+            <button
+              type="button"
+              className="prayer__action"
+              onClick={openRepostMenu}
+              aria-label="Repost"
+              aria-haspopup="menu"
+              aria-expanded="true"
+              disabled={isReposting}
+            >
+              <Repeat2 size={22} />
+              {repostCount > 0 ? <span>{repostCount}</span> : null}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="prayer__action"
+              onClick={openRepostMenu}
+              aria-label="Repost"
+              aria-haspopup="menu"
+              aria-expanded="false"
+              disabled={isReposting}
+            >
+              <Repeat2 size={22} />
+              {repostCount > 0 ? <span>{repostCount}</span> : null}
+            </button>
+          )}
           {repostMenuOpen ? (
             <div className="prayer__repost-menu glass" role="menu">
               <button type="button" className="prayer__repost-item" role="menuitem" onClick={repostPrayer}>

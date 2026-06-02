@@ -9,15 +9,25 @@ import {
   type ReactionCounts,
 } from './reactions';
 import { mapVideo, type WatchVideo } from './watch';
+import type { VerseResult } from './scripture';
 import type {
   ChatMessage,
   Conversation,
-  OBNotification,
   OBPost,
   OBPostRepost,
   OBUser,
   ReactionKind,
 } from '@/data/mock';
+import type { InboxNotification, NotificationKind } from '@/screens/notifications/types';
+
+export interface NotificationSettings {
+  pushNotificationsEnabled: boolean;
+  connectionNotificationsEnabled: boolean;
+  tagNotificationsEnabled: boolean;
+  emailNotificationsEnabled: boolean;
+  allowDirectMessages: boolean;
+  subscribedToNewsletter: boolean;
+}
 
 /* ----------------------------- Raw API shapes ----------------------------- */
 interface ApiUser {
@@ -27,14 +37,22 @@ interface ApiUser {
   username?: string;
   email?: string;
   bio?: string;
+  favoriteVerse?: VerseResult;
+  website?: string;
+  createdAt?: string;
   profileImage?: string;
   accountType?: 'individual' | 'organization';
   emailVerified?: boolean;
   isProfileCompleted?: boolean | string;
   profile?: {
     dateOfBirth?: string;
+    gender?: string;
     churchType?: string;
+    churchSubType?: string;
     churchAttendance?: string;
+    oftenChurch?: string;
+    isChurchTypePublic?: boolean;
+    isLocationPublic?: boolean;
     location?: {
       address?: string;
       coordinates?: {
@@ -45,12 +63,18 @@ interface ApiUser {
         coordinates?: number[];
       };
     };
+    whatIDo?: {
+      _id?: string;
+      id?: string;
+      name?: string;
+    };
     companyName?: string;
     contactName?: string;
     contactEmail?: string;
     contactPhoneNumber?: string;
     organizationCategory?: string;
     organizationSubType?: string;
+    organizationSize?: string;
     typeOfOrganization?: {
       _id?: string;
       id?: string;
@@ -532,6 +556,9 @@ export interface MyProfile {
     defaultMethod?: MfaMethod;
   };
   bio?: string;
+  favoriteVerse?: VerseResult;
+  website?: string;
+  joinedYear?: number;
   followers: number;
   following: number;
   accountType?: 'individual' | 'organization' | string;
@@ -550,6 +577,12 @@ function resolveProfileCompleted(u: ApiUser): boolean {
   return false;
 }
 
+function parseJoinedYear(createdAt?: string): number | undefined {
+  if (!createdAt) return undefined;
+  const year = new Date(createdAt).getFullYear();
+  return Number.isFinite(year) ? year : undefined;
+}
+
 function mapMyProfile(u: ApiUser): MyProfile {
   return {
     id: u._id ?? u.id ?? '',
@@ -561,6 +594,9 @@ function mapMyProfile(u: ApiUser): MyProfile {
     isProfileCompleted: resolveProfileCompleted(u),
     mfaConfig: u.mfaConfig,
     bio: u.bio,
+    favoriteVerse: u.favoriteVerse,
+    website: u.website,
+    joinedYear: parseJoinedYear(u.createdAt),
     followers: Array.isArray(u.followers) ? u.followers.length : 0,
     following: Array.isArray(u.following) ? u.following.length : 0,
     accountType: u.accountType,
@@ -608,6 +644,20 @@ export const endpoints = {
 
   getInterestTags: async (): Promise<InterestTag[]> => {
     const payload = await api.get('tags/interest');
+    return unwrapList(payload)
+      .map((item): InterestTag | null => {
+        const record = item as Record<string, unknown>;
+        const id = String(record._id ?? record.id ?? '').trim();
+        const name = String(record.name ?? record.title ?? '').trim();
+        return id && name ? { _id: id, id, name } : null;
+      })
+      .filter((item): item is InterestTag => item !== null);
+  },
+
+  // Mirrors mobile's GET tags/professions. Used by the Edit Profile "What I do"
+  // picker. Same shape as interest tags.
+  getProfessionTags: async (): Promise<InterestTag[]> => {
+    const payload = await api.get('tags/professions');
     return unwrapList(payload)
       .map((item): InterestTag | null => {
         const record = item as Record<string, unknown>;
@@ -873,6 +923,11 @@ export const endpoints = {
     return unwrapList(payload).map((p) => mapPost(p as ApiSocialPost, myUserId));
   },
 
+  async getFollowingUsers(): Promise<OBUser[]> {
+    const payload = await api.get('user/get-following');
+    return unwrapList(payload).map((u) => mapUser(u as ApiUser));
+  },
+
   async searchUsers(text: string): Promise<OBUser[]> {
     const payload = await api.post('user/search', { text, type: 'users', limit: 20 });
     return unwrapList(payload).map((u) => mapUser(u as ApiUser));
@@ -926,11 +981,60 @@ export const endpoints = {
   followUser: (id: string) => api.patch(`user/subscribe/${id}`),
   unfollowUser: (id: string) => api.patch(`user/unsubscribe/${id}`),
 
-  async getNotifications(): Promise<OBNotification[]> {
+  async getNotifications(): Promise<InboxNotification[]> {
     const payload = await api.get<{ data?: unknown[] }>('user/notifications');
-    return unwrapList(payload).map((n) => mapNotification(n as Record<string, unknown>));
+    return unwrapList(payload)
+      .map((n) => mapNotification(n as Record<string, unknown>))
+      .filter((n): n is InboxNotification => n !== null);
   },
+  markNotificationRead: (id: string) => api.patch(`user/notifications/${id}/read`, {}),
+  deleteNotification: (id: string) => api.del(`user/notifications/${id}`),
   markAllNotificationsRead: () => api.patch('user/notifications/read-all'),
+
+  async getNotificationSettings(signal?: AbortSignal): Promise<NotificationSettings> {
+    const user = await api.get<Record<string, unknown>>(
+      'user/my-profile',
+      { pullSavedData: false },
+      signal,
+    );
+    const bool = (value: unknown, fallback: boolean) =>
+      typeof value === 'boolean' ? value : fallback;
+    return {
+      pushNotificationsEnabled: bool(user.pushNotificationsEnabled, true),
+      connectionNotificationsEnabled: bool(user.connectionNotificationsEnabled, true),
+      tagNotificationsEnabled: bool(user.tagNotificationsEnabled, true),
+      emailNotificationsEnabled: bool(user.emailNotificationsEnabled, true),
+      allowDirectMessages: bool(user.allowDirectMessages, true),
+      subscribedToNewsletter: bool(user.subscribedToNewsletter, false),
+    };
+  },
+  updateNotificationSettings: (partial: Partial<NotificationSettings>) =>
+    api.patch('user/set-notifications', partial),
+
+  /** IDs of followed users who are approved creators — drives the "Creators" section. */
+  async getFollowingApprovedCreatorIds(): Promise<string[]> {
+    const payload = await api.get('user/get-following');
+    const toRecord = (value: unknown): Record<string, unknown> =>
+      value && typeof value === 'object' ? (value as Record<string, unknown>) : {};
+    const ids = unwrapList(payload).reduce<string[]>((acc, raw) => {
+      const entry = toRecord(raw);
+      const id = String(entry._id ?? entry.id ?? '').trim();
+      if (!id) return acc;
+      const influencerStatus = String(
+        toRecord(entry.influencerProfile).influencerStatus ??
+          entry.influencerStatus ??
+          entry.status ??
+          '',
+      ).toLowerCase();
+      const approved =
+        influencerStatus === 'approved' ||
+        entry.isApprovedInfluencer === true ||
+        toRecord(entry.userData).isApprovedInfluencer === true;
+      if (approved) acc.push(id);
+      return acc;
+    }, []);
+    return Array.from(new Set(ids));
+  },
 
   // Chat (best-effort REST; mobile also uses sockets for realtime).
   async getConversations(): Promise<Conversation[]> {
@@ -944,21 +1048,43 @@ export const endpoints = {
 };
 
 /* ----------------------------- Misc mappers ----------------------------- */
-function mapNotification(n: Record<string, unknown>): OBNotification {
-  const actor = (n.actor ?? n.fromUser ?? n.user) as ApiUser | undefined;
+const NOTIFICATION_KINDS: NotificationKind[] = ['reaction', 'comment', 'follow', 'prayer', 'mention'];
+
+function notifString(value: unknown): string | undefined {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}
+
+function notifHttpUrl(value: unknown): string | undefined {
+  const v = notifString(value);
+  return v && /^https?:\/\//i.test(v) ? v : undefined;
+}
+
+// Mirrors the mobile `toServerNotification` extraction so web and mobile read the same fields.
+function mapNotification(n: Record<string, unknown>): InboxNotification | null {
+  const sourceId = String(n._id ?? n.id ?? '').trim();
+  if (!sourceId) return null;
+  const data = (n.data && typeof n.data === 'object' ? n.data : {}) as Record<string, unknown>;
   const kindRaw = String(n.type ?? n.kind ?? 'reaction').toLowerCase();
-  const kind: OBNotification['kind'] = (['reaction', 'comment', 'follow', 'prayer', 'mention'] as const).includes(
-    kindRaw as OBNotification['kind'],
-  )
-    ? (kindRaw as OBNotification['kind'])
+  const kind: NotificationKind = NOTIFICATION_KINDS.includes(kindRaw as NotificationKind)
+    ? (kindRaw as NotificationKind)
     : 'reaction';
   return {
-    id: String(n._id ?? n.id ?? Math.random()),
-    user: mapUser(actor),
+    id: `server:${sourceId}`,
+    sourceId,
+    title: String(n.title ?? 'Notification'),
+    body: String(n.description ?? n.message ?? n.body ?? ''),
+    createdAt: String(n.createdAt ?? ''),
+    read: n.read === true || n.isRead === true,
+    url: notifString(n.url) ?? notifString(data.url) ?? notifString(data.deepLink) ?? notifString(data.link),
+    iconUrl: notifHttpUrl(n.iconUrl ?? n.notificationIconUrl ?? n.icon ?? n.imageUrl ?? n.image),
+    campaignId: notifString(n.campaignId),
+    notificationType: notifString(n.type) ?? notifString(data.type),
+    notificationSource: notifString(n.source) ?? notifString(data.source),
+    actorId: notifString(data.actorId),
     kind,
-    text: String(n.message ?? n.text ?? 'sent you a notification'),
-    time: timeAgo(String(n.createdAt ?? '')),
-    unread: n.read !== true && n.isRead !== true,
+    data,
   };
 }
 

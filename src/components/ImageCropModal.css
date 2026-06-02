@@ -1,0 +1,44 @@
+.crop-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-16);
+  background: rgba(0, 0, 0, 0.7);
+}
+.crop-modal__panel {
+  width: min(560px, 100%);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  overflow: hidden;
+}
+.crop-modal__stage {
+  position: relative;
+  width: 100%;
+  height: 360px;
+  background: #111;
+}
+.crop-modal__controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  padding: var(--sp-16);
+}
+.crop-modal__zoom {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-12);
+  font-size: var(--fs-2);
+  color: var(--ink-3);
+}
+.crop-modal__zoom input {
+  flex: 1;
+}
+.crop-modal__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-12);
+}

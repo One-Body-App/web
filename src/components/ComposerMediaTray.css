@@ -3,6 +3,8 @@
   flex-wrap: wrap;
   gap: var(--sp-8);
   margin-top: var(--sp-12);
+  padding: 0;
+  list-style: none;
 }
 
 .cmt__item {

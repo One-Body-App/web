@@ -209,7 +209,7 @@ export function TurnstileGate({
     return (
       <div
         className={`turnstile turnstile--preview${className ? ` ${className}` : ''}`}
-        role="status"
+        aria-live="polite"
       >
         <Shield size={16} aria-hidden="true" />
         <div>

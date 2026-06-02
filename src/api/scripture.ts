@@ -39,6 +39,7 @@ export interface BibleTranslation {
   englishName: string;
   shortName?: string;
   language: string;
+  numberOfBooks?: number;
 }
 
 export interface ScriptureShare extends VerseResult {
@@ -53,7 +54,65 @@ export interface BibleBook {
 }
 
 // The poster's default version when none is chosen.
-export const DEFAULT_TRANSLATION = 'BSB';
+export const DEFAULT_TRANSLATION = 'eng_asv';
+
+export const FALLBACK_TRANSLATIONS: BibleTranslation[] = [
+  {
+    id: 'eng_asv',
+    name: 'American Standard Version (1901)',
+    englishName: 'American Standard Version (1901)',
+    shortName: 'ASV',
+    language: 'eng',
+    numberOfBooks: 66,
+  },
+  {
+    id: 'BSB',
+    name: 'Berean Standard Bible',
+    englishName: 'Berean Standard Bible',
+    shortName: 'BSB',
+    language: 'eng',
+    numberOfBooks: 66,
+  },
+  {
+    id: 'ENGWEBP',
+    name: 'World English Bible',
+    englishName: 'World English Bible',
+    shortName: 'WEB',
+    language: 'eng',
+    numberOfBooks: 66,
+  },
+];
+
+export function translationLabel(translation: BibleTranslation): string {
+  const shortName = translation.shortName?.trim();
+  const fullName =
+    translation.englishName?.trim() ||
+    translation.name?.trim() ||
+    translation.id;
+  if (!shortName || shortName === fullName) return fullName;
+  return `${shortName} - ${fullName}`;
+}
+
+export function cleanBibleTranslations(translations: BibleTranslation[]): BibleTranslation[] {
+  const seen = new Set<string>();
+  return translations
+    .filter((translation) => {
+      const language = translation.language.toLowerCase();
+      const books = Number(translation.numberOfBooks);
+      return language === 'eng' && books === 66;
+    })
+    .filter((translation) => {
+      if (seen.has(translation.id)) return false;
+      seen.add(translation.id);
+      return true;
+    })
+    .sort((a, b) => translationLabel(a).localeCompare(translationLabel(b)));
+}
+
+export function bibleTranslationOptions(translations: BibleTranslation[]): BibleTranslation[] {
+  const cleaned = cleanBibleTranslations(translations);
+  return cleaned.length ? cleaned : FALLBACK_TRANSLATIONS;
+}
 
 export const BIBLE_BOOKS: BibleBook[] = [
   { usfm: 'GEN', name: 'Genesis', aliases: ['genesis', 'gen', 'gn'] },

@@ -1,4 +1,5 @@
 import { lazy, Suspense, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Heart, MessageCircle, Play } from 'lucide-react';
 import { Avatar } from './Avatar';
@@ -22,10 +23,15 @@ function fmtDur(ms?: number) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-/** A Watch video as it appears inline in the Home feed (opens the theater player). */
-export function FeedVideoCard({ video }: { video: WatchVideo }) {
+/**
+ * A Watch video as it appears inline in the Home feed (opens the theater player).
+ * When `to` is provided, tapping the frame navigates there instead of opening the
+ * player (used on Explore, where video cards link to the Watch page).
+ */
+export function FeedVideoCard({ video, to }: { video: WatchVideo; to?: string }) {
   const [open, setOpen] = useState(false);
   const track = useFeedTelemetry();
+  const navigate = useNavigate();
   const portrait = video.aspectRatio < 1;
 
   function play() {
@@ -44,8 +50,8 @@ export function FeedVideoCard({ video }: { video: WatchVideo }) {
         type="button"
         className={`fvideo__frame${portrait ? ' is-portrait' : ''}`}
         style={{ aspectRatio: String(video.aspectRatio || 16 / 9) }}
-        onClick={play}
-        aria-label={`Play ${video.title || 'video'}`}
+        onClick={to ? () => navigate(to) : play}
+        aria-label={to ? `Open ${video.title || 'video'} on Watch` : `Play ${video.title || 'video'}`}
       >
         <img src={video.thumbnail} alt="" loading="lazy" />
         <span className="fvideo__play">

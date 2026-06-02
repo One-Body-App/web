@@ -4,6 +4,8 @@
  * Swap these arrays for real API calls (api/) once Clerk-authed requests land.
  * ------------------------------------------------------------------------- */
 
+import type { InboxNotification } from '@/screens/notifications/types';
+
 export type ReactionKind = 'love' | 'pray' | 'rejoice';
 
 export interface OBUser {
@@ -387,35 +389,73 @@ export const sampleThread: ChatMessage[] = [
 
 /* ------------------------------ Notifications ---------------------------- */
 
-export interface OBNotification {
-  id: string;
-  user: OBUser;
-  kind: 'reaction' | 'comment' | 'follow' | 'prayer' | 'mention';
-  text: string;
-  time: string;
-  unread: boolean;
-}
+const minsAgoIso = (minutes: number) => new Date(Date.now() - minutes * 60 * 1000).toISOString();
 
-export const notifications: OBNotification[] = [
-  { id: 'n1', user: users.maria, kind: 'reaction', text: 'loved your post', time: '5m', unread: true },
-  { id: 'n2', user: users.david, kind: 'follow', text: 'started following you', time: '1h', unread: true },
+export const notifications: InboxNotification[] = [
   {
-    id: 'n3',
-    user: users.aisha,
+    id: 'server:n1',
+    sourceId: 'n1',
+    title: 'Maria Santos',
+    body: 'loved your post',
+    createdAt: minsAgoIso(5),
+    read: false,
+    iconUrl: users.maria.avatar,
+    notificationType: 'reaction',
+    actorId: users.maria.id,
+    kind: 'reaction',
+    data: { postType: 'social', postId: 'p1' },
+  },
+  {
+    id: 'server:n2',
+    sourceId: 'n2',
+    title: 'David Kim',
+    body: 'started following you',
+    createdAt: minsAgoIso(60),
+    read: false,
+    iconUrl: users.david.avatar,
+    notificationType: 'follow',
+    actorId: users.david.id,
+    kind: 'follow',
+  },
+  {
+    id: 'server:n3',
+    sourceId: 'n3',
+    title: 'Aisha Bello',
+    body: 'is praying for your request',
+    createdAt: minsAgoIso(180),
+    read: false,
+    iconUrl: users.aisha.avatar,
+    notificationType: 'prayer',
+    actorId: users.aisha.id,
     kind: 'prayer',
-    text: 'is praying for your request',
-    time: '3h',
-    unread: true,
+    data: { postType: 'prayer', postId: 'pr1' },
   },
   {
-    id: 'n4',
-    user: users.hillside,
+    id: 'server:n4',
+    sourceId: 'n4',
+    title: 'Hillside Church',
+    body: 'commented: “Amen! See you Sunday 🙌”',
+    createdAt: minsAgoIso(360),
+    read: true,
+    iconUrl: users.hillside.avatar,
+    notificationType: 'comment',
+    actorId: users.hillside.id,
     kind: 'comment',
-    text: 'commented: “Amen! See you Sunday 🙌”',
-    time: '6h',
-    unread: false,
+    data: { postType: 'social', postId: 'p2', commentId: 'c1' },
   },
-  { id: 'n5', user: users.mercy, kind: 'mention', text: 'mentioned you in a post', time: '1d', unread: false },
+  {
+    id: 'server:n5',
+    sourceId: 'n5',
+    title: 'Mercy Okafor',
+    body: 'mentioned you in a post',
+    createdAt: minsAgoIso(1440),
+    read: true,
+    iconUrl: users.mercy.avatar,
+    notificationType: 'mention',
+    actorId: users.mercy.id,
+    kind: 'mention',
+    data: { postType: 'social', postId: 'p3' },
+  },
 ];
 
 /* ------------------------------ Profile stats ---------------------------- */

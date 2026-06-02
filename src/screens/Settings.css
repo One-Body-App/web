@@ -84,6 +84,16 @@
 .toggle.is-on .toggle__knob {
   transform: translateX(20px);
 }
+.toggle:disabled {
+  opacity: 0.55;
+  cursor: progress;
+}
+
+.settings__error {
+  margin-top: var(--sp-8);
+  font-size: var(--fs-2);
+  color: var(--error);
+}
 
 .settings__signout {
   color: var(--error);

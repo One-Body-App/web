@@ -14,6 +14,7 @@ import {
 } from '@/chat/keyStore';
 import { emitWithAck } from '@/chat/socket';
 import { useChatConnection } from '@/chat/useChat';
+import { NewMessage } from './NewMessage';
 import './Messages.css';
 
 interface ChatMsg {
@@ -48,6 +49,15 @@ function newClientId() {
 
 export function Conversation() {
   const { id = '' } = useParams();
+
+  if (id === 'new') {
+    return <NewMessage />;
+  }
+
+  return <ConversationThread id={id} />;
+}
+
+function ConversationThread({ id }: { id: string }) {
   const location = useLocation();
   const { socket, connected } = useChatConnection();
 

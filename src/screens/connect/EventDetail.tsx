@@ -126,23 +126,33 @@ export function EventDetail() {
             Registration Link <ExternalLink size={18} />
           </a>
         ) : null}
-        <button
-          type="button"
-          className={`btn btn--lg btn--block ${going ? 'btn--outline' : 'btn--brand'}`}
-          onClick={toggleGoing}
-          disabled={savingGoing}
-          aria-pressed={going ? 'true' : 'false'}
-        >
-          {savingGoing ? (
-            'Saving...'
-          ) : going ? (
-            <>
-              <Check size={18} /> You're going
-            </>
-          ) : (
-            "Go! I'm attending"
-          )}
-        </button>
+        {going ? (
+          <button
+            type="button"
+            className="btn btn--lg btn--block btn--outline"
+            onClick={toggleGoing}
+            disabled={savingGoing}
+            aria-pressed="true"
+          >
+            {savingGoing ? (
+              'Saving...'
+            ) : (
+              <>
+                <Check size={18} /> You're going
+              </>
+            )}
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="btn btn--lg btn--block btn--brand"
+            onClick={toggleGoing}
+            disabled={savingGoing}
+            aria-pressed="false"
+          >
+            {savingGoing ? 'Saving...' : "Go! I'm attending"}
+          </button>
+        )}
         <span className="cdetail__going-count">{attendeeCount} going</span>
         <Link to="/connect" className="btn btn--outline cdetail__share" aria-label="Back to Connect">
           <Share2 size={18} />

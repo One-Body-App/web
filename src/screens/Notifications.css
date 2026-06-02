@@ -1,12 +1,78 @@
+/* Controls row: category chips + sort toggle */
+.notif-controls {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-12);
+  padding: var(--sp-8) 0 var(--sp-12);
+}
+.notif-chips {
+  display: flex;
+  gap: var(--sp-8);
+  overflow-x: auto;
+  flex: 1;
+  scrollbar-width: none;
+}
+.notif-chips::-webkit-scrollbar {
+  display: none;
+}
+.notif-chip {
+  flex-shrink: 0;
+  padding: var(--sp-6) var(--sp-14);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: var(--fs-2);
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.notif-chip:hover {
+  background: var(--surface-2);
+}
+.notif-chip.is-active {
+  background: var(--accent);
+  color: #fff;
+}
+.notif-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-4);
+  flex-shrink: 0;
+  padding: var(--sp-6) var(--sp-10);
+  border-radius: var(--r-base);
+  color: var(--muted);
+  font-size: var(--fs-2);
+  font-weight: 600;
+}
+.notif-sort:hover {
+  background: var(--surface);
+}
+
+.notif-section {
+  margin: var(--sp-16) 0 var(--sp-8);
+  font-family: var(--font-display);
+  font-size: var(--fs-2);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+}
+.notif-status {
+  padding: var(--sp-24);
+  text-align: center;
+  color: var(--muted);
+}
+
 .notif-list {
   display: flex;
   flex-direction: column;
 }
+
+/* A single notification row: clickable main area + aside (time / unread / menu) */
 .notif {
   display: flex;
   align-items: center;
-  gap: var(--sp-12);
-  padding: var(--sp-12);
+  gap: var(--sp-8);
   border-radius: var(--r-base);
   transition: background 0.15s ease;
 }
@@ -15,6 +81,16 @@
 }
 .notif.is-unread {
   background: var(--sapphire-900);
+}
+
+.notif__main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-12);
+  padding: var(--sp-12);
+  text-align: left;
+  min-width: 0;
 }
 .notif__avatar {
   position: relative;
@@ -32,20 +108,43 @@
   color: #fff;
   border: 2px solid var(--bg);
 }
-.notif__text {
-  flex: 1;
-  font-size: var(--fs-3);
-  line-height: 1.45;
-  color: var(--ink);
+.notif__body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
-.notif__text strong {
+.notif__title {
   font-family: var(--font-display);
   font-weight: 600;
   color: var(--brand);
+  font-size: var(--fs-3);
+  line-height: 1.35;
+}
+.notif__text {
+  font-size: var(--fs-3);
+  line-height: 1.4;
+  color: var(--ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.notif.is-unread .notif__text {
+  color: var(--ink);
+}
+
+.notif__aside {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  flex-shrink: 0;
+  padding-right: var(--sp-12);
 }
 .notif__time {
   color: var(--muted);
   font-size: var(--fs-2);
+  white-space: nowrap;
 }
 .notif__dot {
   width: 9px;
@@ -53,4 +152,60 @@
   border-radius: 50%;
   background: var(--accent);
   flex-shrink: 0;
+}
+
+/* Per-item options menu */
+.notif__menu {
+  position: relative;
+}
+.notif__menu-btn {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: var(--muted);
+}
+.notif__menu-btn:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+.notif__menu-pop {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  min-width: 180px;
+  padding: var(--sp-6);
+  border-radius: var(--r-base);
+  background: var(--bg);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--surface-2);
+}
+.notif__menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  padding: var(--sp-8) var(--sp-10);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-2);
+  color: var(--ink);
+  text-align: left;
+  white-space: nowrap;
+}
+.notif__menu-item:hover {
+  background: var(--surface);
+}
+.notif__menu-item--danger {
+  color: var(--error);
+}
+
+/* Invisible click-catcher that dismisses an open menu */
+.notif__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: transparent;
 }

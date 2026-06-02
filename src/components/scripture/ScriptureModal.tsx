@@ -2,10 +2,12 @@ import { useCallback, useRef, useState } from 'react';
 import {
   bibleAppUrl,
   DEFAULT_TRANSLATION,
+  bibleTranslationOptions,
   buildScriptureKey,
   fetchScriptureShareCounts,
   fetchTranslations,
   fetchVerse,
+  translationLabel,
   type BibleTranslation,
   type ScriptureMention,
   type VerseResult,
@@ -87,14 +89,7 @@ export function ScriptureModal({
   const verse = verseQuery.data ?? null;
   const loading = verseQuery.loading && !verse;
   const error = Boolean(verseQuery.error);
-  const translations = translationsQuery.data ?? [];
-  const options: BibleTranslation[] = translations.length
-    ? translations
-    : [
-        { id: 'BSB', name: 'Berean Standard Bible', englishName: 'BSB', language: 'eng' },
-        { id: 'engKJV', name: 'King James Version', englishName: 'KJV', language: 'eng' },
-        { id: 'WEB', name: 'World English Bible', englishName: 'WEB', language: 'eng' },
-      ];
+  const options: BibleTranslation[] = bibleTranslationOptions(translationsQuery.data ?? []);
   const shareCount = mention.shareCount ?? shareCountQuery.data?.[shareKey] ?? 0;
 
   return (
@@ -118,7 +113,7 @@ export function ScriptureModal({
           >
             {options.map((t) => (
               <option key={t.id} value={t.id}>
-                {t.shortName || t.englishName || t.name}
+                {translationLabel(t)}
               </option>
             ))}
           </select>

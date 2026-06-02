@@ -301,6 +301,93 @@
 }
 
 /* ============================ Discover rail ============================ */
+/* Trending topic bubbles. Base styles live here (always-loaded shell CSS) */
+/* because the only consumer is DiscoverRail; the rail overrides below sit */
+/* inside the >=900px breakpoint where the rail is actually rendered. */
+.topic-bubbles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+}
+@keyframes bubble-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+.topic-bubble {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: var(--r-pill);
+  font-weight: 600;
+  font-family: var(--font-display);
+  line-height: 1;
+  box-shadow: var(--shadow-sm);
+  animation: bubble-in 0.42s var(--ease-spring) both;
+  animation-delay: var(--topic-delay, 0ms);
+  transition: transform 0.18s var(--ease-spring);
+}
+.topic-bubble:hover {
+  transform: translateY(-2px) scale(1.03);
+}
+.topic-bubble svg {
+  flex: 0 0 auto;
+}
+.topic-bubble__count {
+  font-size: 0.76em;
+  font-weight: 500;
+  opacity: 0.78;
+}
+.topic-bubble--tier-1 {
+  padding: 6px 12px;
+  background: #e6eaec;
+  color: #3c4b64;
+  font-size: 13px;
+}
+.topic-bubble--tier-2 {
+  padding: 7px 13px;
+  background: #cdd5d8;
+  color: #126b87;
+  font-size: 14px;
+}
+.topic-bubble--tier-3 {
+  padding: 7px 14px;
+  background: #d0f6f7;
+  color: #032f3c;
+  font-size: 15px;
+}
+.topic-bubble--tier-4 {
+  padding: 8px 16px;
+  background: #89e9ec;
+  color: #000015;
+  font-size: 16px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .topic-bubble--tier-1 {
+    background: #355963;
+    color: #e6eaec;
+  }
+  .topic-bubble--tier-2 {
+    background: #4f6d77;
+    color: #e6eaec;
+  }
+  .topic-bubble--tier-3 {
+    background: #126b87;
+    color: #e6eaec;
+  }
+  .topic-bubble--tier-4 {
+    background: #41899f;
+    color: #ffffff;
+  }
+}
+
 /* Visible from laptop up (>=900px); hidden in tablet/mobile via the base rule. */
 @media (min-width: 900px) {
   .shell__rail {

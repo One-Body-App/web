@@ -38,7 +38,7 @@ export function ComposerMediaTray({ items, onChange, maxItems = DEFAULT_MAX }: C
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   itemsRef.current = items;
 
-  const trayRef = useCallback((node: HTMLDivElement | null) => {
+  const trayRef = useCallback((node: HTMLUListElement | null) => {
     if (node) return;
     itemsRef.current.forEach((item) => URL.revokeObjectURL(item.previewUrl));
   }, []);
@@ -51,14 +51,14 @@ export function ComposerMediaTray({ items, onChange, maxItems = DEFAULT_MAX }: C
   }
 
   function onDragStart(id: string) {
-    return (event: React.DragEvent<HTMLDivElement>) => {
+    return (event: React.DragEvent<HTMLLIElement>) => {
       event.dataTransfer.effectAllowed = 'move';
       dragSourceRef.current = id;
     };
   }
 
   function onDragOver(id: string) {
-    return (event: React.DragEvent<HTMLDivElement>) => {
+    return (event: React.DragEvent<HTMLLIElement>) => {
       event.preventDefault();
       event.dataTransfer.dropEffect = 'move';
       setDragOverId(id);
@@ -66,7 +66,7 @@ export function ComposerMediaTray({ items, onChange, maxItems = DEFAULT_MAX }: C
   }
 
   function onDrop(targetId: string) {
-    return (event: React.DragEvent<HTMLDivElement>) => {
+    return (event: React.DragEvent<HTMLLIElement>) => {
       event.preventDefault();
       const sourceId = dragSourceRef.current;
       dragSourceRef.current = null;
@@ -87,57 +87,58 @@ export function ComposerMediaTray({ items, onChange, maxItems = DEFAULT_MAX }: C
   }
 
   return (
-    <div className="cmt" role="list" aria-label="Selected media" ref={trayRef}>
-      <AnimatePresence initial={false}>
-        {items.map((item, index) => (
-          <motion.div
-            key={item.id}
-            role="listitem"
-            layout
-            initial={{ opacity: 0, scale: 0.94, y: 6 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.94, y: 6 }}
-            transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            // Disable motion's drag gesture so the HTML5 DnD props below take effect.
-            drag={false}
-            draggable
-            onDragStartCapture={onDragStart(item.id)}
-            onDragOverCapture={onDragOver(item.id)}
-            onDragLeave={() => setDragOverId((current) => (current === item.id ? null : current))}
-            onDropCapture={onDrop(item.id)}
-            className={`cmt__item${dragOverId === item.id ? ' is-dropping' : ''}`}
-          >
-            <div className="cmt__handle" aria-hidden="true">
-              <GripVertical size={14} />
-            </div>
-            {item.kind === 'video' ? (
-              <video className="cmt__preview" src={item.previewUrl} muted playsInline />
-            ) : (
-              <img className="cmt__preview" src={item.previewUrl} alt="" />
-            )}
-            <span className={`cmt__kind cmt__kind--${item.kind}`} aria-hidden="true">
-              {item.kind === 'video' ? <Film size={11} /> : <ImageIcon size={11} />}
-              <span>{item.kind === 'video' ? 'Video' : 'Photo'}</span>
-            </span>
-            <span className="cmt__index" aria-hidden="true">
-              {index + 1}
-            </span>
-            <button
-              type="button"
-              className="cmt__remove"
-              onClick={() => remove(item.id)}
-              aria-label={`Remove media ${index + 1}`}
+    <>
+      <ul className="cmt" aria-label="Selected media" ref={trayRef}>
+        <AnimatePresence initial={false}>
+          {items.map((item, index) => (
+            <motion.li
+              key={item.id}
+              layout
+              initial={{ opacity: 0, scale: 0.94, y: 6 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.94, y: 6 }}
+              transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+              // Disable motion's drag gesture so the HTML5 DnD props below take effect.
+              drag={false}
+              draggable
+              onDragStartCapture={onDragStart(item.id)}
+              onDragOverCapture={onDragOver(item.id)}
+              onDragLeave={() => setDragOverId((current) => (current === item.id ? null : current))}
+              onDropCapture={onDrop(item.id)}
+              className={`cmt__item${dragOverId === item.id ? ' is-dropping' : ''}`}
             >
-              <X size={13} strokeWidth={2.5} />
-            </button>
-          </motion.div>
-        ))}
-      </AnimatePresence>
+              <div className="cmt__handle" aria-hidden="true">
+                <GripVertical size={14} />
+              </div>
+              {item.kind === 'video' ? (
+                <video className="cmt__preview" src={item.previewUrl} muted playsInline />
+              ) : (
+                <img className="cmt__preview" src={item.previewUrl} alt="" />
+              )}
+              <span className={`cmt__kind cmt__kind--${item.kind}`} aria-hidden="true">
+                {item.kind === 'video' ? <Film size={11} /> : <ImageIcon size={11} />}
+                <span>{item.kind === 'video' ? 'Video' : 'Photo'}</span>
+              </span>
+              <span className="cmt__index" aria-hidden="true">
+                {index + 1}
+              </span>
+              <button
+                type="button"
+                className="cmt__remove"
+                onClick={() => remove(item.id)}
+                aria-label={`Remove media ${index + 1}`}
+              >
+                <X size={13} strokeWidth={2.5} />
+              </button>
+            </motion.li>
+          ))}
+        </AnimatePresence>
+      </ul>
       {items.length >= maxItems ? (
-        <p className="cmt__hint" role="status">
+        <p className="cmt__hint" aria-live="polite">
           Max {maxItems} items per post.
         </p>
       ) : null}
-    </div>
+    </>
   );
 }

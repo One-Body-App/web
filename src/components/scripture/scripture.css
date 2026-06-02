@@ -245,7 +245,7 @@
     transform 0.26s ease;
 }
 .scripture-picker.is-open {
-  max-height: 430px;
+  max-height: 560px;
   opacity: 1;
   transform: translateY(0);
 }
@@ -305,7 +305,8 @@
 }
 .scripture-picker__selected,
 .scripture-picker__exact,
-.scripture-picker__book {
+.scripture-picker__book,
+.scripture-picker__picked-book {
   width: 100%;
   display: flex;
   align-items: center;
@@ -327,18 +328,21 @@
 }
 .scripture-picker__selected strong,
 .scripture-picker__exact span,
-.scripture-picker__book span {
+.scripture-picker__book span,
+.scripture-picker__picked-book strong {
   color: #032f3c;
   font-family: 'Rubik', system-ui, sans-serif;
   font-size: 13px;
   font-weight: 700;
 }
-.scripture-picker__selected span {
+.scripture-picker__selected span,
+.scripture-picker__picked-book span {
   color: #41899f;
   font-size: 11px;
   font-weight: 700;
 }
-.scripture-picker__selected button {
+.scripture-picker__selected button,
+.scripture-picker__picked-book button {
   display: grid;
   width: 28px;
   height: 28px;
@@ -357,6 +361,59 @@
 .scripture-picker__exact span,
 .scripture-picker__exact svg {
   color: #ffffff;
+}
+.scripture-picker__exact:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+.scripture-picker__structured {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+}
+.scripture-picker__picked-book {
+  justify-content: space-between;
+  padding: 9px 12px;
+  border-radius: 12px;
+  background: rgba(65, 137, 159, 0.08);
+  color: #41899f;
+}
+.scripture-picker__picked-book div {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+}
+.scripture-picker__fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.scripture-picker__field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 9px 10px;
+  border: 1px solid rgba(65, 137, 159, 0.18);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.76);
+}
+.scripture-picker__field span {
+  color: #41899f;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.scripture-picker__field input {
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #032f3c;
+  font: inherit;
+  font-weight: 700;
 }
 .scripture-picker__suggestions {
   display: grid;
@@ -382,6 +439,12 @@
   font-size: 12px;
   font-weight: 700;
 }
+.scripture-picker__hint {
+  margin: 0;
+  color: #41899f;
+  font-size: 12px;
+  font-weight: 700;
+}
 @keyframes scripture-spin {
   to {
     transform: rotate(360deg);
@@ -389,6 +452,7 @@
 }
 
 @media (max-width: 560px) {
+  .scripture-picker__fields,
   .scripture-picker__suggestions {
     grid-template-columns: 1fr;
   }

@@ -1,24 +1,13 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { MessageCircle, PenSquare } from 'lucide-react';
+import { MessageCircle, PenSquare, X } from 'lucide-react';
 import { Avatar } from '@/components/Avatar';
 import { EmptyState, PageHeader } from '@/components/ui';
-import { conversations as mockConversations } from '@/data/mock';
-import { chatApi, type ChatConversation } from '@/api/chat';
+import { chatApi } from '@/api/chat';
 import { useApiQuery } from '@/api/useApi';
 import { useChatConnection } from '@/chat/useChat';
+import { MessageRecipientSelector } from './MessageRecipientSelector';
 import './Messages.css';
-
-const FALLBACK: ChatConversation[] = mockConversations.map((c) => ({
-  id: c.user.id,
-  conversationType: 'direct',
-  peerUserId: c.user.id,
-  name: c.user.name,
-  username: c.user.username,
-  avatar: c.user.avatar,
-  lastMessagePreview: c.lastMessage,
-  updatedAt: '',
-  unread: c.unread,
-}));
 
 function timeAgo(iso?: string): string {
   if (!iso) return '';
@@ -36,19 +25,57 @@ function timeAgo(iso?: string): string {
 
 export function Messages() {
   useChatConnection();
-  const { data } = useApiQuery(() => chatApi.conversations(), { fallback: FALLBACK });
-  const list = data ?? FALLBACK;
+  const [isSelectorOpen, setIsSelectorOpen] = useState(false);
+  const { data, error, loading } = useApiQuery(() => chatApi.conversations());
+  const list = data ?? [];
 
   return (
-    <div>
+    <div className="messages-screen">
       <PageHeader
         title="Messages"
         action={
-          <button type="button" className="iconbtn" aria-label="New message">
+          <button
+            type="button"
+            className="iconbtn"
+            aria-label="New message"
+            onClick={() => setIsSelectorOpen((open) => !open)}
+          >
             <PenSquare size={20} />
           </button>
         }
       />
+
+      {isSelectorOpen ? (
+        <section className="messages-compose-panel" aria-label="New message">
+          <header className="messages-compose-panel__head">
+            <div>
+              <h2 className="messages-compose-panel__title">New message</h2>
+              <p className="messages-compose-panel__sub">Choose a connected account</p>
+            </div>
+            <button
+              type="button"
+              className="iconbtn messages-compose-panel__close"
+              aria-label="Close new message"
+              onClick={() => setIsSelectorOpen(false)}
+            >
+              <X size={18} />
+            </button>
+          </header>
+          <MessageRecipientSelector
+            autoFocus
+            className="messages-compose-panel__selector"
+            onSelect={() => setIsSelectorOpen(false)}
+          />
+        </section>
+      ) : null}
+
+      {loading ? <div className="messages-status">Loading messages&hellip;</div> : null}
+
+      {error && !loading ? (
+        <div className="messages-status messages-status--error">
+          Unable to load messages right now.
+        </div>
+      ) : null}
 
       {list.length ? (
         <ul className="convo-list">
@@ -72,13 +99,13 @@ export function Messages() {
             </li>
           ))}
         </ul>
-      ) : (
+      ) : !loading && !error ? (
         <EmptyState
           icon={<MessageCircle size={30} />}
           title="No messages yet"
-          body="Start a conversation from someone's profile to connect one-on-one."
+          body="Press the compose button to find a connected account and start one-on-one."
         />
-      )}
+      ) : null}
     </div>
   );
 }

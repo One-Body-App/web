@@ -374,12 +374,29 @@ function ScriptureShareCard({ share }: { share: NonNullable<OBPost['scriptureSha
   const text = !isLong || expanded ? share.text : `${share.text.slice(0, 220).trimEnd()}...`;
   const count = Math.max(0, Number(share.shareCount ?? 0));
 
-  return (
+  return expanded ? (
     <button
       type="button"
-      className={`post__scripture-card${expanded ? ' is-expanded' : ''}`}
+      className="post__scripture-card is-expanded"
       onClick={() => setExpanded((value) => !value)}
-      aria-expanded={expanded ? 'true' : 'false'}
+      aria-expanded="true"
+    >
+      <blockquote>
+        <span className="post__verse-mark">“</span>
+        <p>{text}</p>
+        <cite>{share.reference}</cite>
+      </blockquote>
+      <span className="post__scripture-count">
+        <Eye size={14} />
+        {formatCount(count)} shares
+      </span>
+    </button>
+  ) : (
+    <button
+      type="button"
+      className="post__scripture-card"
+      onClick={() => setExpanded((value) => !value)}
+      aria-expanded="false"
     >
       <blockquote>
         <span className="post__verse-mark">“</span>

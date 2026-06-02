@@ -1,5 +1,5 @@
 import { lazy, Suspense, useMemo, useState, type ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import {
   CalendarDays,
   Globe,
@@ -34,6 +34,7 @@ import './Connect.css';
 
 type Tab = 'go' | 'places' | 'serve';
 
+const TABS: Tab[] = ['go', 'places', 'serve'];
 const GO_CHIPS = ['Upcoming', 'Online', 'In Person'] as const;
 const PLACE_CHIPS = ['Nearby', 'Churches', 'Non-Profits'] as const;
 
@@ -44,7 +45,11 @@ function hasCoordinates<T extends { lat?: number; lng?: number }>(
 }
 
 export function Connect() {
-  const [tab, setTab] = useState<Tab>('go');
+  const [params] = useSearchParams();
+  const requestedTab = params.get('tab') as Tab | null;
+  const [tab, setTab] = useState<Tab>(
+    requestedTab && TABS.includes(requestedTab) ? requestedTab : 'go',
+  );
   const [view, setView] = useState<'list' | 'map'>('list');
   const [q, setQ] = useState('');
   const [goChip, setGoChip] = useState<string>('Upcoming');

@@ -263,15 +263,27 @@ export function CreatePost() {
           </div>
 
           <div className="compose__post-wrap">
-            <button
-              type="button"
-              className={`compose__preview-toggle${previewOpen ? ' is-on' : ''}`}
-              onClick={() => setPreviewOpen((value) => !value)}
-              aria-label={previewOpen ? 'Hide preview' : 'Show preview'}
-              aria-pressed={previewOpen ? 'true' : 'false'}
-            >
-              {previewOpen ? <EyeOff size={16} strokeWidth={2.25} /> : <Eye size={16} strokeWidth={2.25} />}
-            </button>
+            {previewOpen ? (
+              <button
+                type="button"
+                className="compose__preview-toggle is-on"
+                onClick={() => setPreviewOpen((value) => !value)}
+                aria-label="Hide preview"
+                aria-pressed="true"
+              >
+                <EyeOff size={16} strokeWidth={2.25} />
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="compose__preview-toggle"
+                onClick={() => setPreviewOpen((value) => !value)}
+                aria-label="Show preview"
+                aria-pressed="false"
+              >
+                <Eye size={16} strokeWidth={2.25} />
+              </button>
+            )}
             <CounterRing
               tone={counterTone}
               circumference={ringC}
@@ -296,17 +308,31 @@ export function CreatePost() {
             <div className="compose__author-meta">
               <strong>{user?.fullName}</strong>
               <div className="compose__audience-wrap" ref={audienceRef}>
-                <button
-                  type="button"
-                  className={`compose__audience${audienceOpen ? ' is-open' : ''}`}
-                  onClick={() => setAudienceOpen((v) => !v)}
-                  aria-haspopup="menu"
-                  aria-expanded={audienceOpen ? 'true' : 'false'}
-                >
-                  <AudienceIcon size={13} strokeWidth={2.25} />
-                  <span>{activeAudience.label}</span>
-                  <ChevronDown size={13} strokeWidth={2.25} className="compose__audience-caret" />
-                </button>
+                {audienceOpen ? (
+                  <button
+                    type="button"
+                    className="compose__audience is-open"
+                    onClick={() => setAudienceOpen((v) => !v)}
+                    aria-haspopup="menu"
+                    aria-expanded="true"
+                  >
+                    <AudienceIcon size={13} strokeWidth={2.25} />
+                    <span>{activeAudience.label}</span>
+                    <ChevronDown size={13} strokeWidth={2.25} className="compose__audience-caret" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="compose__audience"
+                    onClick={() => setAudienceOpen((v) => !v)}
+                    aria-haspopup="menu"
+                    aria-expanded="false"
+                  >
+                    <AudienceIcon size={13} strokeWidth={2.25} />
+                    <span>{activeAudience.label}</span>
+                    <ChevronDown size={13} strokeWidth={2.25} className="compose__audience-caret" />
+                  </button>
+                )}
 
                 {audienceOpen ? (
                   <div className="compose__audience-menu glass" role="menu">
@@ -517,28 +543,55 @@ export function CreatePost() {
               <Film size={20} strokeWidth={2} />
               <span>Video</span>
             </button>
-            <button
-              type="button"
-              className={`compose__tool${selectedScripture ? ' is-on' : ''}`}
-              aria-label="Add verse"
-              aria-expanded={versePickerOpen ? 'true' : 'false'}
-              onClick={() => setVersePickerOpen((value) => !value)}
-            >
-              <BookOpen size={20} strokeWidth={2} />
-              <span>Verse</span>
-            </button>
-            <div className="compose__feeling-wrap" ref={feelingRef}>
+            {versePickerOpen ? (
               <button
                 type="button"
-                className={`compose__tool${activeFeeling ? ' is-on' : ''}`}
-                aria-label="Add feeling"
-                aria-haspopup="menu"
-                aria-expanded={feelingOpen ? 'true' : 'false'}
-                onClick={() => setFeelingOpen((value) => !value)}
+                className={`compose__tool${selectedScripture ? ' is-on' : ''}`}
+                aria-label="Add verse"
+                aria-expanded="true"
+                onClick={() => setVersePickerOpen((value) => !value)}
               >
-                <Smile size={20} strokeWidth={2} />
-                <span>Feeling</span>
+                <BookOpen size={20} strokeWidth={2} />
+                <span>Verse</span>
               </button>
+            ) : (
+              <button
+                type="button"
+                className={`compose__tool${selectedScripture ? ' is-on' : ''}`}
+                aria-label="Add verse"
+                aria-expanded="false"
+                onClick={() => setVersePickerOpen((value) => !value)}
+              >
+                <BookOpen size={20} strokeWidth={2} />
+                <span>Verse</span>
+              </button>
+            )}
+            <div className="compose__feeling-wrap" ref={feelingRef}>
+              {feelingOpen ? (
+                <button
+                  type="button"
+                  className={`compose__tool${activeFeeling ? ' is-on' : ''}`}
+                  aria-label="Add feeling"
+                  aria-haspopup="menu"
+                  aria-expanded="true"
+                  onClick={() => setFeelingOpen((value) => !value)}
+                >
+                  <Smile size={20} strokeWidth={2} />
+                  <span>Feeling</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className={`compose__tool${activeFeeling ? ' is-on' : ''}`}
+                  aria-label="Add feeling"
+                  aria-haspopup="menu"
+                  aria-expanded="false"
+                  onClick={() => setFeelingOpen((value) => !value)}
+                >
+                  <Smile size={20} strokeWidth={2} />
+                  <span>Feeling</span>
+                </button>
+              )}
               {feelingOpen ? (
                 <div className="compose__feeling-menu glass" role="menu">
                   {FEELING_ITEMS.map((item) => (

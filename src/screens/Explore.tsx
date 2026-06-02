@@ -2,11 +2,11 @@ import { useDeferredValue, useMemo, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   CalendarDays,
+  ChevronRight,
   FileText,
   HeartHandshake,
   MapPin,
-  Newspaper,
-  Play,
+  Quote,
   Search,
   Users,
 } from 'lucide-react';
@@ -16,8 +16,8 @@ import { FeedVideoCard } from '@/components/FeedVideoCard';
 import { PostCard } from '@/components/PostCard';
 import { EmptyState, PageHeader, SectionHeader, Segmented } from '@/components/ui';
 import { connectApi, type ConnectEvent, type ConnectJob } from '@/api/connect';
-import type { OBUser } from '@/data/mock';
-import { endpoints, type OBArticle, type OBFeedItem, type OBSearchItem } from '@/api/endpoints';
+import type { OBPost, OBUser } from '@/data/mock';
+import { endpoints, type OBFeedItem, type OBSearchItem } from '@/api/endpoints';
 import { type WatchVideo, watchApi } from '@/api/watch';
 import { PrayerCard } from './PrayerWall';
 import { useApiMutation, useApiQuery } from '@/api/useApi';
@@ -96,16 +96,28 @@ function formatCount(n: number) {
 
 function ExploreSection({
   title,
+  action,
+  variant = 'list',
   children,
 }: {
   title: string;
+  action?: ReactNode;
+  variant?: 'list' | 'grid';
   children: ReactNode;
 }) {
   return (
     <section className="explore-section">
-      <SectionHeader title={title} />
-      <div className="explore-section__rows">{children}</div>
+      <SectionHeader title={title} action={action} />
+      <div className={variant === 'grid' ? 'explore-grid' : 'explore-section__rows'}>{children}</div>
     </section>
+  );
+}
+
+function SectionMore({ to }: { to: string }) {
+  return (
+    <Link to={to} className="section-more">
+      See all <ChevronRight size={15} />
+    </Link>
   );
 }
 
@@ -114,10 +126,11 @@ function EmptyRow({ label }: { label: string }) {
 }
 
 function EventRow({ event }: { event: ConnectEvent }) {
+  const image = event.image?.trim();
   return (
     <Link to={`/connect/events/${event.id}`} className="explore-row">
-      <span className="explore-row__icon explore-row__icon--event">
-        <CalendarDays size={19} />
+      <span className="explore-row__thumb explore-row__thumb--event">
+        {image ? <img src={image} alt="" loading="lazy" /> : <CalendarDays size={20} />}
       </span>
       <span className="explore-row__body">
         <strong>{event.title}</strong>
@@ -138,8 +151,8 @@ function EventRow({ event }: { event: ConnectEvent }) {
 function JobRow({ job }: { job: ConnectJob }) {
   return (
     <Link to={`/connect/serve/${job.id}`} className="explore-row">
-      <span className="explore-row__icon explore-row__icon--serve">
-        <HeartHandshake size={19} />
+      <span className="explore-row__thumb explore-row__thumb--serve">
+        <HeartHandshake size={20} />
       </span>
       <span className="explore-row__body">
         <strong>{job.title}</strong>
@@ -153,58 +166,41 @@ function JobRow({ job }: { job: ConnectJob }) {
   );
 }
 
-function VideoRow({ video }: { video: WatchVideo }) {
+function ExploreSocialCard({ post }: { post: OBPost }) {
+  const totalReactions = post.reactions.love + post.reactions.pray + post.reactions.rejoice;
+  const image = post.image?.trim();
   return (
-    <Link to="/watch" className="explore-row explore-row--media">
-      <span className="explore-row__thumb">
-        <img src={video.thumbnail} alt="" loading="lazy" />
-        <Play size={17} fill="currentColor" />
-      </span>
-      <span className="explore-row__body">
-        <strong>{video.title || video.caption || video.authorName}</strong>
-        <span>{video.authorName}</span>
-        <small>
-          {video.aspectRatio < 1 ? 'Short' : 'Video'} · {video.time || 'Recent'}
-        </small>
+    <Link
+      to={`/post/social/${post.id}`}
+      state={{ post }}
+      className={`explore-social-card card${image ? '' : ' explore-social-card--text'}`}
+    >
+      {image ? (
+        <span className="explore-social-card__media">
+          <img src={image} alt="" loading="lazy" />
+        </span>
+      ) : (
+        <span className="explore-social-card__preview">
+          <Quote size={15} />
+          <span>{post.body || 'Social post'}</span>
+        </span>
+      )}
+      <span className="explore-social-card__meta">
+        <Avatar
+          src={post.author.avatar}
+          alt={post.author.name}
+          size={30}
+          verified={post.author.verified}
+        />
+        <span className="explore-social-card__who">
+          <strong>{post.author.name}</strong>
+          <small>
+            {post.createdAt}
+            {totalReactions > 0 ? ` · ${formatCount(totalReactions)} reactions` : ''}
+          </small>
+        </span>
       </span>
     </Link>
-  );
-}
-
-function SocialRow({ post }: { post: OBFeedItem & { kind: 'post' } }) {
-  const totalReactions = post.post.reactions.love + post.post.reactions.pray + post.post.reactions.rejoice;
-  return (
-    <Link to={`/post/social/${post.post.id}`} state={{ post: post.post }} className="explore-row">
-      <Avatar
-        src={post.post.author.avatar}
-        alt={post.post.author.name}
-        size={42}
-        verified={post.post.author.verified}
-      />
-      <span className="explore-row__body">
-        <strong>{post.post.author.name}</strong>
-        <span>{post.post.body || 'Social post'}</span>
-        <small>
-          {post.post.createdAt}
-          {totalReactions > 0 ? ` · ${formatCount(totalReactions)} reactions` : ''}
-        </small>
-      </span>
-    </Link>
-  );
-}
-
-function ArticleRow({ article }: { article: OBArticle }) {
-  return (
-    <a href={article.link} target="_blank" rel="noopener noreferrer" className="explore-row">
-      <span className="explore-row__icon explore-row__icon--article">
-        <Newspaper size={19} />
-      </span>
-      <span className="explore-row__body">
-        <strong>{article.title}</strong>
-        <span>{article.sourceName}</span>
-        {article.time ? <small>{article.time}</small> : null}
-      </span>
-    </a>
   );
 }
 
@@ -352,7 +348,7 @@ export function Explore() {
         </>
       ) : (
         <>
-          <ExploreSection title="Upcoming & Local Events">
+          <ExploreSection title="Upcoming & Local Events" action={<SectionMore to="/connect" />}>
             {upcomingEvents.length
               ? upcomingEvents.map((event) => <EventRow key={event.id} event={event} />)
               : events.loading
@@ -360,7 +356,10 @@ export function Explore() {
                 : <EmptyRow label="No live events returned." />}
           </ExploreSection>
 
-          <ExploreSection title="Local Opportunities">
+          <ExploreSection
+            title="Local Opportunities"
+            action={<SectionMore to="/connect?tab=serve" />}
+          >
             {openJobs.length
               ? openJobs.map((job) => <JobRow key={job.id} job={job} />)
               : jobs.loading
@@ -368,25 +367,35 @@ export function Explore() {
                 : <EmptyRow label="No live opportunities returned." />}
           </ExploreSection>
 
-          <ExploreSection title="Trending Videos & Shorts">
+          <ExploreSection
+            title="Trending Videos & Shorts"
+            variant="grid"
+            action={<SectionMore to="/watch" />}
+          >
             {trendingVideos.length
-              ? trendingVideos.map((video) => <VideoRow key={video.id} video={video} />)
+              ? trendingVideos.map((video) => (
+                  <FeedVideoCard key={video.id} video={video} to="/watch" />
+                ))
               : videos.loading
                 ? null
                 : <EmptyRow label="No live videos returned." />}
           </ExploreSection>
 
-          <ExploreSection title="Trending Social Posts">
+          <ExploreSection
+            title="Trending Social Posts"
+            variant="grid"
+            action={<SectionMore to="/home" />}
+          >
             {trendingPosts.length
-              ? trendingPosts.map((post) => <SocialRow key={post.post.id} post={post} />)
+              ? trendingPosts.map((post) => <ExploreSocialCard key={post.post.id} post={post.post} />)
               : feed.loading
                 ? null
                 : <EmptyRow label="No live social posts returned." />}
           </ExploreSection>
 
-          <ExploreSection title="Trending Articles">
+          <ExploreSection title="Trending Articles" variant="grid" action={<SectionMore to="/home" />}>
             {trendingArticles.length
-              ? trendingArticles.map((item) => <ArticleRow key={item.article.id} article={item.article} />)
+              ? trendingArticles.map((item) => <ArticleCard key={item.article.id} article={item.article} />)
               : feed.loading
                 ? null
                 : <EmptyRow label="No live articles returned." />}

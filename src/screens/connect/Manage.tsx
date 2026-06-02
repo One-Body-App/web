@@ -45,19 +45,33 @@ function EventManageRow({ event }: { event: ConnectEvent }) {
           </span>
         </div>
       </div>
-      <button
-        type="button"
-        className={`manage-toggle${live ? ' is-live' : ''}`}
-        onClick={() => {
-          const next = !live;
-          setLive(next);
-          toggle.mutate(next);
-        }}
-        aria-pressed={live ? 'true' : 'false'}
-      >
-        <span className="manage-toggle__dot" />
-        {live ? 'Live' : 'Hidden'}
-      </button>
+      {live ? (
+        <button
+          type="button"
+          className="manage-toggle is-live"
+          onClick={() => {
+            setLive(false);
+            toggle.mutate(false);
+          }}
+          aria-pressed="true"
+        >
+          <span className="manage-toggle__dot" />
+          Live
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="manage-toggle"
+          onClick={() => {
+            setLive(true);
+            toggle.mutate(true);
+          }}
+          aria-pressed="false"
+        >
+          <span className="manage-toggle__dot" />
+          Hidden
+        </button>
+      )}
     </div>
   );
 }
