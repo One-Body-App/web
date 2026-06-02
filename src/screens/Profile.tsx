@@ -32,6 +32,7 @@ export function Profile() {
     interests: [],
     followers: 0,
     following: 0,
+    followingIds: [],
   };
 
   const profileQ = useApiQuery(() => endpoints.getMyProfileMapped(), { fallback: fallbackProfile });
@@ -114,11 +115,11 @@ export function Profile() {
           </div>
           <div>
             <strong>{formatCount(profile.followers)}</strong>
-            <span>Followers</span>
+            <span>Connectors</span>
           </div>
           <div>
             <strong>{formatCount(profile.following)}</strong>
-            <span>Following</span>
+            <span>Connections</span>
           </div>
         </div>
 

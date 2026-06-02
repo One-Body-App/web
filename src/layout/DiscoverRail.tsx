@@ -1,7 +1,8 @@
-import { useMemo, useState, useSyncExternalStore, type CSSProperties } from 'react';
+import { useMemo, useSyncExternalStore, type CSSProperties } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Flame, HandHeart, Play, PlayCircle, Sparkles, TrendingUp } from 'lucide-react';
 import { Avatar } from '@/components/Avatar';
+import { ConnectionButton } from '@/components/ConnectionButton';
 import type { OBUser } from '@/data/mock';
 /* sponsored sidebar */
 import SidebarAd from '@/components/ads/SidebarAd';
@@ -168,15 +169,15 @@ export function DiscoverRail() {
         </div>
       ) : null}
 
-      {/* Who to follow */}
+      {/* People to connect with */}
       {peopleList.length ? (
         <div className="rail-card card">
           <h3 className="rail-card__title">
-            <Sparkles size={18} /> Who to follow
+            <Sparkles size={18} /> People to connect with
           </h3>
           <ul className="rail-people">
             {peopleList.map((u) => (
-              <FollowRow key={u.id} user={u} />
+              <ConnectionRow key={u.id} user={u} />
             ))}
           </ul>
           <Link to="/explore" className="rail-card__more">
@@ -197,16 +198,7 @@ export function DiscoverRail() {
   );
 }
 
-function FollowRow({ user }: { user: OBUser }) {
-  const [following, setFollowing] = useState(false);
-
-  function toggle() {
-    const next = !following;
-    setFollowing(next);
-    const req = next ? endpoints.followUser(user.id) : endpoints.unfollowUser(user.id);
-    req.catch(() => setFollowing(!next));
-  }
-
+function ConnectionRow({ user }: { user: OBUser }) {
   return (
     <li className="rail-people__item">
       <Avatar src={user.avatar} alt={user.name} size={40} verified={user.verified} />
@@ -214,13 +206,7 @@ function FollowRow({ user }: { user: OBUser }) {
         <strong>{user.name}</strong>
         <small>@{user.username}</small>
       </span>
-      <button
-        type="button"
-        className={`btn btn--sm ${following ? 'btn--outline' : 'btn--brand'}`}
-        onClick={toggle}
-      >
-        {following ? 'Following' : 'Follow'}
-      </button>
+      <ConnectionButton targetId={user.id} name={user.name} disconnectedVariant="brand" />
     </li>
   );
 }

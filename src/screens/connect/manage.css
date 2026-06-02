@@ -237,6 +237,74 @@
   background: var(--surface);
 }
 
+/* Inline error alert spacing (event + opportunity forms) */
+.apply__alert {
+  margin-bottom: var(--sp-12);
+}
+
+/* Event hero photo picker */
+.evt-photo__pick {
+  width: 100%;
+  cursor: pointer;
+}
+.evt-photo {
+  position: relative;
+  border-radius: var(--r-base);
+  overflow: hidden;
+  aspect-ratio: 16 / 10;
+  background: var(--surface-3);
+  border: 1.5px solid var(--line);
+}
+.evt-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.evt-photo__remove {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: #fff;
+  background: rgba(3, 47, 60, 0.62);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  transition: background 0.16s ease;
+}
+.evt-photo__remove:hover {
+  background: rgba(3, 47, 60, 0.82);
+}
+
+/* Map-visibility notice (event + opportunity creation) */
+.map-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-8);
+  padding: var(--sp-10) var(--sp-12);
+  border-radius: var(--r-base);
+  background: var(--sapphire-900);
+  color: var(--ink-3);
+  font-size: var(--fs-2);
+  line-height: 1.45;
+}
+.map-note svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--sapphire);
+}
+.map-note--warn {
+  background: var(--warning-soft, #fdf2e3);
+  color: var(--ink-2);
+}
+.map-note--warn svg {
+  color: var(--warning, #c47d1a);
+}
+
 /* Checkboxes */
 .check-row {
   display: flex;

@@ -332,9 +332,9 @@ export function PostDetail() {
               <div key={i} className="cmt cmt--skeleton">
                 <div className="skeleton skeleton--avatar" />
                 <div className="cmt__main">
-                  <div className="skeleton" style={{ width: '40%', height: 11 }} />
-                  <div className="skeleton" style={{ width: '92%', height: 11, marginTop: 9 }} />
-                  <div className="skeleton" style={{ width: '60%', height: 11, marginTop: 6 }} />
+                  <div className="skeleton cmt-skeleton__title" />
+                  <div className="skeleton cmt-skeleton__line" />
+                  <div className="skeleton cmt-skeleton__line cmt-skeleton__line--short" />
                 </div>
               </div>
             ))
@@ -366,9 +366,9 @@ function FocusSkeleton() {
     <div className="cmt cmt--skeleton postdetail__focus">
       <div className="skeleton skeleton--avatar" />
       <div className="cmt__main">
-        <div className="skeleton" style={{ width: '45%', height: 12 }} />
-        <div className="skeleton" style={{ width: '95%', height: 12, marginTop: 10 }} />
-        <div className="skeleton" style={{ width: '80%', height: 12, marginTop: 6 }} />
+        <div className="skeleton cmt-skeleton__title" />
+        <div className="skeleton cmt-skeleton__line" />
+        <div className="skeleton cmt-skeleton__line cmt-skeleton__line--short" />
       </div>
     </div>
   );

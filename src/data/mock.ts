@@ -409,7 +409,7 @@ export const notifications: InboxNotification[] = [
     id: 'server:n2',
     sourceId: 'n2',
     title: 'David Kim',
-    body: 'started following you',
+    body: 'connected with you',
     createdAt: minsAgoIso(60),
     read: false,
     iconUrl: users.david.avatar,

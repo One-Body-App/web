@@ -14,6 +14,7 @@ import {
 import { Avatar } from "@/components/Avatar";
 import { EmptyState, PageHeader } from "@/components/ui";
 import { useApiQuery } from "@/api/useApi";
+import { endpoints } from "@/api/endpoints";
 import {
   watchApi,
   type SermonComment,
@@ -47,12 +48,6 @@ const DEFAULT_SERMON_FILTERS: SermonFilters = {
   page: 1,
   limit: 24,
 };
-
-const SERMON_PROVIDERS = [
-  { label: "All", value: "" },
-  { label: "YouTube", value: "youtube" },
-  { label: "Vimeo", value: "vimeo" },
-] as const;
 
 const SERMON_DURATIONS = [
   { label: "Any length", value: "" },
@@ -123,6 +118,18 @@ function fmtSermonDur(seconds?: number) {
  */
 const isShort = (v: WatchVideo) => Math.abs(v.aspectRatio - 9 / 16) <= 0.05;
 
+function wideAspectClass(aspectRatio: number): string {
+  if (!Number.isFinite(aspectRatio) || aspectRatio <= 0) {
+    return "wwide__frame--ratio-wide";
+  }
+  if (aspectRatio < 0.7) return "wwide__frame--ratio-portrait";
+  if (aspectRatio < 0.95) return "wwide__frame--ratio-tall";
+  if (aspectRatio < 1.2) return "wwide__frame--ratio-square";
+  if (aspectRatio < 1.55) return "wwide__frame--ratio-standard";
+  if (aspectRatio > 2) return "wwide__frame--ratio-ultrawide";
+  return "wwide__frame--ratio-wide";
+}
+
 export function Watch() {
   const [tab, setTab] = useState<WatchTab>("foryou");
   const [active, setActive] = useState<WatchVideo | null>(null);
@@ -142,9 +149,9 @@ export function Watch() {
     (signal) => watchApi.sermons(sermonFilters, signal),
     { enabled: tab === "sermons", deps: [sermonFilters] },
   );
-  const { data: sermonOptions } = useApiQuery(
-    (signal) => watchApi.sermonFilterOptions(signal),
-    { enabled: tab === "sermons" },
+  const { data: interestTags } = useApiQuery(
+    () => endpoints.getInterestTags(),
+    { enabled: tab === "sermons", fallback: [] },
   );
   const list = data ?? [];
   const sermons = sermonsData ?? [];
@@ -220,24 +227,48 @@ export function Watch() {
       />
 
       <div className="segmented watch__tabs" role="tablist">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "foryou" ? "true" : "false"}
-          className={`segmented__item${tab === "foryou" ? " is-active" : ""}`}
-          onClick={() => setTab("foryou")}
-        >
-          For You
-        </button>
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === "sermons" ? "true" : "false"}
-          className={`segmented__item${tab === "sermons" ? " is-active" : ""}`}
-          onClick={() => setTab("sermons")}
-        >
-          Sermons
-        </button>
+        {tab === "foryou" ? (
+          <button
+            type="button"
+            role="tab"
+            aria-selected="true"
+            className="segmented__item is-active"
+            onClick={() => setTab("foryou")}
+          >
+            For You
+          </button>
+        ) : (
+          <button
+            type="button"
+            role="tab"
+            aria-selected="false"
+            className="segmented__item"
+            onClick={() => setTab("foryou")}
+          >
+            For You
+          </button>
+        )}
+        {tab === "sermons" ? (
+          <button
+            type="button"
+            role="tab"
+            aria-selected="true"
+            className="segmented__item is-active"
+            onClick={() => setTab("sermons")}
+          >
+            Sermons
+          </button>
+        ) : (
+          <button
+            type="button"
+            role="tab"
+            aria-selected="false"
+            className="segmented__item"
+            onClick={() => setTab("sermons")}
+          >
+            Sermons
+          </button>
+        )}
       </div>
 
       {tab === "sermons" ? (
@@ -260,11 +291,10 @@ export function Watch() {
             <WatchSkeleton />
           ) : visibleSermons.length ? (
             <div className="watch-sermons">
-              {visibleSermons.map((sermon, i) => (
+              {visibleSermons.map((sermon) => (
                 <SermonCard
                   key={sermon.id}
                   sermon={sermon}
-                  index={i}
                   onOpen={setActiveSermon}
                 />
               ))}
@@ -293,11 +323,10 @@ export function Watch() {
             </h2>
             {shorts.length ? (
               <div className="watch-shorts">
-                {shorts.map((v, i) => (
+                {shorts.map((v) => (
                   <ShortCard
                     key={v.id}
                     video={v}
-                    index={i}
                     onOpen={setActive}
                   />
                 ))}
@@ -313,8 +342,8 @@ export function Watch() {
             </h2>
             {wide.length ? (
               <div className="watch-videos">
-                {wide.map((v, i) => (
-                  <WideCard key={v.id} video={v} index={i} onOpen={setActive} />
+                {wide.map((v) => (
+                  <WideCard key={v.id} video={v} onOpen={setActive} />
                 ))}
               </div>
             ) : (
@@ -368,69 +397,55 @@ export function Watch() {
                 <X size={20} />
               </button>
             </div>
-            <label className="sermon-filter-field sermon-filter-field--wide">
-              <span>Search</span>
-              <input
-                value={draftSermonFilters.search ?? ""}
-                onChange={(event) => updateDraft("search", event.target.value)}
-                placeholder="Title, channel, speaker, topic"
+            <div className="sermon-filter-modal__body">
+              <label className="sermon-filter-field sermon-filter-field--wide">
+                <span>Search</span>
+                <input
+                  value={draftSermonFilters.search ?? ""}
+                  onChange={(event) =>
+                    updateDraft("search", event.target.value)
+                  }
+                  placeholder="Title, channel, speaker, topic"
+                />
+              </label>
+              <FilterSelect
+                label="Duration"
+                value={draftSermonFilters.duration ?? ""}
+                options={SERMON_DURATIONS}
+                onChange={(value) => updateDraft("duration", value)}
               />
-            </label>
-            <FilterSelect
-              label="Provider"
-              value={draftSermonFilters.provider ?? ""}
-              options={SERMON_PROVIDERS}
-              onChange={(value) => updateDraft("provider", value)}
-            />
-            <FilterSelect
-              label="Duration"
-              value={draftSermonFilters.duration ?? ""}
-              options={SERMON_DURATIONS}
-              onChange={(value) => updateDraft("duration", value)}
-            />
-            <FilterSelect
-              label="Published"
-              value={draftSermonFilters.publishedRange ?? ""}
-              options={SERMON_RANGES}
-              onChange={(value) => updateDraft("publishedRange", value)}
-            />
-            <FilterSelect
-              label="Sort"
-              value={draftSermonFilters.sort ?? "recent"}
-              options={SERMON_SORTS}
-              onChange={(value) => updateDraft("sort", value)}
-            />
-            <TextFilter
-              label="Speaker"
-              value={draftSermonFilters.speaker ?? ""}
-              suggestions={sermonOptions?.speakers ?? []}
-              onChange={(value) => updateDraft("speaker", value)}
-            />
-            <TextFilter
-              label="Denomination"
-              value={draftSermonFilters.denomination ?? ""}
-              suggestions={sermonOptions?.denominations ?? []}
-              onChange={(value) => updateDraft("denomination", value)}
-            />
-            <TextFilter
-              label="Topic"
-              value={draftSermonFilters.topic ?? ""}
-              suggestions={sermonOptions?.topics ?? []}
-              onChange={(value) => updateDraft("topic", value)}
-            />
-            <TextFilter
-              label="Channel ID"
-              value={draftSermonFilters.channelId ?? ""}
-              suggestions={[]}
-              onChange={(value) => updateDraft("channelId", value)}
-            />
+              <FilterSelect
+                label="Published"
+                value={draftSermonFilters.publishedRange ?? ""}
+                options={SERMON_RANGES}
+                onChange={(value) => updateDraft("publishedRange", value)}
+              />
+              <FilterSelect
+                label="Sort"
+                value={draftSermonFilters.sort ?? "recent"}
+                options={SERMON_SORTS}
+                onChange={(value) => updateDraft("sort", value)}
+              />
+              <FilterSelect
+                label="Interest"
+                value={draftSermonFilters.topic ?? ""}
+                options={[
+                  { label: "All interests", value: "" },
+                  ...(interestTags ?? []).map((tag) => ({
+                    label: tag.name,
+                    value: tag.name,
+                  })),
+                ]}
+                onChange={(value) => updateDraft("topic", value)}
+              />
+            </div>
             <div className="sermon-filter-modal__actions">
               <button
                 type="button"
                 className="btn btn--outline"
                 onClick={resetSermonFilters}
               >
-                Reset
+                Clear
               </button>
               <button
                 type="button"
@@ -450,18 +465,15 @@ export function Watch() {
 /* ----------------------------- Cards ----------------------------- */
 function ShortCard({
   video,
-  index,
   onOpen,
 }: {
   video: WatchVideo;
-  index: number;
   onOpen: (v: WatchVideo) => void;
 }) {
   return (
     <button
       type="button"
       className="wshort"
-      style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}
       onClick={() => onOpen(video)}
       aria-label={`Play ${video.title || "short"}`}
     >
@@ -491,24 +503,18 @@ function ShortCard({
 
 function WideCard({
   video,
-  index,
   onOpen,
   large = false,
 }: {
   video: WatchVideo;
-  index: number;
   onOpen: (v: WatchVideo) => void;
   large?: boolean;
 }) {
   return (
-    <article
-      className={`wwide card${large ? " wwide--lg" : ""}`}
-      style={{ animationDelay: `${Math.min(index, 8) * 55}ms` }}
-    >
+    <article className={`wwide card${large ? " wwide--lg" : ""}`}>
       <button
         type="button"
-        className="wwide__frame"
-        style={{ aspectRatio: String(video.aspectRatio || 16 / 9) }}
+        className={`wwide__frame ${wideAspectClass(video.aspectRatio)}`}
         onClick={() => onOpen(video)}
         aria-label={`Play ${video.title || "video"}`}
       >
@@ -539,11 +545,9 @@ function WideCard({
 
 function SermonCard({
   sermon,
-  index,
   onOpen,
 }: {
   sermon: SermonListItem;
-  index: number;
   onOpen: (sermon: SermonListItem) => void;
 }) {
   const duration = fmtSermonDur(sermon.durationSeconds);
@@ -551,10 +555,7 @@ function SermonCard({
   const reactions = Number(sermon.reactionsCount ?? 0);
   const comments = Number(sermon.commentsCount ?? sermon.commentNumber ?? 0);
   return (
-    <article
-      className="sermon-card card"
-      style={{ animationDelay: `${Math.min(index, 8) * 55}ms` }}
-    >
+    <article className="sermon-card card">
       <button
         type="button"
         className="sermon-card__frame"
@@ -838,77 +839,22 @@ function FilterSelect<T extends string>({
   );
 }
 
-function TextFilter({
-  label,
-  value,
-  suggestions,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  suggestions: string[];
-  onChange: (value: string) => void;
-}) {
-  const datalistId = `sermon-filter-${label.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
-  return (
-    <label className="sermon-filter-field">
-      <span>{label}</span>
-      <input
-        value={value}
-        list={suggestions.length ? datalistId : undefined}
-        onChange={(event) => onChange(event.target.value)}
-      />
-      {suggestions.length ? (
-        <datalist id={datalistId}>
-          {suggestions.slice(0, 80).map((item) => (
-            <option key={item} value={item}>
-              {item}
-            </option>
-          ))}
-        </datalist>
-      ) : null}
-    </label>
-  );
-}
-
 function WatchSkeleton() {
   return (
     <div className="watch-split">
       <section className="watch-col">
-        <div
-          className="skeleton"
-          style={{ width: 80, height: 14, marginBottom: "var(--sp-12)" }}
-        />
+        <div className="skeleton watch-skeleton__heading" />
         <div className="watch-shorts">
           {[0, 1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="skeleton"
-              style={{
-                width: "100%",
-                aspectRatio: "9 / 16",
-                borderRadius: "var(--r-base)",
-              }}
-            />
+            <div key={i} className="skeleton watch-skeleton__short" />
           ))}
         </div>
       </section>
       <section className="watch-col">
-        <div
-          className="skeleton"
-          style={{ width: 80, height: 14, marginBottom: "var(--sp-12)" }}
-        />
+        <div className="skeleton watch-skeleton__heading" />
         <div className="watch-videos">
           {[0, 1].map((i) => (
-            <div
-              key={i}
-              className="skeleton"
-              style={{
-                width: "100%",
-                aspectRatio: "16 / 9",
-                borderRadius: "var(--r-base)",
-              }}
-            />
+            <div key={i} className="skeleton watch-skeleton__video" />
           ))}
         </div>
       </section>

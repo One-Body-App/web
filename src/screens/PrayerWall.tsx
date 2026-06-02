@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Check, HandHeart, MessageCircle, PenLine, Plus, Repeat2, X } from 'lucide-react';
 import { Avatar } from '@/components/Avatar';
@@ -16,7 +16,7 @@ import {
   patchReactionCounts,
   type FullReactionKind,
 } from '@/api/reactions';
-import { useApiMutation, useApiQuery } from '@/api/useApi';
+import { useApiMutation } from '@/api/useApi';
 import {
   MOCK_PRAYERS,
   prayerApi,
@@ -42,6 +42,17 @@ const CATEGORY_LABEL: Record<PrayerCategory, string> = {
   myPrayers: 'My Prayer',
 };
 
+// Web-only: pair each prayer type with the same emoji the mobile app uses
+// (app/src/components/listItems/BaseItem.tsx). Stored as Unicode code-point
+// escapes to keep the source ASCII-only.
+const CATEGORY_EMOJI: Record<PrayerCategory, string> = {
+  request: '\u{1F64F}', // folded hands
+  exhortation: '\u{1F5E3}\u{FE0F}', // speaking head
+  testimony: '\u{1F64C}', // raising hands
+  answer: '\u{1F64C}', // raising hands
+  myPrayers: '\u{1F64F}', // folded hands
+};
+
 const COMPOSE_CATEGORIES: { key: PrayerCategory; label: string }[] = [
   { key: 'request', label: 'Request' },
   { key: 'exhortation', label: 'Exhortation' },
@@ -56,26 +67,109 @@ export function PrayerWall() {
   const [tab, setTab] = useState<Tab>('wall');
   const [composeOpen, setComposeOpen] = useState(false);
 
-  const { data, loading, refetch } = useApiQuery(
-    async () => {
-      const me = await endpoints.getMyProfileMapped().catch(() => null);
-      const list = await prayerApi.list(1, me?.id);
-      return { meId: me?.id ?? '', list };
+  const [meId, setMeId] = useState('');
+  const [prayers, setPrayers] = useState<Prayer[]>([]);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [reachedEnd, setReachedEnd] = useState(false);
+
+  // Refs guard against overlapping loads and track pagination across renders.
+  const loadingRef = useRef(false);
+  const endRef = useRef(false);
+  const pageRef = useRef(0);
+  const meIdRef = useRef('');
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const didInitRef = useRef(false);
+
+  // Loads the next page and appends it (de-duped). An empty page marks the end of
+  // the feed — an infinite scroll over every prayer (newest first) with no client cap.
+  const loadNextPage = useCallback(async () => {
+    if (loadingRef.current || endRef.current) return;
+    loadingRef.current = true;
+    const isInitial = pageRef.current === 0;
+    if (isInitial) setInitialLoading(true);
+    else setLoadingMore(true);
+    try {
+      if (isInitial && !meIdRef.current) {
+        const me = await endpoints.getMyProfileMapped().catch(() => null);
+        meIdRef.current = me?.id ?? '';
+        setMeId(meIdRef.current);
+      }
+      const nextPage = pageRef.current + 1;
+      const batch = await prayerApi.list(nextPage, meIdRef.current);
+      if (batch.length === 0) {
+        // Empty page => we've reached the end of the feed.
+        endRef.current = true;
+        setReachedEnd(true);
+      } else {
+        pageRef.current = nextPage;
+        setPrayers((prev) => {
+          const seen = new Set(prev.map((p) => p.id));
+          const merged = prev.slice();
+          for (const p of batch) if (!seen.has(p.id)) merged.push(p);
+          return merged;
+        });
+      }
+    } catch {
+      // Network/CORS/auth failure: show the offline fallback on first load, then stop.
+      if (pageRef.current === 0) setPrayers(MOCK_PRAYERS);
+      endRef.current = true;
+      setReachedEnd(true);
+    } finally {
+      loadingRef.current = false;
+      setInitialLoading(false);
+      setLoadingMore(false);
+    }
+  }, []);
+
+  // Reset to page 1 (after posting a prayer or marking one answered).
+  const reload = useCallback(() => {
+    pageRef.current = 0;
+    endRef.current = false;
+    setReachedEnd(false);
+    setPrayers([]);
+    setInitialLoading(true);
+    void loadNextPage();
+  }, [loadNextPage]);
+
+  // Kick off the first page on mount via a callback ref (web lint disallows useEffect).
+  const rootRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      if (node && !didInitRef.current) {
+        didInitRef.current = true;
+        void loadNextPage();
+      }
     },
-    { fallback: { meId: '', list: MOCK_PRAYERS } },
+    [loadNextPage],
   );
 
-  const meId = data?.meId ?? '';
-  const all = data?.list ?? MOCK_PRAYERS;
+  // Infinite scroll: a callback ref wires an IntersectionObserver to the sentinel as it
+  // mounts/unmounts, loading the next page when it nears the viewport.
+  const sentinelRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      observerRef.current?.disconnect();
+      observerRef.current = null;
+      if (!node || typeof IntersectionObserver === 'undefined') return;
+      const observer = new IntersectionObserver(
+        (entries) => {
+          if (entries.some((entry) => entry.isIntersecting)) void loadNextPage();
+        },
+        { rootMargin: '600px 0px' },
+      );
+      observer.observe(node);
+      observerRef.current = observer;
+    },
+    [loadNextPage],
+  );
 
   const list = useMemo(() => {
-    if (tab === 'testimonies') return all.filter((p) => p.answered);
-    if (tab === 'mine') return meId ? all.filter((p) => p.authorId === meId) : [];
-    return all;
-  }, [tab, all, meId]);
+    if (tab === 'testimonies') return prayers.filter((p) => p.answered);
+    if (tab === 'mine') return meId ? prayers.filter((p) => p.authorId === meId) : [];
+    return prayers;
+  }, [tab, prayers, meId]);
 
   return (
-    <div>
+    <div ref={rootRef}>
       <PageHeader
         title="Prayer Wall"
         subtitle="Bring your requests to the Body, and pray for one another."
@@ -87,30 +181,43 @@ export function PrayerWall() {
         }
       />
 
-      <div style={{ marginBottom: 'var(--sp-16)' }}>
+      <div className="prayer-wall__tabs">
         <Segmented value={tab} onChange={setTab} options={TABS} />
       </div>
 
-      {loading && !data ? (
+      {initialLoading && prayers.length === 0 ? (
         <PrayerSkeleton />
-      ) : list.length ? (
-        list.map((p) => <PrayerCard key={p.id} prayer={p} meId={meId} onChanged={refetch} />)
       ) : (
-        <EmptyState
-          icon={<HandHeart size={30} />}
-          title={
-            tab === 'mine'
-              ? 'You haven’t shared a prayer yet'
-              : tab === 'testimonies'
-                ? 'No testimonies yet'
-                : 'The wall is quiet'
-          }
-          body={
-            tab === 'mine'
-              ? 'Tap Share to post your first request.'
-              : 'Be the first to share a prayer with the Body.'
-          }
-        />
+        <>
+          {list.map((p) => (
+            <PrayerCard key={p.id} prayer={p} meId={meId} onChanged={reload} />
+          ))}
+
+          {list.length === 0 && !initialLoading && !loadingMore ? (
+            <EmptyState
+              icon={<HandHeart size={30} />}
+              title={
+                tab === 'mine'
+                  ? 'You haven’t shared a prayer yet'
+                  : tab === 'testimonies'
+                    ? 'No testimonies yet'
+                    : 'The wall is quiet'
+              }
+              body={
+                tab === 'mine'
+                  ? 'Tap Share to post your first request.'
+                  : 'Be the first to share a prayer with the Body.'
+              }
+            />
+          ) : null}
+
+          {/* Infinite-scroll sentinel; present until the full feed is exhausted. */}
+          {!reachedEnd ? (
+            <div ref={sentinelRef} className="prayer-wall__sentinel" aria-hidden="true">
+              {loadingMore ? <PrayerSkeleton /> : null}
+            </div>
+          ) : null}
+        </>
       )}
 
       {composeOpen ? (
@@ -118,7 +225,7 @@ export function PrayerWall() {
           onClose={() => setComposeOpen(false)}
           onPosted={() => {
             setComposeOpen(false);
-            refetch();
+            reload();
           }}
         />
       ) : null}
@@ -269,6 +376,9 @@ export function PrayerCard({
           <span>{prayer.time}</span>
         </div>
         <span className={`prayer__cat prayer__cat--${prayer.answered ? 'answer' : prayer.category}`}>
+          <span className="prayer__cat-emoji" aria-hidden="true">
+            {CATEGORY_EMOJI[prayer.answered ? 'answer' : prayer.category]}
+          </span>
           {prayer.answered ? 'Answered' : CATEGORY_LABEL[prayer.category]}
         </span>
       </header>
@@ -471,10 +581,10 @@ function PrayerSkeleton() {
   return (
     <>
       {[0, 1, 2].map((i) => (
-        <div key={i} className="card" style={{ padding: 'var(--sp-16)', marginBottom: 'var(--sp-12)' }}>
-          <div className="skeleton" style={{ width: '40%', height: 12 }} />
-          <div className="skeleton" style={{ width: '100%', height: 12, marginTop: 14 }} />
-          <div className="skeleton" style={{ width: '70%', height: 12, marginTop: 8 }} />
+        <div key={i} className="card prayer-skeleton">
+          <div className="skeleton prayer-skeleton__title" />
+          <div className="skeleton prayer-skeleton__line" />
+          <div className="skeleton prayer-skeleton__line prayer-skeleton__line--short" />
         </div>
       ))}
     </>

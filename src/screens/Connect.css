@@ -1,6 +1,108 @@
 .connect__tabs {
   margin-bottom: var(--sp-12);
 }
+
+/* ---------------- Search (scoped, modernized) ---------------- */
+.connect .search {
+  position: relative;
+  margin: var(--sp-2) 0 var(--sp-16);
+}
+/* Soft cyan->sapphire aura that blooms out from behind the pill on focus */
+.connect .search::before {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: var(--r-pill);
+  background: var(--grad-aqua);
+  opacity: 0;
+  filter: blur(12px);
+  transform: scale(0.96);
+  transition:
+    opacity 0.3s var(--ease-out),
+    transform 0.3s var(--ease-out);
+  pointer-events: none;
+  z-index: 0;
+}
+.connect .search:focus-within::before {
+  opacity: 0.22;
+  transform: scale(1);
+}
+.connect .search__icon {
+  left: 18px;
+  color: var(--sapphire-200);
+  transform: translateY(-50%);
+  transition:
+    color 0.2s var(--ease-out),
+    transform 0.2s var(--ease-out);
+  z-index: 2;
+}
+.connect .search:focus-within .search__icon {
+  color: var(--sapphire);
+  transform: translateY(-50%) scale(1.1);
+}
+.connect .search__input {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 50px;
+  padding: 0 var(--sp-48) 0 50px;
+  border-radius: var(--r-pill);
+  border: 1.5px solid var(--line);
+  background: var(--surface);
+  font-family: var(--font-body);
+  font-size: var(--fs-4);
+  color: var(--ink);
+  box-shadow: var(--shadow-sm);
+  transition:
+    border-color 0.2s var(--ease-out),
+    box-shadow 0.22s var(--ease-out),
+    transform 0.22s var(--ease-out);
+}
+.connect .search__input::placeholder {
+  color: var(--ink-4);
+}
+.connect .search__input:hover {
+  border-color: var(--line-strong);
+}
+.connect .search__input:focus {
+  outline: none;
+  border-color: var(--sapphire);
+  box-shadow:
+    0 0 0 4px rgba(18, 107, 135, 0.12),
+    var(--shadow-md);
+  transform: translateY(-1px);
+}
+/* Animated clear button — fades/scales in only when there is a query */
+.connect .search__clear {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%) scale(0.8);
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-pill);
+  color: var(--muted);
+  background: var(--surface-3);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.18s var(--ease-out),
+    transform 0.18s var(--ease-spring),
+    color 0.18s ease,
+    background 0.18s ease;
+  z-index: 2;
+}
+.connect .search--has-value .search__clear {
+  opacity: 1;
+  transform: translateY(-50%) scale(1);
+  pointer-events: auto;
+}
+.connect .search__clear:hover {
+  color: var(--sapphire);
+  background: var(--sapphire-900);
+}
 .connect__filterbar {
   display: flex;
   align-items: center;

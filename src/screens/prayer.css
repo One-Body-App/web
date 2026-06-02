@@ -2,6 +2,9 @@
   padding: var(--sp-16);
   margin-bottom: var(--sp-12);
 }
+.prayer-wall__tabs {
+  margin-bottom: var(--sp-16);
+}
 .prayer--detail {
   margin-bottom: 0;
   border-radius: 0;
@@ -31,12 +34,24 @@
 }
 .prayer__cat {
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   padding: 4px 10px;
   border-radius: var(--r-pill);
   font-size: var(--fs-1);
   font-weight: 700;
   background: var(--surface-3);
   color: var(--ink-3);
+}
+.prayer__cat-emoji {
+  font-size: 0.95em;
+  line-height: 1;
+}
+
+/* Infinite-scroll sentinel — invisible trigger at the end of the feed. */
+.prayer-wall__sentinel {
+  min-height: 1px;
 }
 .prayer__cat--request {
   background: rgba(18, 107, 135, 0.12);
@@ -300,4 +315,22 @@
   margin-top: var(--sp-12);
   display: flex;
   justify-content: flex-start;
+}
+
+.prayer-skeleton {
+  padding: var(--sp-16);
+  margin-bottom: var(--sp-12);
+}
+.prayer-skeleton__title {
+  width: 40%;
+  height: 12px;
+}
+.prayer-skeleton__line {
+  width: 100%;
+  height: 12px;
+  margin-top: 14px;
+}
+.prayer-skeleton__line--short {
+  width: 70%;
+  margin-top: 8px;
 }

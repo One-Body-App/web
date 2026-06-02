@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, HeartHandshake } from 'lucide-react';
+import { ArrowLeft, HeartHandshake, MapPin } from 'lucide-react';
 import { ApiError } from '@/api/client';
 import { connectApi, geocodeAddress, type JobDraft } from '@/api/connect';
 import './manage.css';
@@ -107,12 +107,21 @@ export function PostJob() {
       </div>
 
       {error ? (
-        <div className="auth-alert auth-alert--error" role="alert" style={{ marginBottom: 'var(--sp-12)' }}>
+        <div className="auth-alert auth-alert--error apply__alert" role="alert">
           {error}
         </div>
       ) : null}
 
       <form className="apply__form" onSubmit={submit}>
+        <p className="map-note">
+          <MapPin size={14} aria-hidden="true" />
+          <span>
+            On the Connect map, this opportunity is shown using your organization&rsquo;s profile
+            photo. If your organization has no photo, it won&rsquo;t appear on the map, but it
+            always shows in the list.
+          </span>
+        </p>
+
         <label className="apply-field">
           <span>Role title *</span>
           <input value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="Kids Ministry Coordinator" />
@@ -146,7 +155,11 @@ export function PostJob() {
           </label>
           <label className="apply-field">
             <span>&nbsp;</span>
-            <select value={frequency} onChange={(e) => setFrequency(e.target.value)}>
+            <select
+              aria-label="Compensation frequency"
+              value={frequency}
+              onChange={(e) => setFrequency(e.target.value)}
+            >
               {FREQS.map((f) => (
                 <option key={f.value} value={f.value}>
                   {f.label}

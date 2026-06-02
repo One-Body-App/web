@@ -205,7 +205,7 @@ export function MessageRecipientSelector({
         <EmptyState
           icon={<UserPlus size={28} />}
           title="No connected accounts yet"
-          body="Follow or connect with someone first, then return here to start a direct message."
+          body="Connect with someone first, then return here to start a direct message."
         />
       )}
     </div>

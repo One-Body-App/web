@@ -114,7 +114,7 @@ export function SecureAccountScreen() {
           </div>
           <p className="secure-account__device-note">
             Passkeys are the safest way in. Your device will ask for Face ID, Touch ID, or your
-            screen lock — no passwords to remember.
+            screen lock, no passwords to remember.
           </p>
           <SubmitButton
             type="button"

@@ -1,8 +1,9 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, CalendarPlus } from 'lucide-react';
+import { ArrowLeft, CalendarPlus, ImagePlus, MapPin, X } from 'lucide-react';
 import { useAuth } from '@/auth/context';
 import { ApiError } from '@/api/client';
+import { ImageCropModal } from '@/components/ImageCropModal';
 import { connectApi, geocodeAddress, type EventDraft } from '@/api/connect';
 import './manage.css';
 
@@ -24,6 +25,31 @@ export function CreateEvent() {
   const [tags, setTags] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Hero photo — kept in a ref (the File) plus a preview URL for display. An event
+  // only appears on the Connect map when it has a photo.
+  const photoFileRef = useRef<File | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const [photoPreview, setPhotoPreview] = useState('');
+  const [cropSrc, setCropSrc] = useState('');
+
+  function onPhotoChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setCropSrc(URL.createObjectURL(file));
+  }
+
+  function onCropConfirm(file: File, previewUrl: string) {
+    photoFileRef.current = file;
+    setPhotoPreview(previewUrl);
+    setCropSrc('');
+  }
+
+  function removePhoto() {
+    photoFileRef.current = null;
+    setPhotoPreview('');
+  }
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -56,7 +82,7 @@ export function CreateEvent() {
       }),
     } as EventDraft & { organizerName?: string };
     try {
-      await connectApi.publishEvent(draft);
+      await connectApi.publishEvent(draft, photoFileRef.current);
       navigate('/connect/manage', { replace: true });
     } catch (err) {
       setError(
@@ -84,12 +110,52 @@ export function CreateEvent() {
       </div>
 
       {error ? (
-        <div className="auth-alert auth-alert--error" role="alert" style={{ marginBottom: 'var(--sp-12)' }}>
+        <div className="auth-alert auth-alert--error apply__alert" role="alert">
           {error}
         </div>
       ) : null}
 
       <form className="apply__form" onSubmit={submit}>
+        <div className="apply-field">
+          <span>Event photo</span>
+          {photoPreview ? (
+            <div className="evt-photo">
+              <img src={photoPreview} alt="" />
+              <button
+                type="button"
+                className="evt-photo__remove"
+                onClick={removePhoto}
+                aria-label="Remove photo"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="apply__upload evt-photo__pick"
+              onClick={() => photoInputRef.current?.click()}
+            >
+              <ImagePlus size={18} /> Add a featured photo
+            </button>
+          )}
+          <input
+            ref={photoInputRef}
+            type="file"
+            accept="image/*"
+            hidden
+            onChange={onPhotoChange}
+          />
+          <p className={`map-note${photoPreview ? '' : ' map-note--warn'}`}>
+            <MapPin size={14} aria-hidden="true" />
+            <span>
+              {photoPreview
+                ? 'Your event will appear on the Connect map.'
+                : 'No photo yet — this event will show in the list but not on the Connect map. Add a photo so people can find it on the map.'}
+            </span>
+          </p>
+        </div>
+
         <label className="apply-field">
           <span>Event title *</span>
           <input value={title} onChange={(e) => setTitle(e.target.value)} required placeholder="City Worship Night" />
@@ -163,6 +229,19 @@ export function CreateEvent() {
           {busy ? 'Publishing…' : 'Publish event'}
         </button>
       </form>
+
+      {cropSrc ? (
+        <ImageCropModal
+          open
+          imageSrc={cropSrc}
+          aspect={16 / 10}
+          cropShape="rect"
+          fileName="event-hero.jpg"
+          maxSize={1280}
+          onCancel={() => setCropSrc('')}
+          onConfirm={onCropConfirm}
+        />
+      ) : null}
     </div>
   );
 }

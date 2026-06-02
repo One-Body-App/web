@@ -44,7 +44,6 @@
     gap: var(--sp-10);
     overflow-x: auto;
     scroll-snap-type: x mandatory;
-    scrollbar-width: none;
     padding-bottom: 2px;
   }
   .watch-shorts::-webkit-scrollbar {
@@ -80,6 +79,30 @@
   transition:
     transform 0.18s var(--ease-spring),
     box-shadow 0.18s ease;
+}
+.watch-shorts > .wshort:nth-child(2) {
+  animation-delay: 45ms;
+}
+.watch-shorts > .wshort:nth-child(3) {
+  animation-delay: 90ms;
+}
+.watch-shorts > .wshort:nth-child(4) {
+  animation-delay: 135ms;
+}
+.watch-shorts > .wshort:nth-child(5) {
+  animation-delay: 180ms;
+}
+.watch-shorts > .wshort:nth-child(6) {
+  animation-delay: 225ms;
+}
+.watch-shorts > .wshort:nth-child(7) {
+  animation-delay: 270ms;
+}
+.watch-shorts > .wshort:nth-child(8) {
+  animation-delay: 315ms;
+}
+.watch-shorts > .wshort:nth-child(n + 9) {
+  animation-delay: 360ms;
 }
 .wshort:hover {
   transform: translateY(-3px) scale(1.015);
@@ -147,6 +170,7 @@
 .wshort__cap strong {
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   color: #fff;
@@ -179,6 +203,30 @@
     box-shadow 0.16s ease,
     transform 0.16s ease;
 }
+.watch-videos > .wwide:nth-child(2) {
+  animation-delay: 55ms;
+}
+.watch-videos > .wwide:nth-child(3) {
+  animation-delay: 110ms;
+}
+.watch-videos > .wwide:nth-child(4) {
+  animation-delay: 165ms;
+}
+.watch-videos > .wwide:nth-child(5) {
+  animation-delay: 220ms;
+}
+.watch-videos > .wwide:nth-child(6) {
+  animation-delay: 275ms;
+}
+.watch-videos > .wwide:nth-child(7) {
+  animation-delay: 330ms;
+}
+.watch-videos > .wwide:nth-child(8) {
+  animation-delay: 385ms;
+}
+.watch-videos > .wwide:nth-child(n + 9) {
+  animation-delay: 440ms;
+}
 .wwide:hover {
   box-shadow: var(--shadow-lg);
   transform: translateY(-2px);
@@ -194,6 +242,25 @@
   background: var(--brand);
   cursor: pointer;
   overflow: hidden;
+  aspect-ratio: 16 / 9;
+}
+.wwide__frame--ratio-portrait {
+  aspect-ratio: 9 / 16;
+}
+.wwide__frame--ratio-tall {
+  aspect-ratio: 4 / 5;
+}
+.wwide__frame--ratio-square {
+  aspect-ratio: 1 / 1;
+}
+.wwide__frame--ratio-standard {
+  aspect-ratio: 4 / 3;
+}
+.wwide__frame--ratio-wide {
+  aspect-ratio: 16 / 9;
+}
+.wwide__frame--ratio-ultrawide {
+  aspect-ratio: 21 / 9;
 }
 .wwide__frame img {
   width: 100%;
@@ -242,6 +309,7 @@
 .wwide__info strong {
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   font-family: var(--font-display);
@@ -255,6 +323,7 @@
 .wwide__info p {
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   margin-top: 2px;
@@ -288,7 +357,7 @@
   align-items: flex-end;
   justify-content: space-between;
   gap: var(--sp-16);
-  margin-bottom: var(--sp-18);
+  margin-bottom: var(--sp-20);
 }
 .watch-sermons-toolbar h2,
 .sermon-filter-modal__head h2 {
@@ -305,13 +374,37 @@
 .watch-sermons {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--sp-18);
+  gap: var(--sp-20);
 }
 .sermon-card {
   padding: 0;
   overflow: hidden;
   opacity: 0;
   animation: watch-rise 0.5s var(--ease-out) forwards;
+}
+.watch-sermons > .sermon-card:nth-child(2) {
+  animation-delay: 55ms;
+}
+.watch-sermons > .sermon-card:nth-child(3) {
+  animation-delay: 110ms;
+}
+.watch-sermons > .sermon-card:nth-child(4) {
+  animation-delay: 165ms;
+}
+.watch-sermons > .sermon-card:nth-child(5) {
+  animation-delay: 220ms;
+}
+.watch-sermons > .sermon-card:nth-child(6) {
+  animation-delay: 275ms;
+}
+.watch-sermons > .sermon-card:nth-child(7) {
+  animation-delay: 330ms;
+}
+.watch-sermons > .sermon-card:nth-child(8) {
+  animation-delay: 385ms;
+}
+.watch-sermons > .sermon-card:nth-child(n + 9) {
+  animation-delay: 440ms;
 }
 .sermon-card__frame {
   position: relative;
@@ -381,6 +474,7 @@
 .sermon-card__meta strong {
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   color: var(--brand);
@@ -597,40 +691,71 @@
 }
 .sermon-filter-modal {
   align-items: end;
+  /* A true bottom sheet: rises from and sits flush against the bottom edge. */
+  padding: var(--sp-20) var(--sp-20) 0;
 }
 .sermon-filter-modal__sheet {
   position: relative;
   z-index: 1;
+  display: flex;
+  flex-direction: column;
   width: min(720px, 100%);
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--sp-14);
-  padding: var(--sp-18);
-  border-radius: var(--r-base) var(--r-base) 0 0;
+  max-height: 88vh;
+  max-height: 88dvh;
+  overflow: hidden;
+  border-radius: var(--r-lg) var(--r-lg) 0 0;
   background: var(--surface);
   box-shadow: var(--shadow-lg);
+  animation: sermon-sheet-rise 0.34s var(--ease-out);
 }
-.sermon-filter-modal__head,
-.sermon-filter-field--wide,
-.sermon-filter-modal__actions {
-  grid-column: 1 / -1;
+/* Grab handle — signals this is a sheet you can pull down. */
+.sermon-filter-modal__sheet::before {
+  content: "";
+  flex: none;
+  align-self: center;
+  width: 40px;
+  height: 4px;
+  margin: var(--sp-10) 0 var(--sp-2);
+  border-radius: var(--r-pill);
+  background: var(--line-strong);
 }
 .sermon-filter-modal__head {
+  flex: none;
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--sp-12);
+  padding: var(--sp-8) var(--sp-24) var(--sp-16);
 }
 .sermon-filter-modal__head button {
   width: 38px;
   height: 38px;
+  flex: none;
   display: grid;
   place-items: center;
   border: 1px solid var(--line);
   border-radius: 50%;
   color: var(--brand);
-  background: #fff;
+  background: var(--surface);
   cursor: pointer;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease;
+}
+.sermon-filter-modal__head button:hover {
+  border-color: var(--sapphire);
+  color: var(--sapphire);
+}
+.sermon-filter-modal__body {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-16);
+  padding: 0 var(--sp-24) var(--sp-20);
+}
+.sermon-filter-field--wide {
+  grid-column: 1 / -1;
 }
 .sermon-filter-field {
   min-width: 0;
@@ -648,15 +773,44 @@
   height: 42px;
   border: 1px solid var(--line);
   border-radius: var(--r-base);
-  background: #fff;
+  background: var(--surface-2);
   color: var(--ink);
   padding: 0 var(--sp-12);
   font: inherit;
+  transition: border-color 0.15s ease;
+}
+.sermon-filter-field input:focus,
+.sermon-filter-field select:focus {
+  border-color: var(--sapphire);
 }
 .sermon-filter-modal__actions {
+  flex: none;
   display: flex;
   justify-content: flex-end;
   gap: var(--sp-10);
+  padding: var(--sp-16) var(--sp-24);
+  padding-bottom: calc(var(--sp-16) + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}
+.sermon-filter-modal__backdrop {
+  animation: sermon-backdrop-in 0.24s var(--ease-out);
+}
+.watch-skeleton__heading {
+  width: 80px;
+  height: 14px;
+  margin-bottom: var(--sp-12);
+}
+.watch-skeleton__short,
+.watch-skeleton__video {
+  width: 100%;
+  border-radius: var(--r-base);
+}
+.watch-skeleton__short {
+  aspect-ratio: 9 / 16;
+}
+.watch-skeleton__video {
+  aspect-ratio: 16 / 9;
 }
 
 @media (max-width: 719.98px) {
@@ -667,9 +821,12 @@
   .watch-sermons {
     grid-template-columns: 1fr;
   }
-  .sermon-lightbox,
-  .sermon-filter-modal {
+  .sermon-lightbox {
     padding: var(--sp-10);
+  }
+  /* Edge-to-edge bottom sheet on phones. */
+  .sermon-filter-modal {
+    padding: 0;
   }
   .sermon-lightbox__panel {
     width: 100%;
@@ -682,9 +839,11 @@
     justify-content: center;
   }
   .sermon-filter-modal__sheet {
+    max-height: 92vh;
+    max-height: 92dvh;
+  }
+  .sermon-filter-modal__body {
     grid-template-columns: 1fr;
-    max-height: calc(100vh - 32px);
-    overflow-y: auto;
   }
 }
 
@@ -696,5 +855,28 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes sermon-sheet-rise {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+@keyframes sermon-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sermon-filter-modal__sheet,
+  .sermon-filter-modal__backdrop {
+    animation: none;
   }
 }

@@ -208,11 +208,55 @@ function createConnectMapStyle(darkMode: boolean): StyleSpecification {
   } as StyleSpecification;
 }
 
+// Per-kind fallback glyphs (lucide paths) shown inside the pin when an item has
+// no image — mirrors the mobile marker icons (calendar / heart-handshake / pin).
+const PIN_ICONS: Record<MapItem['kind'], string> = {
+  event:
+    '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/><path d="M8 14h.01"/><path d="M12 14h.01"/><path d="M16 14h.01"/><path d="M8 18h.01"/><path d="M12 18h.01"/><path d="M16 18h.01"/>',
+  job: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/><path d="M12 5 9.04 7.96a2.17 2.17 0 0 0 0 3.08c.82.82 2.13.85 3 .07l2.07-1.9a2.82 2.82 0 0 1 3.79 0l2.96 2.66"/><path d="m18 15-2-2"/><path d="m15 18-2-2"/>',
+  place:
+    '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
+};
+
+function iconSvg(kind: MapItem['kind']): string {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true">${PIN_ICONS[kind]}</svg>`;
+}
+
 function createMarkerElement(item: MapItem, onSelect: (event: MouseEvent) => void) {
   const el = document.createElement('button');
   el.type = 'button';
-  el.className = `cmap-pin cmap-pin--${item.kind}`;
+  el.className = `cmap-pin cmap-pin--${item.kind}${item.image ? ' cmap-pin--photo' : ''}`;
   el.setAttribute('aria-label', item.title);
+
+  // The map library writes an inline `transform` to `el` every frame to position
+  // it. All hover/selected/entrance transforms live on this inner wrapper so they
+  // never fight the library's positioning (which would make pins drift on zoom).
+  const inner = document.createElement('span');
+  inner.className = 'cmap-pin__inner';
+
+  const tail = document.createElement('span');
+  tail.className = 'cmap-pin__tail';
+
+  const head = document.createElement('span');
+  head.className = 'cmap-pin__head';
+  if (item.image) {
+    const img = document.createElement('img');
+    img.className = 'cmap-pin__img';
+    img.src = item.image;
+    img.alt = '';
+    img.loading = 'lazy';
+    // If the thumbnail 404s, drop back to the kind glyph so we never show a broken pin.
+    img.addEventListener('error', () => {
+      el.classList.remove('cmap-pin--photo');
+      head.innerHTML = iconSvg(item.kind);
+    });
+    head.appendChild(img);
+  } else {
+    head.innerHTML = iconSvg(item.kind);
+  }
+
+  inner.append(tail, head);
+  el.append(inner);
   el.addEventListener('click', onSelect);
   return el;
 }
@@ -257,7 +301,10 @@ export function ConnectMap({ items }: { items: MapItem[] }) {
     };
     media.addEventListener('change', onColorSchemeChange);
 
-    const onMapClick = () => setSelected(null);
+    const onMapClick = () => {
+      markersRef.current.forEach((m) => m.getElement().classList.remove('cmap-pin--selected'));
+      setSelected(null);
+    };
     const initialDarkMode = getPreferredDarkMode();
     let cancelled = false;
     let settled = false;
@@ -435,12 +482,16 @@ export function ConnectMap({ items }: { items: MapItem[] }) {
         const coordinate: Coordinate = [item.lng, item.lat];
         const onMarkerClick = (event: MouseEvent) => {
           event.stopPropagation();
+          markersRef.current.forEach((m) => m.getElement().classList.remove('cmap-pin--selected'));
+          el.classList.add('cmap-pin--selected');
           setSelected(item);
           map.flyTo({ center: coordinate, zoom: Math.max(map.getZoom(), 11), duration: 500 });
         };
         const el = createMarkerElement(item, onMarkerClick);
         cleanups.push(() => el.removeEventListener('click', onMarkerClick));
-        const marker = new mapboxgl.Marker({ element: el }).setLngLat(coordinate).addTo(map);
+        const marker = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
+          .setLngLat(coordinate)
+          .addTo(map);
         nextMarkers.push(marker);
         bounds.extend(coordinate);
       });
@@ -460,12 +511,16 @@ export function ConnectMap({ items }: { items: MapItem[] }) {
         const coordinate: Coordinate = [item.lng, item.lat];
         const onMarkerClick = (event: MouseEvent) => {
           event.stopPropagation();
+          markersRef.current.forEach((m) => m.getElement().classList.remove('cmap-pin--selected'));
+          el.classList.add('cmap-pin--selected');
           setSelected(item);
           map.flyTo({ center: coordinate, zoom: Math.max(map.getZoom(), 11), duration: 500 });
         };
         const el = createMarkerElement(item, onMarkerClick);
         cleanups.push(() => el.removeEventListener('click', onMarkerClick));
-        const marker = new maplibregl.Marker({ element: el }).setLngLat(coordinate).addTo(map);
+        const marker = new maplibregl.Marker({ element: el, anchor: 'bottom' })
+          .setLngLat(coordinate)
+          .addTo(map);
         nextMarkers.push(marker);
         bounds.extend(coordinate);
       });

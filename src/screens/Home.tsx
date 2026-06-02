@@ -532,8 +532,8 @@ export function Home() {
             top === 'pray'
               ? 'No prayer requests yet — be the first to share one on the Prayer Wall.'
               : top === 'feed' && sub === 'connected'
-                ? 'Follow creators and churches to fill your Connected feed.'
-                : 'Switch tabs or follow more of the Body to discover posts.'
+                ? 'Connect with creators and churches to fill your Connected feed.'
+                : 'Switch tabs or connect with more of the Body to discover posts.'
           }
         />
       )}

@@ -25,7 +25,7 @@ export function FollowStep() {
   }
 
   if (suggestedUsers.length === 0) {
-    return <p className="onboarding-hint">No suggestions right now — you can follow people anytime.</p>;
+    return <p className="onboarding-hint">No suggestions right now. You can connect with people anytime.</p>;
   }
 
   return (
@@ -46,7 +46,7 @@ export function FollowStep() {
         ))}
       </div>
       {loadingMoreSuggestions ? (
-        <p className="onboarding-hint onboarding-people__status">Loading more people...</p>
+        <p className="onboarding-hint onboarding-people__status">Loading more people&hellip;</p>
       ) : null}
     </div>
   );

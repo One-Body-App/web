@@ -231,3 +231,29 @@
   border-radius: 50%;
   flex-shrink: 0;
 }
+.cmt-skeleton__title {
+  width: 40%;
+  height: 11px;
+}
+.cmt-skeleton__line {
+  width: 92%;
+  height: 11px;
+  margin-top: 9px;
+}
+.cmt-skeleton__line--short {
+  width: 60%;
+  margin-top: 6px;
+}
+.postdetail__focus .cmt-skeleton__title {
+  width: 45%;
+  height: 12px;
+}
+.postdetail__focus .cmt-skeleton__line {
+  width: 95%;
+  height: 12px;
+  margin-top: 10px;
+}
+.postdetail__focus .cmt-skeleton__line--short {
+  width: 80%;
+  margin-top: 6px;
+}

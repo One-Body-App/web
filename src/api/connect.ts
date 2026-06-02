@@ -35,6 +35,8 @@ export interface ConnectJob {
   id: string;
   title: string;
   organizationName?: string;
+  /** Organization avatar/logo, used to represent the opportunity on the map. */
+  organizationAvatar?: string;
   denomination?: string;
   sector?: string;
   opportunityType?: string;
@@ -231,10 +233,16 @@ export function mapEvent(e: Raw): ConnectEvent {
 
 export function mapJob(j: Raw): ConnectJob {
   const address = str(j.address);
+  const org = j.organization && typeof j.organization === 'object' ? (j.organization as Raw) : undefined;
   return {
     id: String(j._id ?? j.id ?? ''),
     title: str(j.title) ?? 'Open opportunity',
-    organizationName: str(j.organizationName),
+    organizationName: str(j.organizationName) ?? str(org?.title) ?? str(org?.name),
+    organizationAvatar:
+      str(j.organizationAvatarUri) ??
+      str(j.organizationLogoUri) ??
+      str(org?.avatarUri) ??
+      str(org?.profileImage),
     denomination: str(j.denomination),
     sector: str(j.sector),
     opportunityType: str(j.opportunityType),
@@ -435,12 +443,14 @@ export const connectApi = {
   async myJobs(): Promise<ConnectJob[]> {
     return unwrap(await api.get('connect/jobs/mine')).map(mapJob);
   },
-  /** Events publish via multipart (controller uses FileInterceptor), matching mobile. */
-  async publishEvent(body: EventDraft & { organizerName?: string }) {
+  /** Events publish via multipart (controller uses FileInterceptor), matching mobile.
+   *  An optional hero image is sent as the `heroImage` file part. */
+  async publishEvent(body: EventDraft & { organizerName?: string }, heroImage?: File | null) {
     const fd = new FormData();
     for (const [k, v] of Object.entries(strip(body))) {
       fd.append(k, Array.isArray(v) ? JSON.stringify(v) : String(v));
     }
+    if (heroImage) fd.append('heroImage', heroImage);
     const token = await getAuthToken();
     let res: Response;
     try {

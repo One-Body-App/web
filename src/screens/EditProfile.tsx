@@ -296,8 +296,22 @@ function EditProfileForm({
         </div>
       </div>
 
-      <input ref={avatarInputRef} type="file" accept="image/*" hidden onChange={(e) => onFileChange('avatar', e)} />
-      <input ref={headerInputRef} type="file" accept="image/*" hidden onChange={(e) => onFileChange('header', e)} />
+      <input
+        ref={avatarInputRef}
+        type="file"
+        accept="image/*"
+        aria-label="Choose profile photo"
+        hidden
+        onChange={(e) => onFileChange('avatar', e)}
+      />
+      <input
+        ref={headerInputRef}
+        type="file"
+        accept="image/*"
+        aria-label="Choose cover image"
+        hidden
+        onChange={(e) => onFileChange('header', e)}
+      />
 
       <div className="edit-profile__body">
         {error ? <p className="edit-profile__error">{error}</p> : null}

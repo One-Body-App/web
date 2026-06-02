@@ -10,8 +10,10 @@ import {
   Plus,
   Search,
   Users,
+  X,
 } from 'lucide-react';
 import { Avatar } from '@/components/Avatar';
+import { ConnectionButton } from '@/components/ConnectionButton';
 import type { MapItem } from '@/components/ConnectMap';
 import { EmptyState, PageHeader, Segmented } from '@/components/ui';
 
@@ -19,7 +21,7 @@ import { EmptyState, PageHeader, Segmented } from '@/components/ui';
 const ConnectMap = lazy(() =>
   import('@/components/ConnectMap').then((m) => ({ default: m.ConnectMap })),
 );
-import { useApiMutation, useApiQuery } from '@/api/useApi';
+import { useApiQuery } from '@/api/useApi';
 import { endpoints } from '@/api/endpoints';
 import {
   connectApi,
@@ -108,11 +110,24 @@ export function Connect() {
     return list;
   }, [orgs.data, placeChip, query]);
 
+  // Organization avatars keyed by lowercased name, so an opportunity can borrow
+  // its organization's photo for the map when the job carries no avatar of its own.
+  const orgAvatarByName = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const o of orgs.data ?? CONNECT_ORGS_MOCK) {
+      if (o.avatar && o.title) map.set(o.title.toLowerCase(), o.avatar);
+    }
+    return map;
+  }, [orgs.data]);
+
+  // The map only shows items that have an image (event photo, place avatar, or an
+  // opportunity's organization avatar). Imageless items are omitted here so the map
+  // stays photo-rich — they still appear normally in the list view.
   const mapItems: MapItem[] = useMemo(() => {
     if (tab === 'go') {
       const mapped: MapItem[] = [];
       for (const e of visibleEvents) {
-        if (!hasCoordinates(e)) continue;
+        if (!hasCoordinates(e) || !e.image) continue;
         mapped.push({
           id: e.id,
           lat: e.lat,
@@ -130,12 +145,16 @@ export function Connect() {
       const mapped: MapItem[] = [];
       for (const j of visibleJobs) {
         if (!hasCoordinates(j)) continue;
+        const image =
+          j.organizationAvatar ?? orgAvatarByName.get((j.organizationName ?? '').toLowerCase());
+        if (!image) continue;
         mapped.push({
           id: j.id,
           lat: j.lat,
           lng: j.lng,
           title: j.title,
           subtitle: [j.organizationName, j.opportunityType].filter(Boolean).join(' · '),
+          image,
           to: `/connect/serve/${j.id}`,
           kind: 'job',
         });
@@ -144,7 +163,7 @@ export function Connect() {
     }
     const mapped: MapItem[] = [];
     for (const o of visibleOrgs) {
-      if (!hasCoordinates(o)) continue;
+      if (!hasCoordinates(o) || !o.avatar) continue;
       mapped.push({
         id: o.id,
         lat: o.lat,
@@ -156,7 +175,7 @@ export function Connect() {
       });
     }
     return mapped;
-  }, [tab, visibleEvents, visibleJobs, visibleOrgs]);
+  }, [tab, visibleEvents, visibleJobs, visibleOrgs, orgAvatarByName]);
 
   const searchPlaceholder =
     tab === 'go' ? 'Search events…' : tab === 'serve' ? 'Search opportunities…' : 'Search places…';
@@ -193,7 +212,7 @@ export function Connect() {
         />
       </div>
 
-      <div className="search">
+      <div className={`search${q ? ' search--has-value' : ''}`}>
         <Search size={20} className="search__icon" />
         <input
           className="search__input"
@@ -202,6 +221,15 @@ export function Connect() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
+        <button
+          type="button"
+          className="search__clear"
+          aria-label="Clear search"
+          tabIndex={q ? 0 : -1}
+          onClick={() => setQ('')}
+        >
+          <X size={16} />
+        </button>
       </div>
 
       {/* Filters + view toggle */}
@@ -442,9 +470,6 @@ function JobCard({ job }: { job: ConnectJob }) {
 }
 
 function PlaceCard({ org }: { org: ConnectOrg }) {
-  const [following, setFollowing] = useState(false);
-  const follow = useApiMutation((id: string) => endpoints.followUser(id));
-  const unfollow = useApiMutation((id: string) => endpoints.unfollowUser(id));
   return (
     <div className="place-card card">
       <Avatar src={org.avatar ?? '/brand/avatar1.png'} alt={org.title} size={52} />
@@ -456,17 +481,7 @@ function PlaceCard({ org }: { org: ConnectOrg }) {
           {org.distanceLabel ? ` · ${org.distanceLabel}` : ''}
         </span>
       </div>
-      <button
-        type="button"
-        className={`btn btn--sm ${following ? 'btn--outline' : 'btn--accent'}`}
-        onClick={() => {
-          const next = !following;
-          setFollowing(next);
-          (next ? follow.mutate(org.id) : unfollow.mutate(org.id));
-        }}
-      >
-        {following ? 'Following' : 'Follow'}
-      </button>
+      <ConnectionButton targetId={org.id} name={org.title} />
     </div>
   );
 }

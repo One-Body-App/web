@@ -22,7 +22,8 @@ import { Avatar } from '@/components/Avatar';
 import { useAuth } from '@/auth/context';
 import { endpoints, type SocialContentType } from '@/api/endpoints';
 import { FEELING_ITEMS, getFeelingItem } from '@/api/feelings';
-import { ComposerMediaTray, type ComposerMediaItem } from '@/components/ComposerMediaTray';
+import { ComposerMediaTray } from '@/components/ComposerMediaTray';
+import { buildComposerMediaItem, type ComposerMediaItem } from '@/components/composerMedia';
 import { TurnstileGate } from '@/components/TurnstileGate';
 import { ScripturePickerDrawer } from '@/components/scripture/ScripturePickerDrawer';
 import { hasLikelyScripture, type ScriptureShare } from '@/api/scripture';
@@ -463,6 +464,7 @@ export function CreatePost() {
           type="file"
           multiple
           accept="image/*"
+          aria-label="Add photos"
           style={{ display: 'none' }}
           onChange={(e) => {
             const files = Array.from(e.target.files ?? []);
@@ -471,12 +473,7 @@ export function CreatePost() {
               const next = [...current];
               for (const file of files) {
                 if (next.length >= 10) break;
-                next.push({
-                  id: `mi_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
-                  kind: 'photo',
-                  file,
-                  previewUrl: URL.createObjectURL(file),
-                });
+                next.push(buildComposerMediaItem(file));
               }
               return next;
             });
@@ -488,6 +485,7 @@ export function CreatePost() {
           ref={videoInputRef}
           type="file"
           accept="video/*"
+          aria-label="Add video"
           style={{ display: 'none' }}
           onChange={(e) => {
             const file = e.target.files?.[0];
@@ -499,12 +497,7 @@ export function CreatePost() {
               if (withoutVideo.length >= 10) {
                 return current;
               }
-              withoutVideo.push({
-                id: `mi_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`,
-                kind: 'video',
-                file,
-                previewUrl: URL.createObjectURL(file),
-              });
+              withoutVideo.push(buildComposerMediaItem(file));
               return withoutVideo;
             });
             if (videoInputRef.current) videoInputRef.current.value = '';
@@ -749,7 +742,7 @@ function ComposePreview({
           <div className={`compose-preview__hero${hero.kind === 'video' ? ' is-video' : ''}`}>
             {hero.kind === 'video' ? (
               <>
-                <video src={hero.previewUrl} muted playsInline />
+                <video src={hero.previewUrl} muted playsInline aria-label="Post video preview" />
                 <span className="compose-preview__play" aria-hidden="true">
                   <Play size={26} fill="currentColor" />
                 </span>
@@ -765,7 +758,7 @@ function ComposePreview({
             {extras.slice(0, 4).map((item) => (
               <div key={item.id} className="compose-preview__strip-item">
                 {item.kind === 'video' ? (
-                  <video src={item.previewUrl} muted playsInline />
+                  <video src={item.previewUrl} muted playsInline aria-label="Additional video preview" />
                 ) : (
                   <img src={item.previewUrl} alt="" />
                 )}

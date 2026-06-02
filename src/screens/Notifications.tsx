@@ -337,7 +337,7 @@ export function Notifications() {
         <EmptyState
           icon={<Bell size={32} />}
           title="No notifications yet"
-          body="When people react, comment, follow, or pray for you, it'll show up here."
+          body="When people react, comment, connect, or pray for you, it'll show up here."
         />
       ) : (
         <>

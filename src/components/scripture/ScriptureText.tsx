@@ -51,31 +51,27 @@ export function ScriptureText({
 
   const segments: React.ReactNode[] = [];
   let cursor = 0;
-  valid.forEach((m, i) => {
+  valid.forEach((m) => {
     if (m.startIndex < cursor) return; // skip overlaps
     if (m.startIndex > cursor) {
-      segments.push(<Fragment key={`t${i}`}>{text.slice(cursor, m.startIndex)}</Fragment>);
+      segments.push(
+        <Fragment key={`text-${cursor}-${m.startIndex}`}>
+          {text.slice(cursor, m.startIndex)}
+        </Fragment>,
+      );
     }
     segments.push(
-      <a
-        key={`s${i}`}
+      <button
+        type="button"
+        key={`scripture-${m.key ?? m.reference}-${m.startIndex}-${m.endIndex}`}
         className="scripture-link"
-        role="button"
-        tabIndex={0}
         onClick={(e) => {
           e.stopPropagation();
           setActive(m);
         }}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            e.stopPropagation();
-            setActive(m);
-          }
-        }}
       >
         {text.slice(m.startIndex, m.endIndex)}
-      </a>,
+      </button>,
     );
     cursor = m.endIndex;
   });

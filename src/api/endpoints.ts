@@ -561,6 +561,7 @@ export interface MyProfile {
   joinedYear?: number;
   followers: number;
   following: number;
+  followingIds: string[];
   accountType?: 'individual' | 'organization' | string;
   profile?: ApiUser['profile'];
   interests: Array<{ id: string; name: string }>;
@@ -583,6 +584,24 @@ function parseJoinedYear(createdAt?: string): number | undefined {
   return Number.isFinite(year) ? year : undefined;
 }
 
+function resolveUserId(value: unknown): string {
+  if (typeof value === 'string' || typeof value === 'number') return String(value).trim();
+  if (!value || typeof value !== 'object') return '';
+  const record = value as Record<string, unknown>;
+  const candidate = record._id ?? record.id ?? record.userId ?? record.$oid;
+  if (typeof candidate === 'string' || typeof candidate === 'number') {
+    return String(candidate).trim();
+  }
+  if (candidate && typeof candidate === 'object') {
+    const nested = candidate as Record<string, unknown>;
+    const nestedCandidate = nested._id ?? nested.id ?? nested.userId ?? nested.$oid;
+    return typeof nestedCandidate === 'string' || typeof nestedCandidate === 'number'
+      ? String(nestedCandidate).trim()
+      : '';
+  }
+  return '';
+}
+
 function mapMyProfile(u: ApiUser): MyProfile {
   return {
     id: u._id ?? u.id ?? '',
@@ -599,6 +618,9 @@ function mapMyProfile(u: ApiUser): MyProfile {
     joinedYear: parseJoinedYear(u.createdAt),
     followers: Array.isArray(u.followers) ? u.followers.length : 0,
     following: Array.isArray(u.following) ? u.following.length : 0,
+    followingIds: Array.isArray(u.following)
+      ? u.following.map(resolveUserId).filter((id) => id.length > 0)
+      : [],
     accountType: u.accountType,
     profile: u.profile,
     interests: (u.interests ?? []).map((interest) =>

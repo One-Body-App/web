@@ -1,16 +1,8 @@
 import { useCallback, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Film, GripVertical, ImageIcon, X } from 'lucide-react';
+import type { ComposerMediaItem } from './composerMedia';
 import './ComposerMediaTray.css';
-
-export type ComposerMediaItem = {
-  id: string;
-  kind: 'photo' | 'video';
-  // The File the user picked. Kept so we can hand it back to the upload call.
-  file: File;
-  // An ObjectURL we can render in the <img> / <video>.
-  previewUrl: string;
-};
 
 export type ComposerMediaTrayProps = {
   items: ComposerMediaItem[];
@@ -19,18 +11,6 @@ export type ComposerMediaTrayProps = {
 };
 
 const DEFAULT_MAX = 10;
-
-const newId = (): string => `mi_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-
-export function buildComposerMediaItem(file: File): ComposerMediaItem {
-  const kind: 'photo' | 'video' = file.type.startsWith('video/') ? 'video' : 'photo';
-  return {
-    id: newId(),
-    kind,
-    file,
-    previewUrl: URL.createObjectURL(file),
-  };
-}
 
 export function ComposerMediaTray({ items, onChange, maxItems = DEFAULT_MAX }: ComposerMediaTrayProps) {
   const dragSourceRef = useRef<string | null>(null);
@@ -111,7 +91,13 @@ export function ComposerMediaTray({ items, onChange, maxItems = DEFAULT_MAX }: C
                 <GripVertical size={14} />
               </div>
               {item.kind === 'video' ? (
-                <video className="cmt__preview" src={item.previewUrl} muted playsInline />
+                <video
+                  className="cmt__preview"
+                  src={item.previewUrl}
+                  muted
+                  playsInline
+                  aria-label={`Selected video ${index + 1} preview`}
+                />
               ) : (
                 <img className="cmt__preview" src={item.previewUrl} alt="" />
               )}

@@ -11,28 +11,120 @@
   inset: 0;
 }
 
-/* Markers */
+/* Markers — teardrop pins with avatar/thumbnail heads (mirrors mobile).
+   IMPORTANT: the map library owns `transform` on `.cmap-pin` (it positions the
+   marker every frame). Never put transform / transition / animation on this
+   element, or the pins will lag and drift while zooming. All motion lives on
+   `.cmap-pin__inner`. */
 .cmap-pin {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 3px solid #fff;
-  box-shadow: 0 1px 5px rgba(3, 47, 60, 0.45);
-  cursor: pointer;
+  position: relative;
+  width: 44px;
+  height: 52px;
   padding: 0;
-  transition: transform 0.16s var(--ease-spring);
+  border: none;
+  background: transparent;
+  cursor: pointer;
 }
 .cmap-pin:hover {
-  transform: scale(1.28);
+  z-index: 5;
 }
+/* Per-kind accent — drives both the ring (photo pins) and fill (icon pins). */
 .cmap-pin--event {
-  background: var(--sapphire);
+  --pin-color: var(--sapphire);
 }
 .cmap-pin--place {
-  background: var(--brand);
+  --pin-color: var(--brand);
 }
 .cmap-pin--job {
-  background: var(--accent);
+  --pin-color: var(--accent);
+}
+
+.cmap-pin__inner {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 100%;
+  transition: transform 0.18s var(--ease-spring);
+  animation: cmap-pin-in 0.34s var(--ease-spring);
+}
+.cmap-pin:hover .cmap-pin__inner {
+  transform: scale(1.1) translateY(-2px);
+}
+
+.cmap-pin__tail {
+  position: absolute;
+  left: 50%;
+  bottom: 1px;
+  width: 16px;
+  height: 16px;
+  background: var(--pin-color);
+  border-radius: 0 0 4px 0;
+  transform: translateX(-50%) rotate(45deg);
+  box-shadow: 0 3px 6px rgba(3, 47, 60, 0.28);
+  z-index: 1;
+}
+.cmap-pin__head {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: var(--pin-color);
+  border: 2.5px solid #fff;
+  box-shadow:
+    0 0 0 2px var(--pin-color),
+    0 4px 10px rgba(3, 47, 60, 0.3);
+  z-index: 2;
+  transform: translateX(-50%);
+}
+.cmap-pin--photo .cmap-pin__head {
+  background: var(--surface);
+}
+.cmap-pin__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.cmap-pin__head svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: #fff;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* Selected — grows and swaps to the cyan accent ring (mobile active state). */
+.cmap-pin--selected {
+  z-index: 6;
+}
+.cmap-pin--selected .cmap-pin__inner {
+  transform: scale(1.16) translateY(-3px);
+}
+.cmap-pin--selected .cmap-pin__head {
+  border-color: #fff;
+  box-shadow:
+    0 0 0 3px var(--accent),
+    0 6px 16px rgba(3, 47, 60, 0.4);
+}
+@keyframes cmap-pin-in {
+  from {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.7);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cmap-pin__inner {
+    animation: none;
+  }
 }
 
 /* Empty overlay */

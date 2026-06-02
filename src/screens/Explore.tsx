@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { ArticleCard } from '@/components/ArticleCard';
 import { Avatar } from '@/components/Avatar';
+import { ConnectionButton } from '@/components/ConnectionButton';
 import { FeedVideoCard } from '@/components/FeedVideoCard';
 import { PostCard } from '@/components/PostCard';
 import { EmptyState, PageHeader, SectionHeader, Segmented } from '@/components/ui';
@@ -20,7 +21,7 @@ import type { OBPost, OBUser } from '@/data/mock';
 import { endpoints, type OBFeedItem, type OBSearchItem } from '@/api/endpoints';
 import { type WatchVideo, watchApi } from '@/api/watch';
 import { PrayerCard } from './PrayerWall';
-import { useApiMutation, useApiQuery } from '@/api/useApi';
+import { useApiQuery } from '@/api/useApi';
 import './Explore.css';
 
 type SearchFilter = 'top' | 'profiles' | 'latest' | 'watch';
@@ -204,28 +205,6 @@ function ExploreSocialCard({ post }: { post: OBPost }) {
   );
 }
 
-function FollowButton({ userId }: { userId: string }) {
-  const [following, setFollowing] = useState(false);
-  const follow = useApiMutation((id: string) => endpoints.followUser(id));
-  const unfollow = useApiMutation((id: string) => endpoints.unfollowUser(id));
-
-  function toggle() {
-    const next = !following;
-    setFollowing(next);
-    (next ? follow.mutate(userId) : unfollow.mutate(userId));
-  }
-
-  return (
-    <button
-      type="button"
-      className={`btn btn--sm ${following ? 'btn--outline' : 'btn--accent'}`}
-      onClick={toggle}
-    >
-      {following ? 'Following' : 'Follow'}
-    </button>
-  );
-}
-
 function UserRow({ user }: { user: OBUser }) {
   return (
     <div className="discover-row card">
@@ -243,7 +222,7 @@ function UserRow({ user }: { user: OBUser }) {
         </span>
         {user.bio ? <p className="discover-row__bio">{user.bio}</p> : null}
       </div>
-      <FollowButton userId={user.id} />
+      <ConnectionButton targetId={user.id} name={user.name} />
     </div>
   );
 }
