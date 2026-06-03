@@ -13,6 +13,12 @@ import {
   type ScriptureMention,
   type ScriptureShare,
 } from '../../api/scripture';
+import {
+  getChapterOptions,
+  getVerseOptions,
+  hasValidChapter,
+  hasValidVerse,
+} from '../../api/scriptureSelection';
 import { useApiQuery } from '../../api/useApi';
 import './scripture.css';
 
@@ -23,12 +29,22 @@ type Props = {
   onClear: () => void;
 };
 
+// Drop a trailing chapter/verse portion ("John 3 16" -> "john") so the book
+// still surfaces while the user is typing the numbers.
+function bookQueryPart(query: string) {
+  const tokens = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
+  while (tokens.length > 1 && /^[\d:.\-–]+$/.test(tokens[tokens.length - 1])) {
+    tokens.pop();
+  }
+  return tokens.join(' ');
+}
+
 function matchesBook(book: BibleBook, query: string) {
-  const normalized = query.toLowerCase().trim();
-  if (!normalized) return true;
+  const part = bookQueryPart(query);
+  if (!part) return true;
   return (
-    book.name.toLowerCase().includes(normalized) ||
-    book.aliases.some((alias) => alias.includes(normalized))
+    book.name.toLowerCase().includes(part) ||
+    book.aliases.some((alias) => alias.includes(part))
   );
 }
 
@@ -44,10 +60,6 @@ function toPayload(mention: Pick<ScriptureMention, 'book' | 'chapter' | 'verse' 
 function findBook(usfm?: string) {
   if (!usfm) return null;
   return BIBLE_BOOKS.find((book) => book.usfm === usfm.toUpperCase()) ?? null;
-}
-
-function cleanNumberInput(value: string) {
-  return value.replace(/\D/g, '').slice(0, 3);
 }
 
 function buildStructuredMention(
@@ -106,7 +118,18 @@ export function ScripturePickerDrawer({ open, selected, onSelect, onClear }: Pro
     [translationsQuery.data],
   );
   const selectedMatchesQuery = Boolean(selected?.reference && selected.reference === query.trim());
-  const exact = selectedMatchesQuery ? null : parseScriptureLocal(query)[0] ?? null;
+  // Only confirm a typed reference once it validates against the local
+  // versification table, so "John 99:99" never offers a confirm that 404s.
+  const parsed = selectedMatchesQuery
+    ? null
+    : parseScriptureLocal(query, { looseSeparator: true })[0] ?? null;
+  const parsedBook = parsed ? findBook(parsed.book) : null;
+  const exact =
+    parsed &&
+    hasValidChapter(parsedBook, parsed.chapter) &&
+    hasValidVerse(parsedBook, parsed.chapter, parsed.verse)
+      ? parsed
+      : null;
   const structuredMention = buildStructuredMention(selectedBook, chapter, verse);
   const structuredReference = selectedBook
     ? `${selectedBook.name}${chapter ? ` ${chapter}` : ''}${verse ? `:${verse}` : ''}`
@@ -254,40 +277,72 @@ export function ScripturePickerDrawer({ open, selected, onSelect, onClear }: Pro
           </div>
 
           <div className="scripture-picker__fields">
-            <label className="scripture-picker__field">
+            <div className="scripture-picker__field">
               <span>Chapter</span>
-              <input
-                value={chapter}
-                onChange={(event) => {
-                  updateState({
-                    chapter: cleanNumberInput(event.target.value),
-                    error: '',
-                  });
-                }}
-                inputMode="numeric"
-                min={1}
-                placeholder="3"
-                type="number"
-              />
-            </label>
+              <div className="scripture-picker__chiprow" aria-label="Chapter">
+                {getChapterOptions(selectedBook).map((option) => {
+                  const active = String(option) === chapter;
+                  if (active) {
+                    return (
+                      <button
+                        key={option}
+                        type="button"
+                        className="scripture-picker__numchip is-active"
+                        aria-pressed="true"
+                        onClick={() => updateState({ chapter: String(option), verse: '', error: '' })}
+                      >
+                        {option}
+                      </button>
+                    );
+                  }
+                  return (
+                    <button
+                      key={option}
+                      type="button"
+                      className="scripture-picker__numchip"
+                      aria-pressed="false"
+                      onClick={() => updateState({ chapter: String(option), verse: '', error: '' })}
+                    >
+                      {option}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
             {chapter ? (
-              <label className="scripture-picker__field">
+              <div className="scripture-picker__field">
                 <span>Verse</span>
-                <input
-                  value={verse}
-                  onChange={(event) => {
-                    updateState({
-                      verse: cleanNumberInput(event.target.value),
-                      error: '',
-                    });
-                  }}
-                  inputMode="numeric"
-                  min={1}
-                  placeholder="16"
-                  type="number"
-                />
-              </label>
+                <div className="scripture-picker__chiprow" aria-label="Verse">
+                  {getVerseOptions(selectedBook, chapter).map((option) => {
+                    const active = String(option) === verse;
+                    if (active) {
+                      return (
+                        <button
+                          key={option}
+                          type="button"
+                          className="scripture-picker__numchip is-active"
+                          aria-pressed="true"
+                          onClick={() => updateState({ verse: String(option), error: '' })}
+                        >
+                          {option}
+                        </button>
+                      );
+                    }
+                    return (
+                      <button
+                        key={option}
+                        type="button"
+                        className="scripture-picker__numchip"
+                        aria-pressed="false"
+                        onClick={() => updateState({ verse: String(option), error: '' })}
+                      >
+                        {option}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             ) : null}
           </div>
 

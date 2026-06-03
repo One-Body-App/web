@@ -863,3 +863,7 @@
   display: flex;
   justify-content: flex-start;
 }
+
+.compose__file-input {
+  display: none;
+}

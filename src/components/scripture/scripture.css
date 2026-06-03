@@ -392,8 +392,8 @@
   flex-direction: column;
 }
 .scripture-picker__fields {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 8px;
 }
 .scripture-picker__field {
@@ -435,6 +435,33 @@
 }
 .scripture-picker__book:hover {
   background: rgba(65, 219, 225, 0.16);
+}
+.scripture-picker__chiprow {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+.scripture-picker__numchip {
+  flex: 0 0 auto;
+  min-width: 34px;
+  padding: 6px 10px;
+  border: 1px solid rgba(65, 137, 159, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.76);
+  color: #032f3c;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.scripture-picker__numchip:hover {
+  background: rgba(65, 219, 225, 0.16);
+}
+.scripture-picker__numchip.is-active {
+  border-color: #41899f;
+  background: #41899f;
+  color: #fff;
 }
 .scripture-picker__spin {
   animation: scripture-spin 0.8s linear infinite;

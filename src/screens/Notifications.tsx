@@ -33,12 +33,12 @@ import './Notifications.css';
 type SortMode = 'newest' | 'oldest';
 type MutableCategory = Exclude<NotificationCategoryKey, 'all'>;
 
-const ICONS: Record<NotificationKind, { Icon: LucideIcon; color: string }> = {
-  reaction: { Icon: Heart, color: 'var(--react-love)' },
-  comment: { Icon: MessageCircle, color: 'var(--sapphire)' },
-  follow: { Icon: UserPlus, color: 'var(--success)' },
-  prayer: { Icon: HandHeart, color: 'var(--react-pray)' },
-  mention: { Icon: AtSign, color: 'var(--warning)' },
+const ICONS: Record<NotificationKind, { Icon: LucideIcon }> = {
+  reaction: { Icon: Heart },
+  comment: { Icon: MessageCircle },
+  follow: { Icon: UserPlus },
+  prayer: { Icon: HandHeart },
+  mention: { Icon: AtSign },
 };
 
 const CATEGORY_OPTIONS: { key: NotificationCategoryKey; label: string }[] = [
@@ -194,7 +194,7 @@ export function Notifications() {
   }
 
   function renderCard(item: InboxNotification) {
-    const { Icon, color } = ICONS[item.kind];
+    const { Icon } = ICONS[item.kind];
     const primaryCategory = getPrimaryNotificationCategory(item);
     const menuOpen = openMenuId === item.id;
     return (
@@ -202,7 +202,7 @@ export function Notifications() {
         <button type="button" className="notif__main" onClick={() => openNotification(item)}>
           <span className="notif__avatar">
             <Avatar src={item.iconUrl ?? ''} alt={item.title} size={46} />
-            <span className="notif__kind" style={{ background: color }}>
+            <span className={`notif__kind notif__kind--${item.kind}`}>
               <Icon size={12} />
             </span>
           </span>

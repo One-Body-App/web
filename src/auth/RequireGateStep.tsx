@@ -1,5 +1,5 @@
 import { type ReactNode } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { Splash } from '@/components/Splash';
 import { useAuth } from './context';
 import { useAccountProfileContext } from './AccountProfileContext';
@@ -11,9 +11,17 @@ import { useAccountProfileContext } from './AccountProfileContext';
  * haven't. Profile flags are the single source of truth, matching
  * RequireAccountReady's forward checks.
  */
-export function RequireGateStep({ gate, children }: { gate: 'mfa' | 'onboarding'; children: ReactNode }) {
+export function RequireGateStep({
+  gate,
+  children,
+}: {
+  gate: 'mfa' | 'onboarding';
+  children: ReactNode;
+}) {
   const { isLoaded, isSignedIn, clerkEnabled } = useAuth();
   const { profile, loading } = useAccountProfileContext();
+  const [searchParams] = useSearchParams();
+  const isLoginMfaChallenge = searchParams.get('mode') === 'login';
 
   if (!isLoaded) return <Splash label="One Body" />;
   if (!isSignedIn) return <Navigate to="/" replace />;
@@ -36,7 +44,7 @@ export function RequireGateStep({ gate, children }: { gate: 'mfa' | 'onboarding'
 
   if (gate === 'mfa') {
     // Already secured -> move forward to whatever is next.
-    if (mfaActive) {
+    if (mfaActive && !isLoginMfaChallenge) {
       return <Navigate to={profileComplete ? '/home' : '/onboarding'} replace />;
     }
     return <>{children}</>;

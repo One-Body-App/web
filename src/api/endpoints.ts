@@ -1,4 +1,4 @@
-import { api } from './client';
+import { api, apiFetch } from './client';
 import { mapPrayer, type Prayer } from './prayer';
 import {
   createReactionCounts,
@@ -646,6 +646,14 @@ function mapMyProfile(u: ApiUser): MyProfile {
 }
 
 export const endpoints = {
+  forgotPassword: (body: { email: string }, signal?: AbortSignal) =>
+    apiFetch<boolean>('auth/forgot-password', {
+      method: 'PATCH',
+      body,
+      auth: false,
+      signal,
+    }),
+
   syncClerkUser: (
     body: { name?: string; username?: string; accountType?: string },
     signal?: AbortSignal,
@@ -653,6 +661,8 @@ export const endpoints = {
 
   beginMfaOnboarding: () =>
     api.post<MfaChallengeResponse | { mfaRequired: false }>('auth/mfa/onboarding/begin'),
+  beginMfaLogin: () =>
+    api.post<MfaChallengeResponse | { mfaRequired: false }>('auth/mfa/login/begin'),
   beginPasskeyRegistration: (body: { mfaToken: string; deviceName?: string }) =>
     api.post<PublicKeyCredentialCreationOptions>('auth/mfa/passkey/register/begin', body),
   finishPasskeyRegistration: (body: { mfaToken: string; response: Record<string, unknown> }) =>

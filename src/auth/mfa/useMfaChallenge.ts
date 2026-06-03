@@ -22,10 +22,30 @@ function isMfaChallengeResponse(
   return response.mfaRequired === true;
 }
 
-function resolveInitialMfaMethod(challenge: MfaChallengeResponse): MfaMethod {
+function resolveInitialMfaMethod(
+  challenge: MfaChallengeResponse,
+  mode: MfaChallengeMode,
+): MfaMethod {
   if (challenge.enrollmentRequired && challenge.availableMethods.includes('passkey')) {
     return 'passkey';
   }
+
+  if (mode === 'login') {
+    if (
+      challenge.preferredMethod !== 'backup' &&
+      challenge.availableMethods.includes(challenge.preferredMethod)
+    ) {
+      return challenge.preferredMethod;
+    }
+    if (challenge.availableMethods.includes('email')) {
+      return 'email';
+    }
+    return (
+      challenge.availableMethods.find((method) => method !== 'backup') ??
+      challenge.preferredMethod
+    );
+  }
+
   if (challenge.availableMethods.includes(challenge.preferredMethod)) {
     return challenge.preferredMethod;
   }
@@ -98,7 +118,12 @@ export interface MfaChallengeController {
   copyTotpSetupCode: () => Promise<void>;
 }
 
-export function useMfaChallenge(onComplete: () => void): MfaChallengeController {
+type MfaChallengeMode = 'onboarding' | 'login';
+
+export function useMfaChallenge(
+  onComplete: () => void,
+  options?: { mode?: MfaChallengeMode },
+): MfaChallengeController {
   const [challenge, setChallenge] = useState<MfaChallengeResponse | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<MfaMethod>('passkey');
   const [code, setCode] = useState('');
@@ -111,6 +136,7 @@ export function useMfaChallenge(onComplete: () => void): MfaChallengeController 
   const [submitting, setSubmitting] = useState(false);
   const challengeStartedRef = useRef(false);
   const passkeysSupported = isWebAuthnSupported();
+  const mode = options?.mode ?? 'onboarding';
 
   const beginChallenge = useCallback(async () => {
     setLoading(true);
@@ -121,27 +147,39 @@ export function useMfaChallenge(onComplete: () => void): MfaChallengeController 
     setTotpQrDataUrl('');
     setCode('');
     try {
-      const response = await endpoints.beginMfaOnboarding();
+      const response =
+        mode === 'login' ? await endpoints.beginMfaLogin() : await endpoints.beginMfaOnboarding();
       if (!isMfaChallengeResponse(response)) {
         onComplete();
         return;
       }
 
-      const preferredMethod = resolveInitialMfaMethod(response);
+      const preferredMethod = resolveInitialMfaMethod(response, mode);
       const supportedMethod =
         preferredMethod === 'passkey' && !passkeysSupported
-          ? response.availableMethods.find((method) => method !== 'passkey') ?? preferredMethod
+          ? (response.availableMethods.find(
+              (method) => method !== 'passkey' && (mode !== 'login' || method !== 'backup'),
+            ) ?? preferredMethod)
           : preferredMethod;
 
       setChallenge(response);
       setSelectedMethod(supportedMethod);
+
+      if (mode === 'login' && supportedMethod === 'email') {
+        try {
+          await endpoints.sendEmailMfaCode({ mfaToken: response.mfaToken });
+          setSuccess(`A verification code was sent to ${response.emailMasked}.`);
+        } catch (err) {
+          setError(apiErrorMessage(err, 'Unable to send email verification code.'));
+        }
+      }
     } catch (err) {
       setChallenge(null);
       setError(apiErrorMessage(err, 'Unable to start multi-factor authentication.'));
     } finally {
       setLoading(false);
     }
-  }, [onComplete, passkeysSupported]);
+  }, [mode, onComplete, passkeysSupported]);
 
   // Kick off the challenge once on first render (no useEffect per project rule).
   if (!challengeStartedRef.current) {
@@ -170,7 +208,9 @@ export function useMfaChallenge(onComplete: () => void): MfaChallengeController 
     if (!challenge || !challenge.enrollmentRequired) return false;
     if (totpOtpauth) return true;
 
-    const begin = await endpoints.beginTotpSetup({ mfaToken: challenge.mfaToken });
+    const begin = await endpoints.beginTotpSetup({
+      mfaToken: challenge.mfaToken,
+    });
     const qrDataUrl = await createTotpQrDataUrl(begin.otpauth);
     setTotpOtpauth(begin.otpauth);
     setTotpQrDataUrl(qrDataUrl);
@@ -234,7 +274,9 @@ export function useMfaChallenge(onComplete: () => void): MfaChallengeController 
       return;
     }
 
-    const begin = await endpoints.beginPasskeyLogin({ mfaToken: challenge.mfaToken });
+    const begin = await endpoints.beginPasskeyLogin({
+      mfaToken: challenge.mfaToken,
+    });
     const credential = await getPasskeyCredential(begin);
     const finish = await endpoints.finishPasskeyLogin({
       mfaToken: challenge.mfaToken,
@@ -350,7 +392,12 @@ export function useMfaChallenge(onComplete: () => void): MfaChallengeController 
     ],
   );
 
-  const methods = challenge?.availableMethods ?? [];
+  const methods = useMemo(() => {
+    const availableMethods = challenge?.availableMethods ?? [];
+    return mode === 'login'
+      ? availableMethods.filter((method) => method !== 'backup')
+      : availableMethods;
+  }, [challenge?.availableMethods, mode]);
   const isTotpEnrollmentPending =
     !!challenge && selectedMethod === 'totp' && challenge.enrollmentRequired && !totpOtpauth;
   const isTotpEnrollmentReady =

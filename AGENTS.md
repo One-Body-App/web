@@ -1,5 +1,9 @@
 # Agent guidance — One Body web app
 
+## Cross-Client Parity
+
+Cross-check every change against the equivalent area in `../app/`. Web changes should follow the mobile app's established behavior where applicable, and mobile changes must verify whether the web app needs the same behavior. If the feature or equivalent surface does not exist in the other client, ask whether it should be added.
+
 ## Do not use React useEffect
 
 Do not import or call `useEffect` / `React.useEffect` anywhere in the web app.

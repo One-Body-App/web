@@ -108,6 +108,21 @@
   color: #fff;
   border: 2px solid var(--bg);
 }
+.notif__kind--reaction {
+  background: var(--react-love);
+}
+.notif__kind--comment {
+  background: var(--sapphire);
+}
+.notif__kind--follow {
+  background: var(--success);
+}
+.notif__kind--prayer {
+  background: var(--react-pray);
+}
+.notif__kind--mention {
+  background: var(--warning);
+}
 .notif__body {
   display: flex;
   flex-direction: column;

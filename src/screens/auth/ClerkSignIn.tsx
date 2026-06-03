@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSignIn } from '@clerk/clerk-react';
 import {
@@ -15,8 +15,48 @@ import {
 import { AFTER_AUTH_URL, SSO_CALLBACK_URL, clerkErrorMessage } from '@/auth/clerkErrors';
 import { TurnstileGate } from '@/components/TurnstileGate';
 import { useTurnstileVerification } from '@/auth/useTurnstileVerification';
+import { endpoints } from '@/api/endpoints';
 
-type Mode = 'signin' | 'reset-request' | 'reset-verify';
+type Mode = 'signin' | 'mfa-email' | 'reset-request' | 'reset-link-sent';
+
+type ClerkEmailSecondFactor = {
+  strategy?: string;
+  emailAddressId?: string;
+  email_address_id?: string;
+  safeIdentifier?: string;
+  safe_identifier?: string;
+};
+
+function getEmailSecondFactor(signInAttempt: unknown) {
+  const factors =
+    signInAttempt && typeof signInAttempt === 'object'
+      ? ((
+          signInAttempt as {
+            supportedSecondFactors?: ClerkEmailSecondFactor[] | null;
+            supported_second_factors?: ClerkEmailSecondFactor[] | null;
+          }
+        ).supportedSecondFactors ??
+        (
+          signInAttempt as {
+            supported_second_factors?: ClerkEmailSecondFactor[] | null;
+          }
+        ).supported_second_factors)
+      : null;
+
+  if (!Array.isArray(factors)) {
+    return null;
+  }
+
+  const factor = factors.find((item) => item?.strategy === 'email_code');
+  if (!factor) {
+    return null;
+  }
+
+  return {
+    emailAddressId: factor.emailAddressId ?? factor.email_address_id,
+    safeIdentifier: factor.safeIdentifier ?? factor.safe_identifier,
+  };
+}
 
 export function ClerkSignIn() {
   const { isLoaded, signIn, setActive } = useSignIn();
@@ -26,10 +66,20 @@ export function ClerkSignIn() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
-  const [newPassword, setNewPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const mfaEmailRef = useRef('');
   const turnstile = useTurnstileVerification(setError);
+
+  async function routeToAppMfaIfRequired() {
+    const response = await endpoints.beginMfaLogin();
+    if (response.mfaRequired === true) {
+      navigate('/secure-account?mode=login', { replace: true });
+      return true;
+    }
+
+    return false;
+  }
 
   async function social(strategy: 'oauth_google' | 'oauth_apple') {
     if (!isLoaded) return;
@@ -57,7 +107,22 @@ export function ClerkSignIn() {
       const res = await signIn.create({ identifier: email, password });
       if (res.status === 'complete') {
         await setActive({ session: res.createdSessionId });
+        if (await routeToAppMfaIfRequired()) return;
         navigate(AFTER_AUTH_URL, { replace: true });
+      } else if (res.status === 'needs_second_factor') {
+        const emailFactor = getEmailSecondFactor(res);
+        if (!emailFactor) {
+          setError('Your account requires a second factor that is not available here.');
+          return;
+        }
+
+        await signIn.prepareSecondFactor({
+          strategy: 'email_code',
+          emailAddressId: emailFactor.emailAddressId,
+        });
+        setCode('');
+        mfaEmailRef.current = emailFactor.safeIdentifier ?? email;
+        setMode('mfa-email');
       } else {
         setError('Additional verification is required to finish signing in.');
       }
@@ -68,52 +133,65 @@ export function ClerkSignIn() {
     }
   }
 
-  async function requestReset(e: FormEvent) {
+  async function confirmMfa(e: FormEvent) {
     e.preventDefault();
     if (!isLoaded || busy) return;
     setBusy(true);
     setError(null);
     try {
-      await signIn.create({ strategy: 'reset_password_email_code', identifier: email });
-      setMode('reset-verify');
-    } catch (err) {
-      setError(clerkErrorMessage(err, 'We couldn’t find an account with that email.'));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function confirmReset(e: FormEvent) {
-    e.preventDefault();
-    if (!isLoaded || busy) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const res = await signIn.attemptFirstFactor({
-        strategy: 'reset_password_email_code',
+      const res = await signIn.attemptSecondFactor({
+        strategy: 'email_code',
         code,
-        password: newPassword,
       });
       if (res.status === 'complete') {
         await setActive({ session: res.createdSessionId });
+        if (await routeToAppMfaIfRequired()) return;
         navigate(AFTER_AUTH_URL, { replace: true });
       } else {
-        setError('That code didn’t work. Please try again.');
+        setError('Additional verification is required to finish signing in.');
       }
     } catch (err) {
-      setError(clerkErrorMessage(err, 'That code didn’t work. Please try again.'));
+      setError(clerkErrorMessage(err, 'That code did not work. Please try again.'));
     } finally {
       setBusy(false);
     }
   }
 
-  if (mode === 'reset-request') {
+  async function requestReset(e: FormEvent) {
+    e.preventDefault();
+    if (busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await endpoints.forgotPassword({
+        email: email.trim().toLowerCase(),
+      });
+      setMode('reset-link-sent');
+    } catch (err) {
+      setError(clerkErrorMessage(err, 'Unable to send reset instructions.'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (mode === 'reset-request' || mode === 'reset-link-sent') {
     return (
       <form className="auth-form" onSubmit={requestReset}>
-        <BackButton onClick={() => { setMode('signin'); setError(null); }} label="Back to sign in" />
+        <BackButton
+          onClick={() => {
+            setMode('signin');
+            setError(null);
+          }}
+          label="Back to sign in"
+        />
         <p className="auth-step-note">
-          Enter your email and we’ll send you a code to reset your password.
+          Enter your email and we’ll send you a link to reset your password.
         </p>
+        {mode === 'reset-link-sent' ? (
+          <AuthSuccess>
+            If an account exists for <strong>{email}</strong>, we sent a password reset link.
+          </AuthSuccess>
+        ) : null}
         <AuthError message={error} />
         <TextField
           label="Email address"
@@ -121,35 +199,40 @@ export function ClerkSignIn() {
           autoComplete="email"
           placeholder="you@example.com"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            if (mode === 'reset-link-sent') {
+              setMode('reset-request');
+            }
+          }}
           required
         />
         <SubmitButton loading={busy} disabled={!email}>
-          Send reset code
+          Send reset link
         </SubmitButton>
       </form>
     );
   }
 
-  if (mode === 'reset-verify') {
+  if (mode === 'mfa-email') {
     return (
-      <form className="auth-form" onSubmit={confirmReset}>
-        <BackButton onClick={() => { setMode('reset-request'); setError(null); }} />
+      <form className="auth-form" onSubmit={confirmMfa}>
+        <BackButton
+          onClick={() => {
+            setMode('signin');
+            setCode('');
+            mfaEmailRef.current = '';
+            setError(null);
+          }}
+          label="Back to sign in"
+        />
         <AuthSuccess>
-          We sent a code to <strong>{email}</strong>. Enter it below with your new password.
+          We sent a verification code to <strong>{mfaEmailRef.current || email}</strong>.
         </AuthSuccess>
         <AuthError message={error} />
         <CodeInput value={code} onChange={setCode} />
-        <PasswordField
-          label="New password"
-          autoComplete="new-password"
-          placeholder="Create a new password"
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
-          required
-        />
-        <SubmitButton loading={busy} disabled={code.length < 6 || !newPassword}>
-          Reset & sign in
+        <SubmitButton loading={busy} disabled={code.length < 6}>
+          Verify & sign in
         </SubmitButton>
       </form>
     );
@@ -183,7 +266,14 @@ export function ClerkSignIn() {
           required
         />
         <div className="auth-row" style={{ justifyContent: 'flex-end', marginTop: 0 }}>
-          <button type="button" className="auth-link" onClick={() => { setMode('reset-request'); setError(null); }}>
+          <button
+            type="button"
+            className="auth-link"
+            onClick={() => {
+              setMode('reset-request');
+              setError(null);
+            }}
+          >
             Forgot password?
           </button>
         </div>

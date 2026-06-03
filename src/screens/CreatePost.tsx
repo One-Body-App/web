@@ -461,11 +461,11 @@ export function CreatePost() {
 
         <input
           ref={photoInputRef}
+          className="compose__file-input"
           type="file"
           multiple
           accept="image/*"
           aria-label="Add photos"
-          style={{ display: 'none' }}
           onChange={(e) => {
             const files = Array.from(e.target.files ?? []);
             if (files.length === 0) return;
@@ -483,10 +483,10 @@ export function CreatePost() {
         />
         <input
           ref={videoInputRef}
+          className="compose__file-input"
           type="file"
           accept="video/*"
           aria-label="Add video"
-          style={{ display: 'none' }}
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (!file) return;

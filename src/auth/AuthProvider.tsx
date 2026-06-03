@@ -13,6 +13,11 @@ import { setTokenGetter } from '@/api/token';
 
 const DEMO_KEY = 'ob_demo_session';
 const CLERK_LOAD_TIMEOUT_MS = 8000;
+const clerkTaskUrls = {
+  'choose-organization': '/home',
+  'reset-password': '/sign-in',
+  'setup-mfa': '/secure-account',
+};
 
 function metadataString(value: unknown): string | undefined {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined;
@@ -168,7 +173,11 @@ function SignedOutAuthBridge({ children }: { children: ReactNode }) {
 export function AuthProvider({ children }: { children: ReactNode }) {
   if (clerkEnabled) {
     return (
-      <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} afterSignOutUrl="/">
+      <ClerkProvider
+        publishableKey={CLERK_PUBLISHABLE_KEY}
+        afterSignOutUrl="/"
+        taskUrls={clerkTaskUrls}
+      >
         <ClerkAuthBridge>{children}</ClerkAuthBridge>
       </ClerkProvider>
     );

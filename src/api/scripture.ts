@@ -231,10 +231,21 @@ const BOOK_ALTERNATION = Object.keys(ALIAS_TO_BOOK)
   .sort((a, b) => b.length - a.length)
   .map((alias) => alias.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/\s+/g, '\\s+'))
   .join('|');
-const LOCAL_REF_REGEX = new RegExp(
-  `\\b(${BOOK_ALTERNATION})\\.?\\s*(\\d{1,3})(?:\\s*(?:[:.]|v(?:s|erse)?)\\s*(\\d{1,3})(?:\\s*[-–]\\s*(\\d{1,3}))?)?`,
-  'gi',
-);
+/**
+ * Chapter/verse separator. In strict mode (inline caption detection) the verse
+ * must be introduced by an explicit marker (":", ".", "v", "vs", "verse") so
+ * prose like "I read John 3 16 times" never auto-links. Loose mode also accepts
+ * a plain run of whitespace, so the composer picker resolves "John 3 16".
+ */
+const buildRefSource = (looseSeparator: boolean): string => {
+  const separator = looseSeparator
+    ? `(?:\\s*(?:[:.]|v(?:s|erse)?)\\s*|\\s+)`
+    : `\\s*(?:[:.]|v(?:s|erse)?)\\s*`;
+  return `\\b(${BOOK_ALTERNATION})\\.?\\s*(\\d{1,3})(?:${separator}(\\d{1,3})(?:\\s*[-–]\\s*(\\d{1,3}))?)?`;
+};
+
+const LOCAL_REF_REGEX = new RegExp(buildRefSource(false), 'gi');
+const LOCAL_REF_REGEX_LOOSE = new RegExp(buildRefSource(true), 'gi');
 
 export function buildScriptureKey(
   book: string,
@@ -258,9 +269,13 @@ export function normalizeScriptureKey(value: unknown): string {
   return typeof value === 'string' ? value.trim().toUpperCase() : '';
 }
 
-export function parseScriptureLocal(text: string): ScriptureMention[] {
+export function parseScriptureLocal(
+  text: string,
+  options?: { looseSeparator?: boolean },
+): ScriptureMention[] {
   if (!text) return [];
-  const regex = new RegExp(LOCAL_REF_REGEX.source, 'gi');
+  const base = options?.looseSeparator ? LOCAL_REF_REGEX_LOOSE : LOCAL_REF_REGEX;
+  const regex = new RegExp(base.source, 'gi');
   const mentions: ScriptureMention[] = [];
   let match: RegExpExecArray | null;
   while ((match = regex.exec(text)) !== null) {
