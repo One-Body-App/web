@@ -8,6 +8,9 @@ export function SsoCallback() {
     <>
       <Splash label="Signing you in…" />
       <AuthenticateWithRedirectCallback
+        continueSignUpUrl="/social-auth/continue"
+        signInUrl="/sign-in"
+        signUpUrl="/sign-up"
         signInForceRedirectUrl={AFTER_AUTH_URL}
         signUpForceRedirectUrl={AFTER_AUTH_URL}
       />

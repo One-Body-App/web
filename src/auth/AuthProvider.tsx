@@ -9,6 +9,12 @@ import {
   DEMO_USER,
   type AuthValue,
 } from './context';
+import {
+  clearActiveSocialAuth,
+  clearSocialAuthMarkers,
+  isActiveSocialAuthSession,
+  promotePendingSocialAuth,
+} from './socialAuthSession';
 import { setTokenGetter } from '@/api/token';
 
 const DEMO_KEY = 'ob_demo_session';
@@ -78,11 +84,18 @@ function createLoadTimeoutStore() {
 function ClerkAuthBridge({ children }: { children: ReactNode }) {
   const { isLoaded, isSignedIn, user } = useUser();
   const { signOut } = useClerk();
-  const { getToken } = useClerkAuth();
+  const { getToken, sessionId } = useClerkAuth();
   const timeoutStoreRef = useRef<ReturnType<typeof createLoadTimeoutStore>>();
   if (!timeoutStoreRef.current) timeoutStoreRef.current = createLoadTimeoutStore();
 
   const clerkReady = isLoaded && (!isSignedIn || Boolean(user));
+  const activeSessionId = typeof sessionId === 'string' ? sessionId : null;
+  const isSocialAuthSession =
+    Boolean(activeSessionId) &&
+    (promotePendingSocialAuth(activeSessionId) || isActiveSocialAuthSession(activeSessionId));
+  if (isLoaded && !isSignedIn) {
+    clearActiveSocialAuth();
+  }
 
   // Expose Clerk's session token to the (non-React) API client.
   setTokenGetter(() => getToken());
@@ -97,9 +110,14 @@ function ClerkAuthBridge({ children }: { children: ReactNode }) {
     () => ({
       isLoaded: clerkReady || loadTimedOut,
       isSignedIn: loadTimedOut ? false : Boolean(isSignedIn && user),
+      sessionId: loadTimedOut ? null : activeSessionId,
+      isSocialAuthSession: loadTimedOut ? false : isSocialAuthSession,
       clerkEnabled: true,
       authError: loadTimedOut ? AUTH_UNAVAILABLE_MESSAGE : null,
-      signOut: () => signOut(),
+      signOut: () => {
+        clearSocialAuthMarkers();
+        return signOut();
+      },
       user: user && !loadTimedOut
         ? {
             id: user.id,
@@ -119,7 +137,7 @@ function ClerkAuthBridge({ children }: { children: ReactNode }) {
           }
         : null,
     }),
-    [clerkReady, isSignedIn, loadTimedOut, user, signOut]
+    [activeSessionId, clerkReady, isSignedIn, isSocialAuthSession, loadTimedOut, user, signOut]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -136,6 +154,8 @@ function DemoAuthBridge({ children }: { children: ReactNode }) {
     () => ({
       isLoaded: true,
       isSignedIn: signedIn,
+      sessionId: signedIn ? 'demo-session' : null,
+      isSocialAuthSession: false,
       clerkEnabled: false,
       authError: null,
       user: signedIn ? DEMO_USER : null,
@@ -159,6 +179,8 @@ function SignedOutAuthBridge({ children }: { children: ReactNode }) {
     () => ({
       isLoaded: true,
       isSignedIn: false,
+      sessionId: null,
+      isSocialAuthSession: false,
       clerkEnabled: false,
       authError: AUTH_UNAVAILABLE_MESSAGE,
       user: null,

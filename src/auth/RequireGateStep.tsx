@@ -18,7 +18,7 @@ export function RequireGateStep({
   gate: 'mfa' | 'onboarding';
   children: ReactNode;
 }) {
-  const { isLoaded, isSignedIn, clerkEnabled } = useAuth();
+  const { isLoaded, isSignedIn, clerkEnabled, isSocialAuthSession } = useAuth();
   const { profile, loading } = useAccountProfileContext();
   const [searchParams] = useSearchParams();
   const isLoginMfaChallenge = searchParams.get('mode') === 'login';
@@ -39,19 +39,21 @@ export function RequireGateStep({
   // Email must be verified before any gate route is usable.
   if (profile.emailVerified !== true) return <Navigate to="/home" replace />;
 
-  const mfaActive = profile.mfaConfig?.isMfaActive === true;
+  if (isSocialAuthSession) return <Navigate to="/home" replace />;
+
+  const requiresMfaEnrollment = profile.authSecurity?.requiresMfaEnrollment === true;
   const profileComplete = profile.isProfileCompleted === true;
 
   if (gate === 'mfa') {
     // Already secured -> move forward to whatever is next.
-    if (mfaActive && !isLoginMfaChallenge) {
+    if (!requiresMfaEnrollment && !isLoginMfaChallenge) {
       return <Navigate to={profileComplete ? '/home' : '/onboarding'} replace />;
     }
     return <>{children}</>;
   }
 
   // gate === 'onboarding'
-  if (!mfaActive) return <Navigate to="/secure-account" replace />;
+  if (requiresMfaEnrollment) return <Navigate to="/secure-account" replace />;
   if (profileComplete) return <Navigate to="/home" replace />;
   return <>{children}</>;
 }

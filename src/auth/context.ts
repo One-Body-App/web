@@ -14,6 +14,8 @@ export interface AuthValue {
   /** Clerk (or demo) has finished initializing. */
   isLoaded: boolean;
   isSignedIn: boolean;
+  sessionId: string | null;
+  isSocialAuthSession: boolean;
   user: AppUser | null;
   signOut: () => void | Promise<void>;
   /** True when a real Clerk publishable key is configured. */

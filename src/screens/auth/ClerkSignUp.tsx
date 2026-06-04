@@ -20,6 +20,7 @@ import { ApiError } from '@/api/client';
 import { endpoints } from '@/api/endpoints';
 import { TurnstileGate } from '@/components/TurnstileGate';
 import { useTurnstileVerification } from '@/auth/useTurnstileVerification';
+import { clearPendingSocialAuth, markPendingSocialAuth } from '@/auth/socialAuthSession';
 
 type Step = 'type' | 'details' | 'verify';
 type UsernameAvailability = {
@@ -260,13 +261,18 @@ export function ClerkSignUp() {
     if (!isLoaded) return;
     setError(null);
     try {
+      markPendingSocialAuth(strategy, accountType);
       await signUp.authenticateWithRedirect({
         strategy,
         redirectUrl: SSO_CALLBACK_URL,
         redirectUrlComplete: AFTER_AUTH_URL,
-        unsafeMetadata: accountType ? { accountType } : undefined,
+        unsafeMetadata: {
+          authMethod: 'social',
+          ...(accountType ? { accountType } : {}),
+        },
       });
     } catch (err) {
+      clearPendingSocialAuth();
       setError(clerkErrorMessage(err));
     }
   }
@@ -292,6 +298,7 @@ export function ClerkSignUp() {
     setBusy(true);
     setError(null);
     try {
+      clearPendingSocialAuth();
       const turnstileOk = await turnstile.verify('auth-sign-up');
       if (!turnstileOk) return;
 

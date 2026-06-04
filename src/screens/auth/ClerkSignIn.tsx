@@ -1,5 +1,5 @@
 import { useRef, useState, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSignIn } from '@clerk/clerk-react';
 import {
   AuthDivider,
@@ -15,9 +15,9 @@ import {
 import { AFTER_AUTH_URL, SSO_CALLBACK_URL, clerkErrorMessage } from '@/auth/clerkErrors';
 import { TurnstileGate } from '@/components/TurnstileGate';
 import { useTurnstileVerification } from '@/auth/useTurnstileVerification';
-import { endpoints } from '@/api/endpoints';
+import { clearPendingSocialAuth, markPendingSocialAuth } from '@/auth/socialAuthSession';
 
-type Mode = 'signin' | 'mfa-email' | 'reset-request' | 'reset-link-sent';
+type Mode = 'signin' | 'mfa-email' | 'reset-request' | 'reset-code';
 
 type ClerkEmailSecondFactor = {
   strategy?: string;
@@ -25,6 +25,12 @@ type ClerkEmailSecondFactor = {
   email_address_id?: string;
   safeIdentifier?: string;
   safe_identifier?: string;
+};
+
+type ClerkResetEmailFactor = {
+  strategy?: string;
+  emailAddressId?: string;
+  email_address_id?: string;
 };
 
 function getEmailSecondFactor(signInAttempt: unknown) {
@@ -58,39 +64,65 @@ function getEmailSecondFactor(signInAttempt: unknown) {
   };
 }
 
+function getResetEmailFactor(signInAttempt: unknown) {
+  const factors =
+    signInAttempt && typeof signInAttempt === 'object'
+      ? ((
+          signInAttempt as {
+            supportedFirstFactors?: ClerkResetEmailFactor[] | null;
+            supported_first_factors?: ClerkResetEmailFactor[] | null;
+          }
+        ).supportedFirstFactors ??
+        (
+          signInAttempt as {
+            supported_first_factors?: ClerkResetEmailFactor[] | null;
+          }
+        ).supported_first_factors)
+      : null;
+
+  if (!Array.isArray(factors)) {
+    return null;
+  }
+
+  const factor = factors.find((item) => item?.strategy === 'reset_password_email_code');
+  if (!factor) {
+    return null;
+  }
+
+  return {
+    emailAddressId: factor.emailAddressId ?? factor.email_address_id,
+  };
+}
+
 export function ClerkSignIn() {
   const { isLoaded, signIn, setActive } = useSignIn();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const startsInResetMode = searchParams.get('reset') === '1';
 
-  const [mode, setMode] = useState<Mode>('signin');
-  const [email, setEmail] = useState('');
+  const [mode, setMode] = useState<Mode>(() => (startsInResetMode ? 'reset-request' : 'signin'));
+  const [email, setEmail] = useState(() => searchParams.get('email') ?? '');
   const [password, setPassword] = useState('');
+  const [resetPassword, setResetPassword] = useState('');
+  const [resetConfirmPassword, setResetConfirmPassword] = useState('');
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const mfaEmailRef = useRef('');
   const turnstile = useTurnstileVerification(setError);
 
-  async function routeToAppMfaIfRequired() {
-    const response = await endpoints.beginMfaLogin();
-    if (response.mfaRequired === true) {
-      navigate('/secure-account?mode=login', { replace: true });
-      return true;
-    }
-
-    return false;
-  }
-
   async function social(strategy: 'oauth_google' | 'oauth_apple') {
     if (!isLoaded) return;
     setError(null);
     try {
+      markPendingSocialAuth(strategy);
       await signIn.authenticateWithRedirect({
         strategy,
         redirectUrl: SSO_CALLBACK_URL,
         redirectUrlComplete: AFTER_AUTH_URL,
       });
     } catch (err) {
+      clearPendingSocialAuth();
       setError(clerkErrorMessage(err));
     }
   }
@@ -101,13 +133,13 @@ export function ClerkSignIn() {
     setBusy(true);
     setError(null);
     try {
+      clearPendingSocialAuth();
       const turnstileOk = await turnstile.verify('auth-sign-in');
       if (!turnstileOk) return;
 
       const res = await signIn.create({ identifier: email, password });
       if (res.status === 'complete') {
         await setActive({ session: res.createdSessionId });
-        if (await routeToAppMfaIfRequired()) return;
         navigate(AFTER_AUTH_URL, { replace: true });
       } else if (res.status === 'needs_second_factor') {
         const emailFactor = getEmailSecondFactor(res);
@@ -145,7 +177,6 @@ export function ClerkSignIn() {
       });
       if (res.status === 'complete') {
         await setActive({ session: res.createdSessionId });
-        if (await routeToAppMfaIfRequired()) return;
         navigate(AFTER_AUTH_URL, { replace: true });
       } else {
         setError('Additional verification is required to finish signing in.');
@@ -159,14 +190,27 @@ export function ClerkSignIn() {
 
   async function requestReset(e: FormEvent) {
     e.preventDefault();
-    if (busy) return;
+    if (!isLoaded || busy) return;
     setBusy(true);
     setError(null);
     try {
-      await endpoints.forgotPassword({
-        email: email.trim().toLowerCase(),
+      const normalizedEmail = email.trim().toLowerCase();
+      const res = await signIn.create({
+        identifier: normalizedEmail,
+        strategy: 'reset_password_email_code',
       });
-      setMode('reset-link-sent');
+      const emailFactor = getResetEmailFactor(res);
+      if (res.status === 'needs_first_factor' && emailFactor?.emailAddressId) {
+        await signIn.prepareFirstFactor({
+          strategy: 'reset_password_email_code',
+          emailAddressId: emailFactor.emailAddressId,
+        });
+      }
+      setEmail(normalizedEmail);
+      setCode('');
+      setResetPassword('');
+      setResetConfirmPassword('');
+      setMode('reset-code');
     } catch (err) {
       setError(clerkErrorMessage(err, 'Unable to send reset instructions.'));
     } finally {
@@ -174,22 +218,67 @@ export function ClerkSignIn() {
     }
   }
 
-  if (mode === 'reset-request' || mode === 'reset-link-sent') {
+  async function confirmReset(e: FormEvent) {
+    e.preventDefault();
+    if (!isLoaded || busy) return;
+    if (resetPassword !== resetConfirmPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    try {
+      let res = await signIn.attemptFirstFactor({
+        strategy: 'reset_password_email_code',
+        code,
+        password: resetPassword,
+      });
+
+      if (res.status === 'needs_new_password') {
+        res = await signIn.resetPassword({
+          password: resetPassword,
+          signOutOfOtherSessions: true,
+        });
+      }
+
+      if (res.status !== 'complete') {
+        setError('Additional verification is required to reset your password.');
+        return;
+      }
+
+      if (res.createdSessionId) {
+        await setActive({ session: res.createdSessionId });
+      }
+      navigate(AFTER_AUTH_URL, { replace: true });
+    } catch (err) {
+      setError(clerkErrorMessage(err, 'Unable to reset your password.'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (mode === 'reset-request' || mode === 'reset-code') {
     return (
-      <form className="auth-form" onSubmit={requestReset}>
+      <form className="auth-form" onSubmit={mode === 'reset-code' ? confirmReset : requestReset}>
         <BackButton
           onClick={() => {
             setMode('signin');
             setError(null);
+            setCode('');
+            setResetPassword('');
+            setResetConfirmPassword('');
           }}
           label="Back to sign in"
         />
         <p className="auth-step-note">
-          Enter your email and we’ll send you a link to reset your password.
+          {mode === 'reset-code'
+            ? 'Enter the code we sent and choose a new password.'
+            : 'Enter your email and we’ll send you a password reset code.'}
         </p>
-        {mode === 'reset-link-sent' ? (
+        {mode === 'reset-code' ? (
           <AuthSuccess>
-            If an account exists for <strong>{email}</strong>, we sent a password reset link.
+            If an account exists for <strong>{email}</strong>, we sent a password reset code.
           </AuthSuccess>
         ) : null}
         <AuthError message={error} />
@@ -201,14 +290,42 @@ export function ClerkSignIn() {
           value={email}
           onChange={(e) => {
             setEmail(e.target.value);
-            if (mode === 'reset-link-sent') {
+            if (mode === 'reset-code') {
               setMode('reset-request');
             }
           }}
           required
         />
-        <SubmitButton loading={busy} disabled={!email}>
-          Send reset link
+        {mode === 'reset-code' ? (
+          <>
+            <CodeInput value={code} onChange={setCode} />
+            <PasswordField
+              label="New password"
+              autoComplete="new-password"
+              placeholder="Create a new password"
+              value={resetPassword}
+              onChange={(e) => setResetPassword(e.target.value)}
+              required
+            />
+            <PasswordField
+              label="Confirm password"
+              autoComplete="new-password"
+              placeholder="Confirm your new password"
+              value={resetConfirmPassword}
+              onChange={(e) => setResetConfirmPassword(e.target.value)}
+              required
+            />
+          </>
+        ) : null}
+        <SubmitButton
+          loading={busy}
+          disabled={
+            !email ||
+            (mode === 'reset-code' &&
+              (code.length < 6 || !resetPassword || !resetConfirmPassword))
+          }
+        >
+          {mode === 'reset-code' ? 'Reset password' : 'Send reset code'}
         </SubmitButton>
       </form>
     );

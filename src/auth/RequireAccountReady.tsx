@@ -95,7 +95,7 @@ function EmailVerificationGate({
  * routes from being skipped or revisited out of order.
  */
 export function RequireAccountReady({ children }: { children: ReactNode }) {
-  const { clerkEnabled, isLoaded, isSignedIn, signOut } = useAuth();
+  const { clerkEnabled, isLoaded, isSignedIn, isSocialAuthSession, signOut } = useAuth();
   const location = useLocation();
   const { error, loading, profile, refetch } = useAccountProfileContext();
 
@@ -132,11 +132,11 @@ export function RequireAccountReady({ children }: { children: ReactNode }) {
     return <EmailVerificationGate onRetry={refetch} onSignOut={signOut} />;
   }
 
-  if (profile.mfaConfig?.isMfaActive !== true) {
+  if (!isSocialAuthSession && profile.authSecurity?.requiresMfaEnrollment === true) {
     return <Navigate to="/secure-account" replace />;
   }
 
-  if (profile.isProfileCompleted !== true) {
+  if (!isSocialAuthSession && profile.isProfileCompleted !== true) {
     return <Navigate to="/onboarding" replace />;
   }
 

@@ -87,6 +87,11 @@ interface ApiUser {
     isMfaActive?: boolean | null;
     defaultMethod?: MfaMethod;
   };
+  authSecurity?: {
+    mfaProvider?: 'clerk';
+    requiresMfaEnrollment?: boolean | null;
+    legacyMfaReenrollmentRequired?: boolean | null;
+  };
   interests?: Array<{ _id?: string; id?: string; name?: string } | string>;
   influencerProfile?: {
     influencerStatus?: string;
@@ -565,6 +570,11 @@ export interface MyProfile {
     isMfaActive?: boolean | null;
     defaultMethod?: MfaMethod;
   };
+  authSecurity?: {
+    mfaProvider?: 'clerk';
+    requiresMfaEnrollment?: boolean | null;
+    legacyMfaReenrollmentRequired?: boolean | null;
+  };
   bio?: string;
   favoriteVerse?: VerseResult;
   website?: string;
@@ -622,6 +632,7 @@ function mapMyProfile(u: ApiUser): MyProfile {
     emailVerified: u.emailVerified === true,
     isProfileCompleted: resolveProfileCompleted(u),
     mfaConfig: u.mfaConfig,
+    authSecurity: u.authSecurity,
     bio: u.bio,
     favoriteVerse: u.favoriteVerse,
     website: u.website,

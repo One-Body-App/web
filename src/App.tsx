@@ -1,6 +1,5 @@
 import { lazy, Suspense, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useLocation, type Location } from 'react-router-dom';
-import { API_BASE_URL } from './api/config';
 import { clerkEnabled, useAuth } from './auth/context';
 import { AccountProfileProvider } from './auth/AccountProfileContext';
 import { RequireAccountReady } from './auth/RequireAccountReady';
@@ -12,6 +11,7 @@ import { Intro } from './screens/Intro';
 import { SignInScreen } from './screens/SignIn';
 import { SignUpScreen } from './screens/SignUp';
 import { SsoCallback } from './screens/SsoCallback';
+import { SocialAuthContinue } from './screens/SocialAuthContinue';
 
 const Home = lazy(() => import('./screens/Home').then((m) => ({ default: m.Home })));
 const Explore = lazy(() => import('./screens/Explore').then((m) => ({ default: m.Explore })));
@@ -78,48 +78,16 @@ function deferred(label: string, children: ReactNode) {
   return <Suspense fallback={<Splash label={label} />}>{children}</Suspense>;
 }
 
-function ExternalResetRedirect({
-  appUrl,
-  browserUrl,
-}: {
-  appUrl: string;
-  browserUrl: string;
-}) {
-  const redirectRef = (node: HTMLDivElement | null) => {
-    if (node) {
-      window.location.replace(appUrl);
-    }
-  };
-
-  return (
-    <div ref={redirectRef}>
-      <Splash label="Reset password" />
-      <main style={{ padding: 24, textAlign: 'center' }}>
-        <p>If the app does not open automatically, continue in your browser.</p>
-        <a href={browserUrl}>Reset password in browser</a>
-      </main>
-    </div>
-  );
-}
-
 function ResetPasswordFallback() {
   const location = useLocation();
-  const token = new URLSearchParams(location.search).get('token');
+  const email = new URLSearchParams(location.search).get('email');
+  const query = new URLSearchParams({ reset: '1' });
 
-  if (!token) {
-    return <Navigate to="/sign-in" replace />;
+  if (email) {
+    query.set('email', email);
   }
 
-  const encodedToken = encodeURIComponent(token);
-  const appTarget = `onebodyapp:///reset-password?token=${encodedToken}`;
-  const browserTarget = `${API_BASE_URL.replace(/\/+$/, '')}/auth/reset-password?token=${encodedToken}`;
-
-  return (
-    <ExternalResetRedirect
-      appUrl={appTarget}
-      browserUrl={browserTarget}
-    />
-  );
+  return <Navigate to={`/sign-in?${query.toString()}`} replace />;
 }
 
 export function App() {
@@ -139,6 +107,7 @@ export function App() {
         <Route path="/sign-up/*" element={<SignUpScreen />} />
         <Route path="/reset-password" element={<ResetPasswordFallback />} />
         {clerkEnabled ? <Route path="/sso-callback" element={<SsoCallback />} /> : null}
+        {clerkEnabled ? <Route path="/social-auth/continue" element={<SocialAuthContinue />} /> : null}
 
         {/* Post-email gate flow: full-screen passkey MFA + onboarding stepper. */}
         <Route
