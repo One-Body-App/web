@@ -1,5 +1,6 @@
 import { lazy, Suspense, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useLocation, type Location } from 'react-router-dom';
+import { API_BASE_URL } from './api/config';
 import { clerkEnabled, useAuth } from './auth/context';
 import { AccountProfileProvider } from './auth/AccountProfileContext';
 import { RequireAccountReady } from './auth/RequireAccountReady';
@@ -77,6 +78,50 @@ function deferred(label: string, children: ReactNode) {
   return <Suspense fallback={<Splash label={label} />}>{children}</Suspense>;
 }
 
+function ExternalResetRedirect({
+  appUrl,
+  browserUrl,
+}: {
+  appUrl: string;
+  browserUrl: string;
+}) {
+  const redirectRef = (node: HTMLDivElement | null) => {
+    if (node) {
+      window.location.replace(appUrl);
+    }
+  };
+
+  return (
+    <div ref={redirectRef}>
+      <Splash label="Reset password" />
+      <main style={{ padding: 24, textAlign: 'center' }}>
+        <p>If the app does not open automatically, continue in your browser.</p>
+        <a href={browserUrl}>Reset password in browser</a>
+      </main>
+    </div>
+  );
+}
+
+function ResetPasswordFallback() {
+  const location = useLocation();
+  const token = new URLSearchParams(location.search).get('token');
+
+  if (!token) {
+    return <Navigate to="/sign-in" replace />;
+  }
+
+  const encodedToken = encodeURIComponent(token);
+  const appTarget = `onebodyapp:///reset-password?token=${encodedToken}`;
+  const browserTarget = `${API_BASE_URL.replace(/\/+$/, '')}/auth/reset-password?token=${encodedToken}`;
+
+  return (
+    <ExternalResetRedirect
+      appUrl={appTarget}
+      browserUrl={browserTarget}
+    />
+  );
+}
+
 export function App() {
   const location = useLocation();
   const state = (location.state as { backgroundLocation?: Location } | null) ?? null;
@@ -92,6 +137,7 @@ export function App() {
         <Route path="/" element={<Root />} />
         <Route path="/sign-in/*" element={<SignInScreen />} />
         <Route path="/sign-up/*" element={<SignUpScreen />} />
+        <Route path="/reset-password" element={<ResetPasswordFallback />} />
         {clerkEnabled ? <Route path="/sso-callback" element={<SsoCallback />} /> : null}
 
         {/* Post-email gate flow: full-screen passkey MFA + onboarding stepper. */}

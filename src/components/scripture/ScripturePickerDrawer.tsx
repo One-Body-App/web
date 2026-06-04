@@ -5,6 +5,7 @@ import {
   DEFAULT_TRANSLATION,
   bibleTranslationOptions,
   fetchScriptureShare,
+  fetchScriptureShareCounts,
   fetchTranslations,
   parseScriptureLocal,
   translationLabel,
@@ -144,7 +145,9 @@ export function ScripturePickerDrawer({ open, selected, onSelect, onClear }: Pro
     updateState({ error: '', loadingRef: mention.reference });
     try {
       const share = await fetchScriptureShare(toPayload(mention), translation);
-      onSelect(share);
+      // Best-effort times-shared count for the quote card (returns {} on error).
+      const counts = await fetchScriptureShareCounts([share.key]);
+      onSelect({ ...share, shareCount: counts[share.key] ?? share.shareCount });
       updateState({ query: share.reference });
     } catch {
       updateState({ error: 'Could not load that verse. Check the reference and try again.' });
@@ -187,7 +190,7 @@ export function ScripturePickerDrawer({ open, selected, onSelect, onClear }: Pro
     if (!selected) return;
     try {
       const share = await fetchScriptureShare(toPayload(selected), nextTranslation);
-      onSelect(share);
+      onSelect({ ...share, shareCount: selected.shareCount });
       updateState({ query: share.reference });
     } catch {
       updateState({ error: 'Could not load that version. Please try again.' });

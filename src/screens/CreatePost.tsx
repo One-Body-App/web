@@ -26,6 +26,7 @@ import { ComposerMediaTray } from '@/components/ComposerMediaTray';
 import { buildComposerMediaItem, type ComposerMediaItem } from '@/components/composerMedia';
 import { TurnstileGate } from '@/components/TurnstileGate';
 import { ScripturePickerDrawer } from '@/components/scripture/ScripturePickerDrawer';
+import { ScriptureQuoteCard } from '@/components/scripture/ScriptureQuoteCard';
 import { hasLikelyScripture, type ScriptureShare } from '@/api/scripture';
 import '@/components/scripture/scripture.css';
 import './CreatePost.css';
@@ -111,7 +112,7 @@ export function CreatePost() {
   const overLimit = totalLen > MAX_LEN;
 
   const scriptureDetected = hasLikelyScripture(text);
-  const showScriptureChip = scriptureDetected && scriptureDismissedFor !== text;
+  const showScriptureChip = !selectedScripture && scriptureDetected && scriptureDismissedFor !== text;
   const hasMedia = media.length > 0;
   const scripturePayload = useMemo(
     () =>
@@ -190,6 +191,26 @@ export function CreatePost() {
       document.body.style.overflow = previous;
     };
   }, []);
+
+  const focusTextarea = useCallback((cursor?: number) => {
+    const node = textareaRef.current;
+    if (!node) return;
+    window.requestAnimationFrame(() => {
+      node.focus();
+      if (typeof cursor === 'number') {
+        node.setSelectionRange(cursor, cursor);
+      }
+      resizeTextarea(node);
+    });
+  }, [resizeTextarea]);
+
+  const handleSelectScripture = useCallback((share: ScriptureShare) => {
+    // The scripture rides along as its own quote card (selectedScripture), not
+    // as text in the caption. Attach it, close the picker, refocus the caption.
+    setSelectedScripture(share);
+    setVersePickerOpen(false);
+    focusTextarea();
+  }, [focusTextarea]);
 
   const handleDialogKeyDown = useCallback((event: KeyboardEvent<HTMLDialogElement>) => {
     if (event.key === 'Escape') {
@@ -423,6 +444,13 @@ export function CreatePost() {
             </div>
           ) : null}
 
+          {selectedScripture ? (
+            <ScriptureQuoteCard
+              share={selectedScripture}
+              onRemove={() => setSelectedScripture(null)}
+            />
+          ) : null}
+
           {quote ? (
             <article className="compose__quote">
               <header className="compose__quote-head">
@@ -621,7 +649,7 @@ export function CreatePost() {
         <ScripturePickerDrawer
           open={versePickerOpen}
           selected={selectedScripture}
-          onSelect={(share) => setSelectedScripture(share)}
+          onSelect={handleSelectScripture}
           onClear={() => setSelectedScripture(null)}
         />
       </section>
@@ -731,12 +759,7 @@ function ComposePreview({
 
         {text ? <p className="compose-preview__body">{text}</p> : null}
 
-        {scriptureShare ? (
-          <blockquote className="compose-preview__scripture">
-            <p>{scriptureShare.text}</p>
-            <cite>{scriptureShare.reference}</cite>
-          </blockquote>
-        ) : null}
+        {scriptureShare ? <ScriptureQuoteCard share={scriptureShare} /> : null}
 
         {hero ? (
           <div className={`compose-preview__hero${hero.kind === 'video' ? ' is-video' : ''}`}>
