@@ -1,0 +1,208 @@
+{
+  "date": "2026-10-31",
+  "tool": "npm audit --json",
+  "affectedPackageEntries": {
+    "info": 0,
+    "low": 0,
+    "moderate": 13,
+    "high": 0,
+    "critical": 0,
+    "total": 13
+  },
+  "note": "Package entry counts are not comparable to Yarn advisory ID counts.",
+  "packages": [
+    {
+      "package": "@eslint-community/eslint-utils",
+      "severity": "moderate",
+      "range": "*",
+      "fixAvailable": {
+        "name": "eslint",
+        "version": "4.0.0",
+        "isSemVerMajor": true
+      },
+      "advisories": []
+    },
+    {
+      "package": "@eslint/config-array",
+      "severity": "moderate",
+      "range": "*",
+      "fixAvailable": {
+        "name": "eslint",
+        "version": "4.0.0",
+        "isSemVerMajor": true
+      },
+      "advisories": []
+    },
+    {
+      "package": "@eslint/eslintrc",
+      "severity": "moderate",
+      "range": "0.0.1 || >=0.1.1",
+      "fixAvailable": {
+        "name": "eslint",
+        "version": "4.0.0",
+        "isSemVerMajor": true
+      },
+      "advisories": []
+    },
+    {
+      "package": "@typescript-eslint/eslint-plugin",
+      "severity": "moderate",
+      "range": "*",
+      "fixAvailable": {
+        "name": "typescript-eslint",
+        "version": "8.14.0",
+        "isSemVerMajor": true
+      },
+      "advisories": []
+    },
+    {
+      "package": "@typescript-eslint/parser",
+      "severity": "moderate",
+      "range": "*",
+      "fixAvailable": {
+        "name": "typescript-eslint",
+        "version": "8.14.0",
+        "isSemVerMajor": true
+      },
+      "advisories": []
+    },
+    {
+      "package": "@typescript-eslint/type-utils",
+      "severity": "moderate",
+      "range": ">=5.9.2-alpha.0",
+      "fixAvailable": {
+        "name": "typescript-eslint",
+        "version": "8.14.0",
+        "isSemVerMajor": true
+      },
+      "advisories": []
+    },
+    {
+      "package": "@typescript-eslint/typescript-estree",
+      "severity": "moderate",
+      "range": ">=6.16.0",
+      "fixAvailable": {
+        "name": "typescript-eslint",
+        "version": "8.14.0",
+        "isSemVerMajor": true
+      },
+      "advisories": []
+    },
+    {
+      "package": "@typescript-eslint/utils",
+      "severity": "moderate",
+      "range": "*",
+      "fixAvailable": {
+        "name": "typescript-eslint",
+        "version": "8.14.0",
+        "isSemVerMajor": true
+      },
+      "advisories": []
+    },
+    {
+      "package": "eslint",
+      "severity": "moderate",
+      "range": "0.7.1 - 2.0.0-rc.1 || >=4.1.0",
+      "fixAvailable": {
+        "name": "eslint",
+        "version": "4.0.0",
+        "isSemVerMajor": true
+      },
+      "advisories": []
+    },
+    {
+      "package": "minimatch",
+      "severity": "moderate",
+      "range": "<11.0.1",
+      "fixAvailable": {
+        "name": "eslint",
+        "version": "4.0.0",
+        "isSemVerMajor": true
+      },
+      "advisories": [
+        {
+          "source": 1244012,
+          "name": "minimatch",
+          "dependency": "minimatch",
+          "title": "minimatch has potential denial of service via globparts amplification",
+          "url": "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-405"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": "<11.0.1"
+        }
+      ]
+    },
+    {
+      "package": "react-router",
+      "severity": "moderate",
+      "range": "6.0.0 - 7.17.0",
+      "fixAvailable": {
+        "name": "react-router-dom",
+        "version": "7.18.5",
+        "isSemVerMajor": true
+      },
+      "advisories": [
+        {
+          "source": 1124268,
+          "name": "react-router",
+          "dependency": "react-router",
+          "title": "React Router: Open redirect via backslash in <Link> and useNavigate (CVE-2025-68470 bypass)",
+          "url": "https://github.com/advisories/GHSA-wrjc-x8rr-h8h6",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-601"
+          ],
+          "cvss": {
+            "score": 0,
+            "vectorString": null
+          },
+          "range": ">=6.0.0 <7.18.0"
+        },
+        {
+          "source": 1124272,
+          "name": "react-router",
+          "dependency": "react-router",
+          "title": "React Router: Arbitrary Constructor Injection via deserializeErrors() in React Router SSR Hydration",
+          "url": "https://github.com/advisories/GHSA-337j-9hxr-rhxg",
+          "severity": "moderate",
+          "cwe": [
+            "CWE-470"
+          ],
+          "cvss": {
+            "score": 6.1,
+            "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:R/S:C/C:L/I:L/A:N"
+          },
+          "range": ">=6.4.0 <7.18.0"
+        }
+      ]
+    },
+    {
+      "package": "react-router-dom",
+      "severity": "moderate",
+      "range": "6.0.0-alpha.0 - 7.17.0",
+      "fixAvailable": {
+        "name": "react-router-dom",
+        "version": "7.18.5",
+        "isSemVerMajor": true
+      },
+      "advisories": []
+    },
+    {
+      "package": "typescript-eslint",
+      "severity": "moderate",
+      "range": "*",
+      "fixAvailable": {
+        "name": "typescript-eslint",
+        "version": "8.14.0",
+        "isSemVerMajor": true
+      },
+      "advisories": []
+    }
+  ]
+}

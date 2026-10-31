@@ -1,0 +1,13 @@
+# Browser security changes
+
+Chat now requires a separate passphrase to unlock its encrypted browser vault. Vaults are scoped to the API environment and authenticated account, with account ownership checked against the API key registry. AES-256-GCM uses a fresh salt/nonce and PBKDF2-HMAC-SHA-256 with 600,000 iterations. Only ciphertext is persisted for new/migrated vaults; unlocked keys remain in memory. Logout/account changes clear keys, peer caches and sockets, and remount account-bound UI. Browsers have independent random device IDs.
+
+Verified legacy keys are retained for history and rotated for new messages. An encrypted archive supports another verified account that formerly shared the same key; use the original chat passphrase in the recovery field if it differs from the new one. Unknown legacy ownership is quarantined rather than silently assigned or deleted. Such old plaintext remains until its owner completes recovery/migration. A forgotten passphrase or cleared browser storage cannot be recovered by the server. `box:v1` message compatibility is preserved.
+
+Production builds inject the policy in `security/csp.ts`. Verify actual Clerk/API/media origins against it before deployment. Hosts supporting `public/_headers` also receive framing protections; other hosts must configure equivalent headers. Encryption at rest does not protect an unlocked vault from malicious scripts.
+
+MapLibre and vulnerable network dependencies were upgraded. `package-lock.json`, `npm ci` checks and vault tests make installs and validation reproducible. GitHub secret scanning and push protection are enabled. PR and weekly full-history scans are configured; apply `.github/security-ruleset.json` after the workflow is published and passes to make `secret-scan` required.
+
+Validation: nine vault/account tests, TypeScript and production builds pass. A clean `npm ci --ignore-scripts` succeeds. Local build verification used `envDir: false`; local secret env files were not read or modified. Check sign-in, passphrase creation/unlock/lock, wrong passphrases, two browsers, account switching, old history, new mobile/browser messages, maps/attribution, uploads and video on staging. Deploy the compatible API chat endpoints first.
+
+The remaining audit report is `security-advisories.json`: 13 moderate package entries, including runtime React Router 6 advisories requiring a tested Router 7 migration; no high/critical entries remain. The API repository contains the full incident runbook and dependency triage under `docs/SECURITY_REMEDIATION.md` and `docs/SECURITY_VALIDATION.md`. Firebase service-account revocation remains P0 and requires the Google Cloud administrator. No deployment or shared-history rewrite has been performed.

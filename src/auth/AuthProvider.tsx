@@ -15,6 +15,8 @@ import {
   isActiveSocialAuthSession,
   promotePendingSocialAuth,
 } from './socialAuthSession';
+import { ChatAccountBoundary } from '@/chat/ChatVaultGate';
+import { lockChatVault } from '@/chat/keyStore';
 import { setTokenGetter } from '@/api/token';
 
 const DEMO_KEY = 'ob_demo_session';
@@ -98,7 +100,7 @@ function ClerkAuthBridge({ children }: { children: ReactNode }) {
   }
 
   // Expose Clerk's session token to the (non-React) API client.
-  setTokenGetter(() => getToken());
+  setTokenGetter(() => getToken(), activeSessionId);
   timeoutStoreRef.current.setLoaded(clerkReady);
   const loadTimedOut = useSyncExternalStore(
     timeoutStoreRef.current.subscribe,
@@ -115,6 +117,7 @@ function ClerkAuthBridge({ children }: { children: ReactNode }) {
       clerkEnabled: true,
       authError: loadTimedOut ? AUTH_UNAVAILABLE_MESSAGE : null,
       signOut: () => {
+        lockChatVault();
         clearSocialAuthMarkers();
         return signOut();
       },
@@ -140,7 +143,7 @@ function ClerkAuthBridge({ children }: { children: ReactNode }) {
     [activeSessionId, clerkReady, isSignedIn, isSocialAuthSession, loadTimedOut, user, signOut]
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={value}><ChatAccountBoundary key={value.sessionId ?? 'signed-out'} identity={value.isSignedIn ? value.user?.id ?? null : null}>{children}</ChatAccountBoundary></AuthContext.Provider>;
 }
 
 /**
@@ -171,7 +174,7 @@ function DemoAuthBridge({ children }: { children: ReactNode }) {
     [signedIn]
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={value}><ChatAccountBoundary key={value.sessionId ?? 'signed-out'} identity={value.isSignedIn ? value.user?.id ?? null : null}>{children}</ChatAccountBoundary></AuthContext.Provider>;
 }
 
 function SignedOutAuthBridge({ children }: { children: ReactNode }) {
@@ -189,7 +192,7 @@ function SignedOutAuthBridge({ children }: { children: ReactNode }) {
     []
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={value}><ChatAccountBoundary key={value.sessionId ?? 'signed-out'} identity={value.isSignedIn ? value.user?.id ?? null : null}>{children}</ChatAccountBoundary></AuthContext.Provider>;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {

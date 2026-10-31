@@ -9,11 +9,12 @@ import {
   getDeviceKeys,
   getMyKeypair,
   getPeerPublicKey,
-  MY_DEVICE_ID,
-  MY_KEY_VERSION,
+
 } from '@/chat/keyStore';
 import { emitWithAck } from '@/chat/socket';
 import { useChatConnection } from '@/chat/useChat';
+import { ChatVaultGate } from '@/chat/ChatVaultGate';
+import type { DeviceKey } from '@/chat/vault';
 import { NewMessage } from './NewMessage';
 import './Messages.css';
 
@@ -54,7 +55,7 @@ export function Conversation() {
     return <NewMessage />;
   }
 
-  return <ConversationThread id={id} />;
+  return <ChatVaultGate><ConversationThread key={id} id={id} /></ChatVaultGate>;
 }
 
 function ConversationThread({ id }: { id: string }) {
@@ -102,16 +103,17 @@ function ConversationThread({ id }: { id: string }) {
           const raw = await chatApi.groupMessages(groupId);
           mapped = raw.map((m) => groupToMsg(m, myIdRef.current));
         } else {
-          const [kp, peerPub, raw] = await Promise.all([
+          const [kp, peerPub, raw, historicalKeys] = await Promise.all([
             getMyKeypair(),
             getPeerPublicKey(peerUserId),
             chatApi.directMessages(peerUserId),
+            getDeviceKeys(peerUserId, true).catch(() => []),
           ]);
           const ctx: DecryptCtx = {
             myUserId: myIdRef.current,
-            myDeviceId: MY_DEVICE_ID,
-            myPriv: kp.privateKey,
+            keys: [kp, ...kp.retired],
             peerPub,
+            peerKeys: historicalKeys.map(k => k.publicKey),
             peerUserId,
           };
           mapped = raw.map((m) => directToMsg(m, ctx));
@@ -148,8 +150,7 @@ function ConversationThread({ id }: { id: string }) {
       const [peerPub, kp] = await Promise.all([getPeerPublicKey(peerUserId), getMyKeypair()]);
       const msg = directToMsg(payload, {
         myUserId: myIdRef.current,
-        myDeviceId: MY_DEVICE_ID,
-        myPriv: kp.privateKey,
+        keys: [kp, ...kp.retired],
         peerPub,
         peerUserId,
       });
@@ -226,7 +227,8 @@ function ConversationThread({ id }: { id: string }) {
           nonce: legacy.nonce,
           authTag: legacy.authTag,
           messageType: 'text',
-          senderPublicKeyVersion: MY_KEY_VERSION,
+          senderPublicKeyVersion: kp.keyVersion,
+          senderPublicKey: kp.publicKey,
           clientMessageId,
         };
 
@@ -239,7 +241,7 @@ function ConversationThread({ id }: { id: string }) {
           const targets: Array<{ userId: string; deviceId: string; keyVersion: number; publicKey: string }> = [];
           const seen = new Set<string>();
           const addTarget = (userId: string, deviceId: string, keyVersion: number, publicKey: string) => {
-            const dedupe = `${userId}:${publicKey}`;
+            const dedupe = `${userId}:${deviceId}`;
             if (!publicKey || seen.has(dedupe)) return;
             seen.add(dedupe);
             targets.push({ userId, deviceId, keyVersion, publicKey });
@@ -247,7 +249,7 @@ function ConversationThread({ id }: { id: string }) {
           peerDevices.forEach((d) => addTarget(peerUserId, d.deviceId, d.keyVersion, d.publicKey));
           if (myUserId) {
             myDevices.forEach((d) => addTarget(myUserId, d.deviceId, d.keyVersion, d.publicKey));
-            addTarget(myUserId, MY_DEVICE_ID, MY_KEY_VERSION, kp.publicKey);
+            addTarget(myUserId, kp.deviceId, kp.keyVersion, kp.publicKey);
           }
           payload.senderPublicKey = kp.publicKey;
           payload.recipientEnvelopes = targets.map((t) => {
@@ -262,6 +264,7 @@ function ConversationThread({ id }: { id: string }) {
           });
         }
 
+        if ((await getMyKeypair()).publicKey !== kp.publicKey) throw new Error('Chat account changed');
         ack = await emitWithAck<SendAck>('chat:send_e2ee_message', payload);
       }
 
@@ -356,9 +359,9 @@ function ConversationThread({ id }: { id: string }) {
 /* ---------------- mappers ---------------- */
 interface DecryptCtx {
   myUserId: string;
-  myDeviceId: string;
-  myPriv: string;
+  keys: DeviceKey[];
   peerPub: string | null;
+  peerKeys?: string[];
   peerUserId: string;
 }
 
@@ -366,21 +369,21 @@ function directToMsg(m: RawChatMessage, ctx: DecryptCtx): ChatMsg {
   let text = '🔒 Encrypted message';
   let mediaUrl: string | undefined;
 
-  // Prefer this device's per-device envelope, decrypted with the message's
-  // sender public key — robust across multi-device. Fall back to the legacy
-  // single ciphertext (decrypted with the peer's current key) for older
-  // messages / clients that didn't send envelopes.
-  const myEnvelope = ctx.myUserId
-    ? m.recipientEnvelopes?.find(
-        (e) => e.userId === ctx.myUserId && e.deviceId === ctx.myDeviceId,
-      )
-    : undefined;
-
   let plain: string | null = null;
-  if (myEnvelope && m.senderPublicKey) {
-    plain = decrypt(myEnvelope.encryptedPayload, myEnvelope.nonce, m.senderPublicKey, ctx.myPriv);
-  } else if (ctx.peerPub && m.encryptedPayload && m.nonce) {
-    plain = decrypt(m.encryptedPayload, m.nonce, ctx.peerPub, ctx.myPriv);
+  let myEnvelope;
+  for (const key of ctx.keys) {
+    myEnvelope = m.recipientEnvelopes?.find(e => e.userId === ctx.myUserId && e.deviceId === key.deviceId);
+    if (myEnvelope && m.senderPublicKey) {
+      plain = decrypt(myEnvelope.encryptedPayload, myEnvelope.nonce, m.senderPublicKey, key.privateKey);
+    }
+    const publicKey = m.senderId !== ctx.myUserId ? m.senderPublicKey ?? ctx.peerPub : ctx.peerPub;
+    if (plain === null && publicKey && m.encryptedPayload && m.nonce) {
+      for (const candidate of [publicKey, ...(ctx.peerKeys || [])]) {
+        plain = decrypt(m.encryptedPayload, m.nonce, candidate, key.privateKey);
+        if (plain !== null) break;
+      }
+    }
+    if (plain !== null) break;
   }
 
   if (plain != null) {

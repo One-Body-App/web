@@ -1,10 +1,15 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
+import { browserCsp } from './security/csp';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), {
+    name: 'production-content-security-policy',
+    apply: 'build',
+    transformIndexHtml: { order: 'post', handler: () => [{ tag: 'meta', attrs: { 'http-equiv': 'Content-Security-Policy', content: browserCsp }, injectTo: 'head-prepend' }] },
+  }],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

@@ -30,6 +30,13 @@ export interface ChatKeyPair {
   privateKey: string;
 }
 
+export function isValidKeyPair(pair: ChatKeyPair): boolean {
+  try {
+    const derived = nacl.box.keyPair.fromSecretKey(fromBase64(pair.privateKey));
+    return toBase64(derived.publicKey) === pair.publicKey;
+  } catch { return false; }
+}
+
 export function generateKeyPair(): ChatKeyPair {
   const kp = nacl.box.keyPair();
   return { publicKey: toBase64(kp.publicKey), privateKey: toBase64(kp.secretKey) };

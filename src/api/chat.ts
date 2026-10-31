@@ -98,8 +98,14 @@ export const chatApi = {
     api.patch(`chat/conversations/${peerUserId}/read`),
 
   // E2EE keys
-  registerKey: (body: { publicKey: string; algorithm: string; keyVersion: number; deviceId: string }) =>
+  registerKey: (body: { publicKey: string; algorithm: string; keyVersion: number; deviceId: string; retireDeviceIds?: string[] }) =>
     api.post<{ data?: unknown }>('chat/keys/register', body),
+
+  async ownKeys(): Promise<{ userId: string; keys: Array<{ deviceId: string; publicKey: string; keyVersion: number; isActive?: boolean }> }> {
+    const res = await api.get<{ data: { userId: string; keys: Array<{ deviceId: string; publicKey: string; keyVersion: number; isActive?: boolean }> } }>('chat/keys/own');
+    if (!res?.data?.userId || !Array.isArray(res.data.keys)) throw new Error('Unable to verify chat account.');
+    return res.data;
+  },
 
   async peerKey(userId: string): Promise<{ publicKey: string; keyVersion: number } | null> {
     const res = await api.get<{ data?: { publicKey?: string; keyVersion?: number } }>(`chat/keys/${userId}`);
@@ -110,11 +116,11 @@ export const chatApi = {
 
   // All active device keys for a user (multi-device fan-out targets).
   async deviceKeys(
-    userId: string,
+    userId: string, includeRetired = false,
   ): Promise<Array<{ deviceId: string; publicKey: string; keyVersion: number }>> {
     const res = await api.get<{
       data?: Array<{ deviceId?: string; publicKey?: string; keyVersion?: number }>;
-    }>(`chat/keys/${userId}/devices`);
+    }>(`chat/keys/${userId}/devices`, { includeRetired });
     const list = Array.isArray(res?.data) ? res.data : [];
     return list
       .filter((k): k is { deviceId?: string; publicKey: string; keyVersion?: number } => typeof k.publicKey === 'string' && k.publicKey.length > 0)

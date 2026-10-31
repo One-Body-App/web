@@ -1,3 +1,4 @@
+import { ChatVaultGate } from '@/chat/ChatVaultGate';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { MessageCircle, PenSquare, X } from 'lucide-react';
@@ -23,7 +24,9 @@ function timeAgo(iso?: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-export function Messages() {
+export function Messages() { return <ChatVaultGate><UnlockedMessages /></ChatVaultGate>; }
+
+function UnlockedMessages() {
   useChatConnection();
   const [isSelectorOpen, setIsSelectorOpen] = useState(false);
   const { data, error, loading } = useApiQuery(() => chatApi.conversations());

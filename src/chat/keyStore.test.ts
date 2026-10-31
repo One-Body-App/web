@@ -1,0 +1,90 @@
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { generateKeyPair } from './crypto';
+import { openVault } from './vault';
+const api = vi.hoisted(() => ({ ownKeys: vi.fn(), registerKey: vi.fn(), peerKey: vi.fn(), deviceKeys: vi.fn() }));
+vi.mock('@/api/chat', () => ({ chatApi: api }));
+vi.mock('@/api/config', () => ({ API_BASE_URL: 'https://api.test/api' }));
+vi.mock('./socket', () => ({ disconnectChatSocket: vi.fn() }));
+import { getMyKeypair, isVaultUnlocked, lockChatVault, setChatIdentity, unlockChatVault } from './keyStore';
+const passphrase = 'a separate long chat passphrase';
+let storage: Map<string, string>;
+beforeEach(() => {
+  setChatIdentity(null);
+  storage = new Map();
+  vi.stubGlobal('localStorage', { getItem: (k: string) => storage.get(k) ?? null, setItem: (k: string, v: string) => storage.set(k, v), removeItem: (k: string) => storage.delete(k) });
+  vi.stubGlobal('navigator', { locks: { request: (_key: string, task: () => unknown) => task() } });
+  api.ownKeys.mockReset().mockResolvedValue({ userId: 'alice', keys: [] });
+  api.registerKey.mockReset().mockResolvedValue({});
+  setChatIdentity('clerk-alice');
+});
+describe('account and migration boundaries', () => {
+  it('isolates accounts, clears unlocked state, and reloads the same saved key', async () => {
+    await unlockChatVault(passphrase);
+    const alice = await getMyKeypair();
+    expect(alice.deviceId).toMatch(/^web-/);
+    lockChatVault();
+    await expect(getMyKeypair()).rejects.toThrow('Unlock');
+    await unlockChatVault(passphrase);
+    expect((await getMyKeypair()).publicKey).toBe(alice.publicKey);
+    setChatIdentity('clerk-bob');
+    api.ownKeys.mockResolvedValue({ userId: 'bob', keys: [] });
+    await unlockChatVault(passphrase);
+    expect((await getMyKeypair()).publicKey).not.toBe(alice.publicKey);
+    expect((await getMyKeypair()).deviceId).not.toBe(alice.deviceId);
+  });
+  it('uses a different device ID in separate browser installations of the same account', async () => {
+    await unlockChatVault(passphrase);
+    const first = await getMyKeypair();
+    lockChatVault();
+    storage = new Map();
+    await unlockChatVault(passphrase);
+    expect((await getMyKeypair()).deviceId).not.toBe(first.deviceId);
+    expect((await getMyKeypair()).publicKey).not.toBe(first.publicKey);
+  });
+  it('preserves history after a storage failure and never registers an unsaved key', async () => {
+    const old = generateKeyPair();
+    storage.set('ob_chat_keypair_v1', JSON.stringify(old));
+    api.ownKeys.mockResolvedValue({ userId: 'alice', keys: [{ publicKey: old.publicKey, deviceId: 'web', keyVersion: 1 }] });
+    vi.stubGlobal('localStorage', { getItem: (key: string) => storage.get(key) ?? null, setItem: () => { throw new Error('Quota exceeded'); } });
+    await expect(unlockChatVault(passphrase)).rejects.toThrow('Quota');
+    expect(storage.get('ob_chat_keypair_v1')).toBe(JSON.stringify(old));
+    expect(api.registerKey).not.toHaveBeenCalled();
+  });
+  it('rotates a verified legacy key and preserves it in encrypted storage and archive', async () => {
+    const old = generateKeyPair();
+    storage.set('ob_chat_keypair_v1', JSON.stringify(old));
+    api.ownKeys.mockResolvedValue({ userId: 'alice', keys: [{ publicKey: old.publicKey, deviceId: 'web', keyVersion: 1 }] });
+    await unlockChatVault(passphrase);
+    const current = await getMyKeypair();
+    expect(current.publicKey).not.toBe(old.publicKey);
+    expect(current.retired[0].privateKey).toBe(old.privateKey);
+    expect(storage.has('ob_chat_keypair_v1')).toBe(false);
+    expect([...storage.values()].join()).not.toContain(old.privateKey);
+    const archive = storage.get('ob_chat_legacy_archive_v1:https://api.test/api')!;
+    expect((await openVault(archive, passphrase, 'https://api.test/api|legacy-chat-archive')).privateKey).toBe(old.privateKey);
+    expect(api.registerKey).toHaveBeenCalledWith(expect.objectContaining({ retireDeviceIds: ['web'] }));
+  });
+  it('quarantines an unowned legacy key without registering or deleting it', async () => {
+    const old = generateKeyPair();
+    storage.set('ob_chat_keypair_v1', JSON.stringify(old));
+    await unlockChatVault(passphrase);
+    expect((await getMyKeypair()).retired).toEqual([]);
+    expect(storage.get('ob_chat_keypair_v1')).toBe(JSON.stringify(old));
+    expect(api.registerKey).not.toHaveBeenCalledWith(expect.objectContaining({ publicKey: old.publicKey }));
+  });
+  it('does not replace corrupt vaults or reactivate an old account after a switch', async () => {
+    const key = 'ob_chat_vault_v1:https://api.test/api|clerk-alice';
+    storage.set(key, 'corrupt');
+    await expect(unlockChatVault(passphrase)).rejects.toThrow();
+    expect(storage.get(key)).toBe('corrupt');
+    storage.clear();
+    let resolve!: (value: unknown) => void;
+    api.ownKeys.mockImplementation(() => new Promise(r => { resolve = r; }));
+    const pending = unlockChatVault(passphrase);
+    setChatIdentity('clerk-bob');
+    resolve({ userId: 'alice', keys: [] });
+    await expect(pending).rejects.toThrow('changed');
+    expect(isVaultUnlocked()).toBe(false);
+    expect(api.registerKey).not.toHaveBeenCalled();
+  });
+});

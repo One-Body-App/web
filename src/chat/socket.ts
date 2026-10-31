@@ -5,6 +5,7 @@ import { getAuthToken } from '@/api/token';
 // Mobile derives the socket URL by stripping `/api` and appending the namespace.
 const SOCKET_URL = `${API_BASE_URL.replace(/\/api\/?$/i, '').replace(/\/+$/, '')}/chat`;
 
+let generation = 0;
 let socket: Socket | null = null;
 let connecting: Promise<Socket | null> | null = null;
 
@@ -12,10 +13,11 @@ export async function connectChatSocket(): Promise<Socket | null> {
   if (socket) return socket;
   if (connecting) return connecting;
 
+  const expected = generation;
   connecting = (async () => {
     const token = await getAuthToken();
-    if (!token) {
-      connecting = null;
+    if (!token || expected !== generation) {
+      if (expected === generation) connecting = null;
       return null;
     }
     const sock = io(SOCKET_URL, {
@@ -24,13 +26,12 @@ export async function connectChatSocket(): Promise<Socket | null> {
       reconnectionDelay: 500,
       reconnectionAttempts: 20,
       autoConnect: true,
-      auth: { token },
-    });
-    // Refresh the (short-lived) Clerk token before each reconnect.
-    sock.io.on('reconnect_attempt', () => {
-      void getAuthToken().then((t) => {
-        if (t) sock.auth = { token: t };
-      });
+      auth: callback => {
+        void getAuthToken().then(fresh => {
+          if (generation === expected && fresh) callback({ token: fresh });
+          else sock.disconnect();
+        });
+      },
     });
     socket = sock;
     return sock;
@@ -44,6 +45,7 @@ export function getChatSocket(): Socket | null {
 }
 
 export function disconnectChatSocket() {
+  generation++;
   if (socket) {
     socket.removeAllListeners();
     socket.disconnect();

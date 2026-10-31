@@ -1,0 +1,27 @@
+{
+  "name": "Required secret scanning",
+  "target": "branch",
+  "enforcement": "active",
+  "conditions": {
+    "ref_name": {
+      "include": [
+        "~DEFAULT_BRANCH",
+        "refs/heads/staging"
+      ],
+      "exclude": []
+    }
+  },
+  "rules": [
+    {
+      "type": "required_status_checks",
+      "parameters": {
+        "required_status_checks": [
+          {
+            "context": "secret-scan"
+          }
+        ],
+        "strict_required_status_checks_policy": true
+      }
+    }
+  ]
+}
